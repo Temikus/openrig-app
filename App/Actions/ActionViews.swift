@@ -58,9 +58,12 @@ struct CommitButton: View {
 
 struct MessageComposer: View {
     let seat: Seat
-    /// Terminal tiles: a bordered field with the send button inside it, no caption, and the field focused on
-    /// appear. The inspector keeps the standard field.
+    /// Terminal tiles: a bordered field with the send button inside it and no caption. The inspector keeps
+    /// the standard field.
     var inline = false
+    /// Put the cursor in the field on appear: only when the user just asked for it (opened a tile's footer),
+    /// never because a tile gained focus.
+    var autofocus = false
     var onSent: () -> Void = {}
     @Environment(ActionStore.self) private var actions
     @State private var text = ""
@@ -83,7 +86,7 @@ struct MessageComposer: View {
                 .padding(.vertical, 5)
                 .background(.background, in: .rect(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color(nsColor: .separatorColor)))
-                .onAppear { fieldFocused = true }
+                .onAppear { if autofocus { fieldFocused = true } }
                 ActionStatusLine(key: key)
             } else {
                 HStack(alignment: .bottom, spacing: 8) {

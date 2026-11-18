@@ -203,7 +203,7 @@ private struct PlaceholderTile: View {
         RoundedRectangle(cornerRadius: 12)
             .strokeBorder(Color(nsColor: .separatorColor), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
             .overlay {
-                Text("\(seat.displayName) · above").font(.callout).foregroundStyle(.tertiary)
+                Text("\(seat.displayName) · focused").font(.callout).foregroundStyle(.tertiary)
             }
     }
 }
@@ -401,8 +401,8 @@ struct TerminalTile: View {
                     )
                     .fixedSize()
                     .onChange(of: fitRows, initial: true) {
-                        let cols = min(snap.cols, Int(inner.width / TerminalSurface.advance(font)))
-                        terminals.fitAttach(GridSize(cols: cols, rows: fitRows))
+                        // The pane's own width: a narrower client crops the pane's right-hand columns.
+                        terminals.fitAttach(GridSize(cols: snap.cols, rows: fitRows))
                     }
                 } else {
                     // The tail of the agent's transcript (not Claude Code's input box), as many rows as fit;
@@ -435,7 +435,7 @@ struct TerminalTile: View {
                 focusedBar
             } else if composing {
                 HStack(alignment: .top, spacing: 8) {
-                    MessageComposer(seat: seat, inline: true) {
+                    MessageComposer(seat: seat, inline: true, autofocus: true) {
                         // Long enough to read "Sent", then back to one line.
                         Task {
                             try? await Task.sleep(for: .seconds(1.5))
@@ -464,6 +464,7 @@ struct TerminalTile: View {
                 .disabled(phase.isDown || seat.sessionName == nil)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(minHeight: 34)
@@ -498,9 +499,12 @@ struct TerminalTile: View {
             }
             .help("Message waits for a safe moment; typing sends keys straight to tmux. ⌘T switches, Esc stops typing")
             if terminals.typing {
-                Label("Keys go straight to tmux · Esc to stop", systemImage: "keyboard")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Label("Keys go straight to tmux · Esc to stop", systemImage: "keyboard")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                }
             } else {
                 MessageComposer(seat: seat, inline: true)
             }
