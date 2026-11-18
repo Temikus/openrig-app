@@ -175,42 +175,47 @@ struct TerminalsView: View {
         return ids
     }
 
-    /// Keys for this view: Esc leaves Type mode (so a stray Esc never interrupts a turn), and a second Esc
-    /// releases focus unless a text field is being edited. ⌘] and ⌘[ move focus in display order; ⌘T
-    /// toggles Type mode on the focused tile. There is no key for Allow once: a stray key must not approve.
+    /// The view's own keys; `terminalKeyAction` decides what each one does. Keys that reach a popover or a
+    /// sheet (their own windows; never the main window) pass through, so Esc still closes them.
     private func installKeyMonitor() {
         guard keyMonitor == nil else { return }
         let terminals = self.terminals
         let rig = self.rig
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             let command = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
-            switch (event.keyCode, command) {
-            case (53, false):  // Esc
-                if terminals.typing {
-                    terminals.typing = false
-                    return nil
+            let key: TerminalKey? =
+                switch (event.keyCode, command) {
+                case (53, false): .escape
+                case (30, true): .nextTile
+                case (33, true): .previousTile
+                case (17, true): .toggleTyping
+                default: nil
                 }
-                let editing = event.window?.firstResponder is NSText
-                guard terminals.focusedSeatID != nil, !editing else { return event }
+            guard let key else { return event }
+            let context = TerminalKeyContext(
+                inMainWindow: event.window != nil && event.window === NSApp.mainWindow,
+                focused: terminals.focusedSeatID != nil, typing: terminals.typing,
+                editingText: event.window?.firstResponder is NSText)
+            switch terminalKeyAction(key, context) {
+            case .passThrough:
+                return event
+            case .stopTyping:
+                terminals.typing = false
+            case .releaseFocus:
                 terminals.release()
-                return nil
-            case (30, true), (33, true):  // ⌘] next, ⌘[ previous
+            case .toggleTyping:
+                terminals.typing.toggle()
+            case .moveFocus(let step):
                 let order = terminals.order
                 guard !order.isEmpty else { return event }
                 let current = terminals.focusedSeatID.flatMap { order.firstIndex(of: $0) }
-                let step = event.keyCode == 30 ? 1 : -1
                 let next = current.map { ($0 + step + order.count) % order.count } ?? (step > 0 ? 0 : order.count - 1)
                 if let seat = rig.seat(order[next]) { terminals.focus(seat) }
-                return nil
-            case (17, true):  // ⌘T
-                guard terminals.focusedSeatID != nil else { return event }
-                terminals.typing.toggle()
-                return nil
-            default:
-                return event
             }
+            return nil
         }
     }
+
 }
 
 struct FrozenOrder: Equatable {
