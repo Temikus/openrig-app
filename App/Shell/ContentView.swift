@@ -3,17 +3,12 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppStore.self) private var store
-    /// Per view: Terminals starts without the inspector, since its tiles carry each seat's state.
+    @State private var showsInspector = true
+    /// Remembered per view: Terminals starts without the inspector, since its tiles carry each seat's state.
     @State private var inspectorByMode: [ViewMode: Bool] = [.terminals: false]
     @State private var showsQueueTask = false
     /// Too narrow for the full toolbar: Needs you shrinks to a bell and a count so it never overflows.
     @State private var narrow = false
-
-    private var showsInspector: Binding<Bool> {
-        Binding(
-            get: { inspectorByMode[store.viewMode] ?? true },
-            set: { inspectorByMode[store.viewMode] = $0 })
-    }
 
     var body: some View {
         @Bindable var store = store
@@ -22,13 +17,17 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 200, ideal: 230)
         } detail: {
             RigDetail()
-                .inspector(isPresented: showsInspector) {
+                .inspector(isPresented: $showsInspector) {
                     InspectorPanel()
                         .inspectorColumnWidth(min: 260, ideal: 320, max: 420)
                 }
         }
         .environment(store.selection)
         .environment(store.actions)
+        .onChange(of: store.viewMode, initial: true) { old, new in
+            if old != new { inspectorByMode[old] = showsInspector }
+            showsInspector = inspectorByMode[new] ?? true
+        }
         .onGeometryChange(for: Bool.self) {
             $0.size.width < 1100
         } action: {
@@ -51,10 +50,13 @@ struct ContentView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
+                // The toolbar keeps an item's first layout: without a new identity, a window narrowed after
+                // launch keeps the wide labels and everything spills into the overflow menu.
+                .id(narrow)
             }
             .keptVisible()
             ToolbarItem(placement: .primaryAction) {
-                NeedsYouButton(compact: narrow)
+                NeedsYouButton(compact: narrow).id(narrow)
             }
             .keptVisible()
             ToolbarItem(placement: .primaryAction) {
@@ -75,7 +77,7 @@ struct ContentView: View {
             }
             ToolbarSpacer(.fixed)
             ToolbarItem(placement: .primaryAction) {
-                Button("Inspector", systemImage: "sidebar.right") { showsInspector.wrappedValue.toggle() }
+                Button("Inspector", systemImage: "sidebar.right") { showsInspector.toggle() }
             }
         }
     }

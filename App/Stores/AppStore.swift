@@ -187,11 +187,12 @@ final class AppStore {
             case "light"?: NSApp.appearance = NSAppearance(named: .aqua)
             default: break
             }
-            // OPENRIG_DEBUG_SIZE="<width>x<height>" resizes the window.
+            // OPENRIG_DEBUG_SIZE="<width>x<height>" resizes the window once launch has settled, as a person would.
             if let size = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SIZE"]?.split(separator: "x"),
                 size.count == 2, let w = Double(size[0]), let h = Double(size[1]),
                 let window = NSApp.windows.first(where: \.isVisible)
             {
+                try? await Task.sleep(for: .seconds(3))
                 window.setFrame(NSRect(x: 0, y: 0, width: w, height: h), display: true)
             }
             guard let spec = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_OPEN"] else { return }
