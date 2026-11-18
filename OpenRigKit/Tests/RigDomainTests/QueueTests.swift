@@ -26,6 +26,13 @@ func item(
         #expect(!workStatus(viaDone).isActive)
     }
 
+    /// Aborting a workflow cancels its open packets (seen live).
+    @Test func canceledIsClosed() {
+        let row = item("x", QItemState(rawValue: "canceled"))
+        #expect(workStatus(row) == .closed(reason: "canceled"))
+        #expect(!workStatus(row).isActive)
+    }
+
     @Test func recordedRowsCoverBothEncodings() throws {
         let rows: [QItem] = try RigFixtures.decode("queue-denkeeper")
         let handed = rows.filter { if case .handedOff = workStatus($0) { true } else { false } }

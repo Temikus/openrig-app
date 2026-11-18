@@ -43,6 +43,8 @@ public func workStatus(_ item: QItem) -> WorkStatus {
     case .done:
         if item.closureReason == "handed_off_to" { return .handedOff(to: item.closureTarget ?? item.handedOffTo) }
         return .closed(reason: item.closureReason)
+    case .canceled:
+        return .closed(reason: item.closureReason ?? "canceled")
     default:
         return .unknown(item.state.rawValue)
     }

@@ -35,14 +35,15 @@ import Testing
     }
 
     @Test func block() {
-        let a = RigAction.block(
-            id: "qitem-1", on: "external:pr-decision", wakeAfter: "1h", summary: "Waiting on review")
+        // Not --summary: rig 0.7.11 refuses it on every park but a registered human seat
+        // (summary_evidence_not_persistable, seen live for external: and operator-human@kernel).
+        let a = RigAction.block(id: "qitem-1", on: "external:pr-decision", wakeAfter: "1h", note: "Waiting on review")
         #expect(
             a.arguments == [
                 "queue", "block", "qitem-1", "--on", "external:pr-decision", "--wake-after", "1h",
-                "--summary", "Waiting on review", "--json",
+                "--note", "Waiting on review", "--json",
             ])
-        let bare = RigAction.block(id: "qitem-1", on: "qitem-2", wakeAfter: nil, summary: nil)
+        let bare = RigAction.block(id: "qitem-1", on: "qitem-2", wakeAfter: nil, note: nil)
         #expect(bare.arguments == ["queue", "block", "qitem-1", "--on", "qitem-2", "--json"])
     }
 

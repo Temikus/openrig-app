@@ -100,6 +100,17 @@ func fixture<T: Decodable>(_ name: String, as type: T.Type = T.self) throws -> T
 }
 
 @Suite struct FormattingTests {
+    /// Workflow packets come with `summary: null`; the body's first line stands in.
+    @Test func missingSummaryFallsBackToTheBody() throws {
+        let json = #"""
+            {"qitemId": "q1", "summary": null, "body": "\n### Workflow entry: hop@2 step draft\n\nMore."}
+            """#
+        let item = try JSONDecoder().decode(QItem.self, from: Data(json.utf8))
+        #expect(item.summary == "Workflow entry: hop@2 step draft")
+        let plain = try JSONDecoder().decode(QItem.self, from: Data(#"{"qitemId": "q2", "summary": "Real"}"#.utf8))
+        #expect(plain.summary == "Real")
+    }
+
     @Test func shortIDs() {
         #expect(shortQItemID("qitem-20261111110308-f963e5f7") == "q-e5f7")
         #expect(shortQItemID("abc") == "q-abc")

@@ -72,8 +72,13 @@ public struct QItem: Decodable, Sendable, Identifiable, Hashable {
         destination = c.lenient(String.self, .destinationSession) ?? ""
         state = c.lenient(QItemState.self, .state) ?? QItemState(rawValue: "unknown")
         priority = c.lenient(String.self, .priority)
-        summary = c.lenient(String.self, .summary) ?? ""
         body = c.lenient(String.self, .body)
+        // Workflow packets have no summary; their body opens with a "### Workflow entry: …" heading.
+        summary =
+            c.lenient(String.self, .summary)
+            ?? body?.split(separator: "\n").lazy
+            .map { $0.drop { $0 == "#" || $0 == " " }.trimmingCharacters(in: .whitespaces) }
+            .first { !$0.isEmpty } ?? ""
         tags = c.lenient([String].self, .tags) ?? []
         blockedOn = c.lenient(String.self, .blockedOn)
         handedOffFrom = c.lenient(String.self, .handedOffFrom)
@@ -104,6 +109,8 @@ public struct QItemState: OpenString {
     public static let blocked = QItemState(rawValue: "blocked")
     public static let done = QItemState(rawValue: "done")
     public static let handedOff = QItemState(rawValue: "handed-off")
+    /// Terminal, e.g. the open packets of an aborted workflow.
+    public static let canceled = QItemState(rawValue: "canceled")
 }
 
 /// Any JSON value, for fields whose shape we only need to test for presence.

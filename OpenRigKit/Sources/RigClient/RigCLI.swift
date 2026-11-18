@@ -19,7 +19,8 @@ public enum RigAction: Sendable, Equatable {
     case send(session: String, text: String)
     case create(destination: String, summary: String, body: String, priority: Priority)
     case handoff(id: String, to: String, summary: String, body: String?)
-    case block(id: String, on: String, wakeAfter: String?, summary: String?)
+    /// `note` is the decision owed, kept as the transition note.
+    case block(id: String, on: String, wakeAfter: String?, note: String?)
     case close(id: String, reason: CloseReason, target: String?, resolution: String?)
     case note(id: String, text: String)
     case newDeadline(id: String, at: Date)
@@ -47,10 +48,10 @@ public enum RigAction: Sendable, Equatable {
         case .handoff(let id, let to, let summary, let body):
             args = ["queue", "handoff", id, "--to", to, "--summary", summary]
             if body != nil { args += ["--body-file", "-"] }
-        case .block(let id, let on, let wakeAfter, let summary):
+        case .block(let id, let on, let wakeAfter, let note):
             args = ["queue", "block", id, "--on", on]
             if let wakeAfter { args += ["--wake-after", wakeAfter] }
-            if let summary { args += ["--summary", summary] }
+            if let note { args += ["--note", note] }
         case .close(let id, let reason, let target, let resolution):
             args = ["queue", "update", id, "--state", "done", "--closure-reason", reason.rawValue]
             if let target { args += ["--closure-target", target] }

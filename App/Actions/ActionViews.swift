@@ -157,6 +157,7 @@ struct QueueTaskForm: View {
 // MARK: - Qitem actions, rendered in place under the action row
 
 enum ActionPanel: String, Identifiable {
+    case resolve = "Resolve"
     case handOff = "Hand off", block = "Block on", close = "Close", nudge = "Nudge", note = "Note"
     case deadline = "New deadline"
     var id: Self { self }
@@ -181,6 +182,7 @@ struct QItemActions: View {
             if let panel {
                 Group {
                     switch panel {
+                    case .resolve: ResolvePanel(item: item) { self.panel = nil }
                     case .handOff: HandOffPanel(item: item) { self.panel = nil }
                     case .block: BlockPanel(item: item) { self.panel = nil }
                     case .close: ClosePanel(item: item) { self.panel = nil }
@@ -198,6 +200,7 @@ struct QItemActions: View {
 
     private var panels: [ActionPanel] {
         var list: [ActionPanel] = [.handOff, .block, .close, .nudge, .note]
+        if case .blocked(on: .outside) = workStatus(item) { list.insert(.resolve, at: 0) }
         if isOverdue(item, now: .now) { list.append(.deadline) }
         return list
     }
@@ -330,7 +333,7 @@ struct BlockPanel: View {
         let b = blocker.trimmingCharacters(in: .whitespacesAndNewlines)
         let s = summary.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !b.isEmpty, !onPerson || !s.isEmpty else { return nil }
-        return .block(id: item.id, on: b, wakeAfter: wakeAfter, summary: s.isEmpty ? nil : s)
+        return .block(id: item.id, on: b, wakeAfter: wakeAfter, note: s.isEmpty ? nil : s)
     }
 }
 
@@ -407,6 +410,34 @@ struct NudgePanel: View {
         }
         .onAppear {
             if text.isEmpty { text = "Checking in on \(item.id) (\(item.summary)). Where is it at?" }
+        }
+    }
+}
+
+/// Answers a row parked on a person or a typed gate (`external:`, `auth:`…): records the decision,
+/// moves the row back to in progress and nudges its owner.
+struct ResolvePanel: View {
+    let item: QItem
+    let done: () -> Void
+    @State private var decision = ""
+
+    private var key: String { "resolve:\(item.id)" }
+    private var trimmed: String { decision.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let on = item.blockedOn {
+                Text("Waiting on \(on)").font(.caption).foregroundStyle(.secondary)
+            }
+            TextField("Your decision", text: $decision, axis: .vertical).lineLimit(2...5)
+            HStack {
+                ActionStatusLine(key: key)
+                Spacer()
+                CommitButton(
+                    title: "Resolve and unpark",
+                    action: trimmed.isEmpty ? nil : .resolve(id: item.id, decision: trimmed),
+                    key: key, success: "Resolved", after: done)
+            }
         }
     }
 }
