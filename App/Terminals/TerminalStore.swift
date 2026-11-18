@@ -17,6 +17,8 @@ final class TerminalStore {
     var typing = false
     /// Seats in display order, for ⌘] and ⌘[. Written by the grid as it lays out; not observed.
     @ObservationIgnored var order: [Seat.ID] = []
+    /// The grid's last arrangement, frozen when focus begins. Written by the grid; not observed.
+    @ObservationIgnored var layout: FrozenOrder?
 
     @ObservationIgnored private var attachController: FocusedAttach?
     @ObservationIgnored private var wake: CheckedContinuation<Void, Never>?

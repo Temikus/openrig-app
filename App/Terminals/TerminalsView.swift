@@ -56,16 +56,19 @@ struct TerminalsView: View {
             if focused == nil {
                 frozen = nil
             } else if frozen == nil {
-                let large = largeByState(graph)
-                frozen = FrozenOrder(large: large, small: graph.seats.map(\.id).filter { !large.contains($0) })
+                // Freeze what is on screen, filler included.
+                frozen = terminals.layout ?? FrozenOrder(large: largeByState(graph), small: [])
             }
         }
     }
 
     private func grid(_ graph: RigGraph, viewport: CGSize) -> some View {
         let width = max(0, viewport.width - 2 * Metrics.padding)
-        let (large, small) = arrangement(graph)
+        let (large, small, filler) = arrangement(graph, width: width)
         terminals.order = large.map(\.id) + small.compactMap { $0.isPlaceholder ? nil : $0.seat.id }
+        if frozen == nil {
+            terminals.layout = FrozenOrder(large: large.map(\.id), small: small.map(\.seat.id), filler: filler)
+        }
 
         let smallCols = columns(small.count, width: width, min: Metrics.smallMinWidth)
         let smallRows = rows(small.count, cols: smallCols)
@@ -89,20 +92,45 @@ struct TerminalsView: View {
         .background(Color.clear.contentShape(Rectangle()).onTapGesture { terminals.release() })
     }
 
-    /// Large tiles, then small slots. While focus is held, a seat that moved up leaves a placeholder below.
-    private func arrangement(_ graph: RigGraph) -> (large: [Seat], small: [Slot]) {
+    /// Large tiles, then small slots. A lone large tile would leave half its row empty (panes are 84 columns),
+    /// so the most recently active other seat fills the row. While focus is held, a focused small tile takes
+    /// the filler's place, or moves up and leaves a placeholder below.
+    private func arrangement(_ graph: RigGraph, width: CGFloat)
+        -> (large: [Seat], small: [Slot], filler: Seat.ID?)
+    {
         let seat = { (id: Seat.ID) in graph.seats.first { $0.id == id } }
         guard let frozen else {
-            let large = largeByState(graph)
-            return (large.compactMap(seat), graph.seats.filter { !large.contains($0.id) }.map { Slot(seat: $0) })
+            var large = largeByState(graph)
+            var filler: Seat.ID?
+            if large.count == 1, width >= 2 * Metrics.largeMinWidth + Metrics.spacing {
+                filler = mostRecentlyActive(graph.seats.filter { !large.contains($0.id) && !SeatPhase($0).isDown })
+                if let filler { large.append(filler) }
+            }
+            let small = graph.seats.filter { !large.contains($0.id) }.map { Slot(seat: $0) }
+            return (large.compactMap(seat), small, filler)
         }
         var largeIDs = frozen.large.filter { seat($0) != nil }
+        var smallIDs = frozen.small
         for prompt in rig.prompts where !largeIDs.contains(prompt.seatID) { largeIDs.append(prompt.seatID) }
-        if let focused = terminals.focusedSeatID, !largeIDs.contains(focused) { largeIDs.append(focused) }
-        var small = frozen.small.compactMap(seat).map { Slot(seat: $0, isPlaceholder: largeIDs.contains($0.id)) }
+        if let focused = terminals.focusedSeatID, !largeIDs.contains(focused) {
+            if let filler = frozen.filler, let at = largeIDs.firstIndex(of: filler),
+                let slot = smallIDs.firstIndex(of: focused)
+            {
+                // Swap: the focused seat takes the filler's large slot, the filler its small one.
+                largeIDs[at] = focused
+                smallIDs[slot] = filler
+            } else {
+                largeIDs.append(focused)
+            }
+        }
+        var small = smallIDs.compactMap(seat).map { Slot(seat: $0, isPlaceholder: largeIDs.contains($0.id)) }
         let known = Set(frozen.large + frozen.small)
         small += graph.seats.filter { !known.contains($0.id) && !largeIDs.contains($0.id) }.map { Slot(seat: $0) }
-        return (largeIDs.compactMap(seat), small)
+        return (largeIDs.compactMap(seat), small, frozen.filler)
+    }
+
+    private func mostRecentlyActive(_ seats: [Seat]) -> Seat.ID? {
+        seats.max { ($0.activity?.since ?? .distantPast) < ($1.activity?.since ?? .distantPast) }?.id
     }
 
     @ViewBuilder
@@ -185,9 +213,11 @@ struct TerminalsView: View {
     }
 }
 
-private struct FrozenOrder: Equatable {
+struct FrozenOrder: Equatable {
     var large: [Seat.ID]
     var small: [Seat.ID]
+    /// An idle seat shown large only so a lone large tile has a neighbour.
+    var filler: Seat.ID?
 }
 
 private struct Slot {
