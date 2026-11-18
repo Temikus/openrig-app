@@ -97,6 +97,13 @@ final class AppStore {
         }
     }
 
+    /// `rig daemon start`, then a fresh look once it answers.
+    func startDaemon() async {
+        if await actions.perform(.startDaemon, key: "daemon", success: "Daemon started", allowOffline: true) {
+            await refreshNow()
+        }
+    }
+
     func refreshNow() async {
         await refreshHealth()
         guard isUp else { return }
@@ -141,7 +148,9 @@ final class AppStore {
         }
         do {
             daemon = .running(try await client.health())
+            actions.offline = false
         } catch {
+            actions.offline = true
             if case .unreachable = daemon { return }
             daemon = .unreachable(reason: error.userMessage, since: .now)
         }

@@ -66,6 +66,7 @@ struct WireLayer: View {
 
 /// Floating legend and zoom controls.
 struct LegendBar: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Binding var zoom: CGFloat
     let fit: () -> Void
 
@@ -109,7 +110,7 @@ struct LegendBar: View {
         .font(.caption)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .glassEffect()
+        .modifier(FloatingSurface(solid: reduceTransparency))
     }
 }
 
@@ -199,5 +200,20 @@ struct WireChip: View {
         .buttonStyle(.plain)
         .help(item.summary)
         .accessibilityLabel("\(shortQItemID(item.id)), \(item.summary)")
+    }
+}
+
+/// Glass for floating controls, or an opaque surface when Reduce Transparency is on.
+struct FloatingSurface: ViewModifier {
+    let solid: Bool
+
+    func body(content: Content) -> some View {
+        if solid {
+            content
+                .background(Color(nsColor: .windowBackgroundColor), in: .capsule)
+                .overlay(Capsule().strokeBorder(Color(nsColor: .separatorColor)))
+        } else {
+            content.glassEffect()
+        }
     }
 }

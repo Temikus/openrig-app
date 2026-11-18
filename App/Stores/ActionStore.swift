@@ -14,6 +14,8 @@ final class ActionStore {
 
     let cli: RigCLI?
     private(set) var status: [String: Status] = [:]
+    /// Set while the daemon is unreachable: writes would fail, so their buttons disable.
+    var offline = false
 
     init(cli: RigCLI? = RigCLI.locate(actor: "operator-human@kernel")) {
         self.cli = cli
@@ -23,7 +25,11 @@ final class ActionStore {
 
     /// Runs `action`, recording the outcome under `key` (one key per control). Returns true on success.
     @discardableResult
-    func perform(_ action: RigAction, key: String, success: String = "Done") async -> Bool {
+    func perform(_ action: RigAction, key: String, success: String = "Done", allowOffline: Bool = false) async -> Bool {
+        if offline && !allowOffline {
+            status[key] = .failed("The daemon isn't running. Start it from the sidebar, then try again.")
+            return false
+        }
         guard let cli else {
             status[key] = .failed("rig CLI not found in /opt/homebrew/bin or /usr/local/bin.")
             return false

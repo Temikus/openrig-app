@@ -33,7 +33,10 @@ struct CanvasView: View {
                     width: geo.visibleRect.width - i.leading - i.trailing,
                     height: geo.visibleRect.height - i.top - i.bottom)
             } action: { _, rect in
-                let resized = rect.size != visible.size
+                // Ignore changes smaller than a scroll bar: fitting can show or hide the scrollers,
+                // which resizes the viewport, which would refit again, forever.
+                let resized =
+                    abs(rect.width - visible.width) > 20 || abs(rect.height - visible.height) > 20
                 visible = rect
                 if resized, !userZoomed { fit(layout) }
             }
@@ -89,7 +92,8 @@ struct CanvasView: View {
         guard visible.width > 0, visible.height > 0 else { return }
         // The visible rect's size is the viewport's, whatever the zoom. Leave room for the legend.
         let scale = min(visible.width / layout.bounds.width, (visible.height - 60) / layout.bounds.height)
-        zoom = clampZoom(min(scale, 1.25))
+        // A 4% margin keeps fitted content clear of the scrollers' threshold.
+        zoom = clampZoom(min(scale * 0.96, 1.25))
         scroll.scrollTo(edge: .top)
     }
 }

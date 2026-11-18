@@ -48,7 +48,7 @@ struct CommitButton: View {
             }
         }
         .buttonStyle(.borderedProminent)
-        .disabled(action == nil || actions.isRunning(key))
+        .disabled(action == nil || actions.isRunning(key) || actions.offline)
         .keyboardShortcut(.return, modifiers: .command)
         .help(action?.displayCommand ?? "Fill in the required fields")
     }

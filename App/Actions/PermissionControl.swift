@@ -67,7 +67,7 @@ struct PermissionControl: View {
                 HStack(spacing: 6) {
                     Button("Allow once", action: allowOnce)
                         .buttonStyle(.borderedProminent)
-                        .disabled(actions.isRunning(key) || screen?.allowOnceKey == nil)
+                        .disabled(actions.isRunning(key) || actions.offline || screen?.allowOnceKey == nil)
                         .help(
                             screen?.allowOnceKey == nil
                                 ? "Can't read a plain Yes on screen; answer in the terminal" : "")

@@ -31,6 +31,7 @@ public enum RigAction: Sendable, Equatable {
     /// Records that a prompt the daemon still holds is gone. Declines send no hook,
     /// and `rig send` refuses until this is done.
     case clearAttention(session: String, reason: String)
+    case startDaemon
 
     /// Arguments after `rig`. Passed to exec directly; no shell sees them.
     public var arguments: [String] {
@@ -64,6 +65,8 @@ public enum RigAction: Sendable, Equatable {
             args = ["queue", "resolve", id, "--decision", decision]
         case .clearAttention(let session, let reason):
             args = ["seat", "clear-attention", session, "--reason", reason]
+        case .startDaemon:
+            return ["daemon", "start"]
         }
         return args + ["--json"]
     }

@@ -102,6 +102,10 @@ import Testing
             ])
     }
 
+    @Test func startDaemonHasNoJSONFlag() {
+        #expect(RigAction.startDaemon.arguments == ["daemon", "start"], "rig daemon start doesn't take --json")
+    }
+
     @Test func displayCommandQuotesForTheUser() {
         let a = RigAction.send(session: "b1@r", text: "it's done")
         #expect(a.displayCommand == "rig send b1@r 'it'\\''s done' --json")

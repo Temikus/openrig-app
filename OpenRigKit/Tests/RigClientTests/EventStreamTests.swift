@@ -42,6 +42,22 @@ import Testing
     }
 }
 
+@Suite struct EventStreamOfflineTests {
+    // Port 9 (discard) is closed on macOS: stands in for a stopped daemon.
+    @Test(.timeLimit(.minutes(1))) func closedPortReportsDisconnectedAndKeepsRetrying() async {
+        let stream = EventStream(baseURL: URL(string: "http://127.0.0.1:9")!, idleTimeout: 2)
+        var disconnects = 0
+        let started = Date.now
+        for await update in stream.updates() {
+            #expect(update != .connected)
+            if case .disconnected = update { disconnects += 1 }
+            if disconnects == 2 { break }
+        }
+        #expect(disconnects == 2, "it reports the outage and tries again")
+        #expect(Date.now.timeIntervalSince(started) < 5, "backoff starts short")
+    }
+}
+
 @Suite(.enabled("needs a running rig daemon") { await LiveDaemon.isRunning() })
 struct LiveEventStreamTests {
     let stream = EventStream(baseURL: LiveDaemon.client.baseURL, idleTimeout: 10)

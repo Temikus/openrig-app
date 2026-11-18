@@ -119,3 +119,20 @@ func fixture<T: Decodable>(_ name: String, as type: T.Type = T.self) throws -> T
         #expect(b1.activity?.since == nil, "idle seats report no eventAt")
     }
 }
+
+@Suite struct VersionGateTests {
+    @Test(arguments: ["0.7.11", "0.7.0", "0.7.99-beta.1"])
+    func tested(semver: String) {
+        #expect(DaemonHealth(status: "ok", semver: semver).compatibility == .tested)
+    }
+
+    @Test(arguments: ["0.8.0", "0.6.9", "1.0.0"])
+    func untested(semver: String) {
+        #expect(DaemonHealth(status: "ok", semver: semver).compatibility == .untested(semver))
+    }
+
+    @Test func missingOrGarbledVersionIsUnknown() {
+        #expect(DaemonHealth(status: "ok").compatibility == .unknown)
+        #expect(DaemonHealth(status: "ok", semver: "dev").compatibility == .unknown)
+    }
+}

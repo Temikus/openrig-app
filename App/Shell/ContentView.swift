@@ -35,7 +35,7 @@ struct ContentView: View {
                 Button("Queue task", systemImage: "plus") { showsQueueTask = true }
                     .labelStyle(.titleAndIcon)
                     .buttonStyle(.glassProminent)
-                    .disabled(store.rig == nil)
+                    .disabled(store.rig == nil || !store.isUp)
                     .keyboardShortcut("n")
                     .popover(isPresented: $showsQueueTask, arrowEdge: .bottom) {
                         if let rig = store.rig {
@@ -120,6 +120,11 @@ struct DaemonStatusFooter: View {
             case .unreachable(_, let since):
                 Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
                 Text("Daemon stopped · since \(since, style: .time)")
+                Spacer(minLength: 4)
+                Button("Start") { Task { await store.startDaemon() } }
+                    .controlSize(.small)
+                    .disabled(store.actions.isRunning("daemon"))
+                    .help("rig daemon start")
             }
             Spacer(minLength: 0)
         }
@@ -156,6 +161,9 @@ struct RigDetail: View {
                     }
                 }
                 .environment(rig)
+                // Offline, the last data stays on screen, dimmed, with when it was current.
+                .opacity(store.isUp ? 1 : 0.55)
+                .safeAreaInset(edge: .top, spacing: 0) { StatusBanners(rig: rig) }
                 .navigationTitle(summary.name)
                 .navigationSubtitle(subtitle(rig))
             } else if case .unreachable(let reason, _) = store.daemon {
@@ -209,5 +217,53 @@ struct InspectorPanel: View {
         ContentUnavailableView(
             "No selection", systemImage: "cursorarrow.click",
             description: Text(store.viewMode == .queue ? "Select a qitem." : "Select a seat."))
+    }
+}
+
+/// Daemon-down and untested-version notices above the current view.
+struct StatusBanners: View {
+    let rig: RigStore
+    @Environment(AppStore.self) private var store
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if case .unreachable(let reason, _) = store.daemon {
+                banner(tint: .red, symbol: "bolt.horizontal.circle") {
+                    Text("Daemon stopped. Showing data from \(stale), read-only.")
+                        .help(reason)
+                    Spacer()
+                    ActionStatusLine(key: "daemon")
+                    Button("Start daemon") { Task { await store.startDaemon() } }
+                        .disabled(store.actions.isRunning("daemon"))
+                        .help("rig daemon start")
+                    Button("Retry") { Task { await store.refreshNow() } }
+                }
+            }
+            if case .running(let health) = store.daemon, case .untested(let version) = health.compatibility {
+                banner(tint: .orange, symbol: "exclamationmark.triangle") {
+                    Text(
+                        "Daemon \(version) is untested. This app was built against rig \(DaemonHealth.testedMinor.major).\(DaemonHealth.testedMinor.minor).x; some views may be wrong."
+                    )
+                    Spacer()
+                }
+            }
+        }
+    }
+
+    private var stale: String {
+        guard let at = rig.lastUpdated else { return "before the outage" }
+        return at.formatted(date: .omitted, time: .shortened)
+    }
+
+    private func banner(tint: Color, symbol: String, @ViewBuilder content: () -> some View) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol).foregroundStyle(tint)
+            content()
+        }
+        .font(.callout)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(tint.opacity(0.12))
+        .overlay(alignment: .bottom) { Divider() }
     }
 }

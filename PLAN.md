@@ -333,3 +333,12 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - `rig send` exit 1 counts as "sent, not confirmed" only when its JSON says `sent: true`; a refusal also exits 1.
 - Verified live on a throwaway rig (`rig create openrig-apptest`): Allow once answered a real prompt and the seat left Needs you; Decline + redirect cancelled a prompt and delivered the message. `rig queue resolve` for a linked held row was not exercised (no such row).
 - "Always allow…" stays disabled (risk 5).
+
+### M6
+- **Daemon down**: the last data stays on screen, dimmed, under a banner ("Daemon stopped. Showing data from 4:43 pm, read-only.") with Start daemon (`rig daemon start`) and Retry; the sidebar footer has the same Start button. Writes are refused while offline, and their buttons disable. Verified by pointing the app at a local proxy (`OPENRIG_URL`) and stopping and restarting the proxy; the real daemon was never stopped.
+- **Version gate**: rig 0.7.x is tested; any other minor version shows an "untested" banner (`DaemonHealth.compatibility`, tested).
+- **Reduce Transparency**: the floating legend uses an opaque surface instead of glass.
+- **Narrow windows (to the 820 pt minimum)** exposed two layout feedback loops that crashed AppKit: the canvas refit when scroll bars appeared or disappeared (now ignores changes under 20 pt and fits with a 4% margin), and the board's fixed-size filter row setting the detail column's minimum width (now scrolls). Both were reproduced and verified with scripted resizes across all three views.
+- At the minimum width the toolbar moves Needs you, Queue task and the inspector button into its overflow menu. `.visibilityPriority` (macOS 27) could keep Needs you visible.
+- Not drawn yet, from the design reviews: crashed-seat and two-prompts-at-once states.
+- **Lesson**: pipe gate commands with `set -o pipefail`; a `| tail` hid a lint failure in the M5 commit.

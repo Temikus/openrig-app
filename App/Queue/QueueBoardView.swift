@@ -15,7 +15,11 @@ struct QueueBoardView: View {
             let now = context.date
             let columns = board(rig.items, filter: filter, now: now)
             VStack(alignment: .leading, spacing: 0) {
-                filterRow(now: now)
+                // Scrolls rather than squeezes: fixed-size controls here would otherwise set the detail
+                // column's minimum width, which the split view can't satisfy beside the inspector.
+                ScrollView(.horizontal) { filterRow(now: now) }
+                    .scrollIndicators(.never)
+                    .scrollBounceBehavior(.basedOnSize)
                 // Below 720 pt the strip folds into the toolbar's Needs-you popover.
                 let asks = rig.needsYou
                 if !asks.isEmpty && visibleWidth >= 720 {
