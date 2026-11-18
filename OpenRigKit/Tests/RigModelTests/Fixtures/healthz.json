@@ -1,0 +1,68 @@
+{
+  "status": "ok",
+  "pid": 1,
+  "euid": 501,
+  "semver": "0.7.11",
+  "commit": "6c8a69638b0b5ce7b81b9b73e3034f051f7a019c",
+  "dirty": false,
+  "builtAt": "2026-11-10T16:28:47Z",
+  "selfHostId": "host-00000000",
+  "selfHostIdSource": "generated",
+  "eventLoop": {
+    "lagMeanMs": 14.818130186251294,
+    "lagP99Ms": 18.055167,
+    "utilization": 0.04902322876867329,
+    "lastTickAgeMs": 214,
+    "healthy": true
+  },
+  "routeTimings": {
+    "GET /api/rigs/summary": {
+      "lastMs": 4.43862509727478,
+      "maxMs": 118.21487498283386,
+      "count": 41683
+    },
+    "GET /api/rigs/:id/nodes": {
+      "lastMs": 84.27108299732208,
+      "maxMs": 5677881.924500018,
+      "count": 1124470
+    },
+    "GET /api/ps": {
+      "lastMs": 16.51841700077057,
+      "maxMs": 34.19379198551178,
+      "count": 44
+    },
+    "GET /api/rigs/:id/graph": {
+      "lastMs": 4.297208070755005,
+      "maxMs": 5.626917004585266,
+      "count": 2
+    }
+  },
+  "slowOperations": {
+    "healthy": true
+  },
+  "bind": {
+    "mode": "default",
+    "hosts": [
+      "127.0.0.1"
+    ],
+    "tailscaleDetected": false
+  },
+  "stuckSweep": {
+    "lastSweepAt": "2026-11-18T03:25:13.650Z",
+    "lastOutcome": "clean",
+    "lastError": null,
+    "consecutiveFailures": 0,
+    "findingsRouted": 575,
+    "runningSince": null,
+    "skippedTicks": 0
+  },
+  "wakeLadder": {
+    "lastTickAt": "2026-11-18T03:25:14.095Z",
+    "lastOutcome": "clean",
+    "lastError": null,
+    "consecutiveFailures": 0,
+    "activeLadders": 0,
+    "escalationsOpen": 0,
+    "exhaustedTotal": 0
+  }
+}

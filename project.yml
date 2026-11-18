@@ -1,0 +1,45 @@
+# XcodeGen spec. `just gen` writes OpenRig.xcodeproj (not committed).
+name: OpenRig
+options:
+  bundleIdPrefix: dev.openrig
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+packages:
+  OpenRigKit:
+    path: OpenRigKit
+targets:
+  OpenRig:
+    type: application
+    platform: macOS
+    sources: [App]
+    dependencies:
+      - package: OpenRigKit
+        product: RigModel
+      - package: OpenRigKit
+        product: RigClient
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: OpenRig
+        LSApplicationCategoryType: public.app-category.developer-tools
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.openrig.OpenRig
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        SWIFT_VERSION: "6.0"
+        # Sandbox stays off: the app runs `rig` and `tmux` and reads ~/.openrig.
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+schemes:
+  OpenRig:
+    build:
+      targets:
+        OpenRig: all
+    run:
+      config: Debug

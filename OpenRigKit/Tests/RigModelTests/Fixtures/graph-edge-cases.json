@@ -1,0 +1,48 @@
+{
+  "nodes": [
+    { "id": "pod-a", "type": "podGroup", "position": { "x": 0, "y": 0 }, "data": { "logicalId": "dev", "podLabel": "Builders" } },
+    {
+      "id": "seat-1",
+      "type": "rigNode",
+      "parentId": "pod-a",
+      "data": {
+        "logicalId": "dev.b1",
+        "canonicalSessionName": "dev-b1@demo",
+        "nodeKind": "agent",
+        "runtime": "claude-code",
+        "status": "running",
+        "agentActivity": { "state": "needs_input", "reason": "permission_prompt", "stale": false },
+        "binding": { "tmuxSession": "dev-b1@demo", "tmuxPane": "%3" },
+        "needsAttention": true,
+        "heldReason": "waiting on human",
+        "contextUsedPercentage": 41.6,
+        "currentQitems": [
+          { "qitemId": "qitem-20261111110308-f963e5f7", "bodyExcerpt": "Fix the login form", "tier": "routine" },
+          { "bodyExcerpt": "row without an id is dropped" }
+        ],
+        "pendingWorkCount": 2,
+        "inProgressWorkCount": 1,
+        "blockedWorkCount": 1
+      }
+    },
+    {
+      "id": "seat-2",
+      "type": "rigNode",
+      "parentId": "pod-a",
+      "data": {
+        "logicalId": "dev.b2",
+        "agentActivity": { "state": "daydreaming" },
+        "contextUsedPercentage": "not a number",
+        "heldReason": { "kind": "object instead of string" },
+        "binding": null
+      }
+    },
+    { "id": "note-1", "type": "stickyNote", "data": {} },
+    { "type": "rigNode", "data": { "logicalId": "no id, dropped" } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "seat-1", "target": "seat-2", "label": "delegates_to" },
+    { "source": "seat-2", "target": "seat-1", "label": "mentors" },
+    { "id": "e3", "source": "seat-1" }
+  ]
+}
