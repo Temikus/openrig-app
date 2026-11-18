@@ -78,6 +78,15 @@ public struct Tmux: Sendable {
         return output.split(separator: "\n").map(String.init)
     }
 
+    /// Asks tmux to redraw the client started as process `pid` (one of this app's attach clients).
+    public func redraw(clientPID pid: Int32) async {
+        guard let output = try? await run(["list-clients", "-F", "#{client_pid} #{client_tty}"]),
+            let tty = output.split(separator: "\n").first(where: { $0.hasPrefix("\(pid) ") })?.split(separator: " ")
+                .last
+        else { return }
+        _ = try? await run(["refresh-client", "-t", String(tty)])
+    }
+
     /// Arguments that attach a client to one seat's session. `ignore-size` keeps this client from
     /// resizing a pane other terminals are showing (PLAN.md risk 4); the view scales to the pane instead.
     public func attachArgs(session: String) -> [String] {

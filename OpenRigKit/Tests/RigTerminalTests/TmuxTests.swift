@@ -44,6 +44,11 @@ import Testing
         #expect(terminal.text(row: 0) == "b")
         #expect(terminal.text(row: 1) == ">")
         #expect(terminal.cursor == (0, 1))
+        // The live view lines up on the same row.
+        #expect(snap.contentEnd == 3)
+        var below = snap
+        below.cursorY = 4
+        #expect(below.contentEnd == 5, "a cursor under the text counts too")
     }
 
     @Test func tailOfPaneMovesTheCursor() throws {

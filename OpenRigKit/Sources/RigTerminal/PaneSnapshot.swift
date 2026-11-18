@@ -25,6 +25,13 @@ public struct PaneSnapshot: Sendable, Equatable {
         self.capturedAt = capturedAt
     }
 
+    /// One past the last row with text or the cursor, whichever is lower: where "the tail" of the pane ends,
+    /// so a pane with blank rows at the bottom still shows its prompt.
+    public var contentEnd: Int {
+        let lastText = lines.lastIndex { !strippingEscapes($0).trimmingCharacters(in: .whitespaces).isEmpty } ?? 0
+        return min(max(rows, lines.count), max(lastText, cursorY) + 1)
+    }
+
     /// Bytes that redraw this snapshot on an empty terminal of the same size.
     /// With `lastRows`, only the bottom rows are drawn (small tiles show the tail of the pane).
     public func ansi(lastRows: Int? = nil) -> [UInt8] {
@@ -33,10 +40,7 @@ public struct PaneSnapshot: Sendable, Equatable {
         if shown.count < rows { shown += Array(repeating: "", count: rows - shown.count) }
         var cursorRow = cursorY
         if let lastRows, lastRows < shown.count {
-            // "The tail" ends at the last line with text or the cursor, whichever is lower,
-            // so a pane with blank rows at the bottom still shows its prompt.
-            let lastText = shown.lastIndex { !strippingEscapes($0).trimmingCharacters(in: .whitespaces).isEmpty } ?? 0
-            let end = min(shown.count, max(lastText, cursorY) + 1)
+            let end = min(shown.count, contentEnd)
             let start = max(0, end - lastRows)
             shown = Array(shown[start..<end])
             cursorRow -= start

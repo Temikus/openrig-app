@@ -58,6 +58,8 @@ struct CommitButton: View {
 
 struct MessageComposer: View {
     let seat: Seat
+    /// The "rig send · ⌘↩" line; terminal tiles leave it out for space.
+    var showsCaption = true
     @Environment(ActionStore.self) private var actions
     @State private var text = ""
 
@@ -87,7 +89,9 @@ struct MessageComposer: View {
                     .help(action.map(\.displayCommand) ?? "")
             }
             HStack {
-                Text("rig send · ⌘↩").font(.caption.monospaced()).foregroundStyle(.secondary)
+                if showsCaption {
+                    Text("rig send · ⌘↩").font(.caption.monospaced()).foregroundStyle(.secondary)
+                }
                 Spacer()
                 ActionStatusLine(key: key)
             }

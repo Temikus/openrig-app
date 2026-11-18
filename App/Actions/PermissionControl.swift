@@ -10,6 +10,10 @@ struct PermissionControl: View {
     let prompt: PromptInstance
     let linked: QItem?
     var compact = false
+    /// The pane on screen already shows the prompt (a large terminal tile), so the command box is left out.
+    var paneShowsPrompt = false
+    /// A trailing hint beside the buttons, e.g. on terminal tiles.
+    var hint: String?
     @Environment(RigStore.self) private var rig
     @Environment(ActionStore.self) private var actions
     @Environment(AppStore.self) private var app
@@ -23,21 +27,23 @@ struct PermissionControl: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let screen {
-                Text(screen.description.map { "\(screen.title): \($0)" } ?? screen.title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else if !compact {
-                Text("wants to run").font(.caption).foregroundStyle(.secondary)
+            if !(paneShowsPrompt && screen != nil) {
+                if let screen {
+                    Text(screen.description.map { "\(screen.title): \($0)" } ?? screen.title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if !compact {
+                    Text("wants to run").font(.caption).foregroundStyle(.secondary)
+                }
+                // Never truncated: the risky part of a command is often at the end.
+                Text(screen?.command ?? prompt.command)
+                    .font(.callout.monospaced())
+                    .textSelection(.enabled)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.background, in: .rect(cornerRadius: 6))
+                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color(nsColor: .separatorColor)))
             }
-            // Never truncated: the risky part of a command is often at the end.
-            Text(screen?.command ?? prompt.command)
-                .font(.callout.monospaced())
-                .textSelection(.enabled)
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.background, in: .rect(cornerRadius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color(nsColor: .separatorColor)))
 
             if changed {
                 HStack {
@@ -48,20 +54,24 @@ struct PermissionControl: View {
                 }
                 .font(.caption)
             } else if redirecting {
-                TextField("What to do instead (optional)", text: $reason, axis: .vertical)
+                Text("Tell \(rig.seat(prompt.seatID)?.displayName ?? "the seat") what to do instead")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("Optional; leave empty to just decline", text: $reason, axis: .vertical)
                     .lineLimit(1...4)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(redirect)
                 HStack(spacing: 6) {
                     Button(
-                        reason.trimmingCharacters(in: .whitespaces).isEmpty ? "Decline" : "Decline and send",
+                        reason.trimmingCharacters(in: .whitespaces).isEmpty ? "Decline" : "Send instead",
                         action: redirect
                     )
                     .buttonStyle(.borderedProminent)
-                    .tint(.red)
+                    .tint(.attention)
                     .disabled(actions.isRunning(key) || screen?.declineKey == nil)
-                    Button("Cancel") { redirecting = false }
+                    Button("Back") { redirecting = false }
                 }
+                .buttonBorderShape(.capsule)
                 .controlSize(compact ? .small : .regular)
             } else {
                 HStack(spacing: 6) {
@@ -73,7 +83,7 @@ struct PermissionControl: View {
                                 ? "Can't read a plain Yes on screen; answer in the terminal" : "")
                     Button("No, redirect…") { redirecting = true }
                         .buttonStyle(.bordered)
-                        .tint(.red)
+                        .tint(.attention)
                         .disabled(actions.isRunning(key))
                     Menu {
                         Button("View terminal") { viewTerminal() }
@@ -88,7 +98,12 @@ struct PermissionControl: View {
                     .menuIndicator(.hidden)
                     .fixedSize()
                     .accessibilityLabel("More answers")
+                    if let hint {
+                        Spacer(minLength: 8)
+                        Text(hint).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
                 }
+                .buttonBorderShape(.capsule)
                 .controlSize(compact ? .small : .regular)
             }
             ActionStatusLine(key: key)

@@ -11,6 +11,8 @@ final class TerminalStore {
     private(set) var snapshots: [String: PaneSnapshot] = [:]
     private(set) var focusedSeatID: Seat.ID?
     private(set) var attach: AttachSession?
+    /// The attached client's grid.
+    private(set) var attachSize: GridSize?
     /// Keys go straight to tmux only in Type mode. It resets on Esc and on focus moves.
     var typing = false
 
@@ -67,13 +69,36 @@ final class TerminalStore {
         let cols = snap?.cols ?? 80
         let rows = (snap?.rows ?? 24) + (snap?.statusRows ?? 0)
         attach = controller.focus(session: session, cols: cols, rows: rows)
+        attachSize = attach.map { GridSize(cols: $0.size.cols, rows: $0.size.rows) }
         focusedSeatID = seat.id
+    }
+
+    /// Resizes the focused client to what its tile shows. Smaller than the pane, tmux shows the part
+    /// around the cursor, which in Type mode is where the user is typing.
+    func fitAttach(_ size: GridSize) {
+        guard let attach, attachSize != size, size.cols > 0, size.rows > 1 else { return }
+        // The view's grid first, then the client, then a full redraw: tmux repaints as soon as the PTY
+        // changes size, and a repaint that lands before the view has resized is lost.
+        attachSize = size
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(80))
+            guard self.attach === attach, self.attachSize == size else { return }
+            attach.size = (size.cols, size.rows)
+            try? await Task.sleep(for: .milliseconds(120))
+            await tmux?.redraw(clientPID: attach.pid)
+        }
     }
 
     func release() {
         attachController?.release()
         attach = nil
+        attachSize = nil
         focusedSeatID = nil
         typing = false
     }
+}
+
+struct GridSize: Equatable {
+    var cols: Int
+    var rows: Int
 }

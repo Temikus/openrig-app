@@ -54,6 +54,9 @@ public final class AttachSession: LocalProcessDelegate, @unchecked Sendable {
 
     public var isRunning: Bool { process?.running ?? false }
 
+    /// The tmux client's process id.
+    public var pid: Int32 { process?.shellPid ?? 0 }
+
     public func send(_ bytes: ArraySlice<UInt8>) {
         process.send(data: bytes)
     }

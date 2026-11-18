@@ -3,10 +3,17 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppStore.self) private var store
-    @State private var showsInspector = true
+    /// Per view: Terminals starts without the inspector, since its tiles carry each seat's state.
+    @State private var inspectorByMode: [ViewMode: Bool] = [.terminals: false]
     @State private var showsQueueTask = false
     /// Too narrow for the full toolbar: Needs you shrinks to a bell and a count so it never overflows.
     @State private var narrow = false
+
+    private var showsInspector: Binding<Bool> {
+        Binding(
+            get: { inspectorByMode[store.viewMode] ?? true },
+            set: { inspectorByMode[store.viewMode] = $0 })
+    }
 
     var body: some View {
         @Bindable var store = store
@@ -15,7 +22,7 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 200, ideal: 230)
         } detail: {
             RigDetail()
-                .inspector(isPresented: $showsInspector) {
+                .inspector(isPresented: showsInspector) {
                     InspectorPanel()
                         .inspectorColumnWidth(min: 260, ideal: 320, max: 420)
                 }
@@ -63,7 +70,7 @@ struct ContentView: View {
             }
             ToolbarSpacer(.fixed)
             ToolbarItem(placement: .primaryAction) {
-                Button("Inspector", systemImage: "sidebar.right") { showsInspector.toggle() }
+                Button("Inspector", systemImage: "sidebar.right") { showsInspector.wrappedValue.toggle() }
             }
         }
     }

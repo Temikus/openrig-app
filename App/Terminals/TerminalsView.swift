@@ -4,13 +4,24 @@ import RigModel
 import RigTerminal
 import SwiftUI
 
-/// Every seat's terminal as a tile. Snapshots refresh every second; the focused tile is a live tmux client.
+/// Every seat's terminal as a tile, fitted to the window. Seats that need you or are working share the
+/// top rows; idle seats get short tiles below. Snapshots refresh every second; the focused tile is a live
+/// tmux client.
 struct TerminalsView: View {
     @Environment(RigStore.self) private var rig
-    @State private var largeWhileFocused: Set<Seat.ID>?
+    @State private var largeWhileFocused: [Seat.ID]?
     @State private var escMonitor: Any?
 
     private var terminals: TerminalStore { rig.terminals }
+
+    private enum Metrics {
+        static let spacing: CGFloat = 10
+        static let padding: CGFloat = 14
+        static let largeMinWidth: CGFloat = 460
+        static let largeMinHeight: CGFloat = 260
+        static let smallMinWidth: CGFloat = 230
+        static let smallHeight: CGFloat = 190
+    }
 
     var body: some View {
         Group {
@@ -19,13 +30,10 @@ struct TerminalsView: View {
                     "tmux not found", systemImage: "terminal",
                     description: Text("Install tmux (brew install tmux) to see seat terminals."))
             } else if let graph = rig.graph {
-                let large = largeSeats(graph)
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        tileGrid(graph.seats.filter { large.contains($0.id) }, large: true, minWidth: 460)
-                        tileGrid(graph.seats.filter { !large.contains($0.id) }, large: false, minWidth: 300)
-                    }
-                    .padding(16)
+                // GeometryReader takes the space offered and nothing inside can grow it. The grid is sized
+                // from it, so measuring the content instead would feed back into the window size.
+                GeometryReader { geo in
+                    ScrollView { grid(graph, viewport: geo.size).padding(Metrics.padding) }
                 }
                 .task(id: rig.rigID) {
                     await terminals.run { rig.graph?.seats.compactMap(\.tmuxPane) ?? [] }
@@ -42,30 +50,77 @@ struct TerminalsView: View {
             largeWhileFocused = nil
         }
         .onChange(of: terminals.focusedSeatID) { _, focused in
-            // Tiles never regroup while one has focus.
+            // Tiles never regroup or reorder while one has focus.
             largeWhileFocused = focused == nil ? nil : (largeWhileFocused ?? rig.graph.map(largeByState))
         }
     }
 
-    @ViewBuilder private func tileGrid(_ seats: [Seat], large: Bool, minWidth: CGFloat) -> some View {
-        if !seats.isEmpty {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: minWidth), spacing: 14, alignment: .top)], spacing: 14) {
-                ForEach(seats) { TerminalTile(seat: $0, large: large) }
+    private func grid(_ graph: RigGraph, viewport: CGSize) -> some View {
+        let width = max(0, viewport.width - 2 * Metrics.padding)
+        let largeIDs = largeSeats(graph)
+        let large = largeIDs.compactMap { id in graph.seats.first { $0.id == id } }
+        let small = graph.seats.filter { !largeIDs.contains($0.id) }
+
+        let smallCols = columns(small.count, width: width, min: Metrics.smallMinWidth)
+        let smallRows = rows(small.count, cols: smallCols)
+        let largeCols = columns(large.count, width: width, min: Metrics.largeMinWidth)
+        let largeRows = rows(large.count, cols: largeCols)
+
+        // Large tiles share whatever height the small rows leave; with no large tiles, small ones do.
+        let available = viewport.height - 2 * Metrics.padding
+        let smallBlock =
+            small.isEmpty ? 0 : CGFloat(smallRows) * Metrics.smallHeight + CGFloat(smallRows) * Metrics.spacing
+        let largeHeight =
+            large.isEmpty ? 0 : max(Metrics.largeMinHeight, share(available - smallBlock, rows: largeRows))
+        let smallHeight =
+            large.isEmpty ? max(Metrics.smallHeight, share(available, rows: smallRows)) : Metrics.smallHeight
+
+        return VStack(alignment: .leading, spacing: Metrics.spacing) {
+            tileRows(large, cols: largeCols, width: width, height: largeHeight, isLarge: true)
+            tileRows(small, cols: smallCols, width: width, height: smallHeight, isLarge: false)
+        }
+    }
+
+    @ViewBuilder
+    private func tileRows(_ seats: [Seat], cols: Int, width: CGFloat, height: CGFloat, isLarge: Bool) -> some View {
+        let tileWidth = (width - CGFloat(cols - 1) * Metrics.spacing) / CGFloat(max(cols, 1))
+        ForEach(Array(stride(from: 0, to: seats.count, by: max(cols, 1))), id: \.self) { start in
+            HStack(alignment: .top, spacing: Metrics.spacing) {
+                ForEach(seats[start..<min(start + cols, seats.count)]) { seat in
+                    TerminalTile(seat: seat, large: isLarge)
+                        .frame(width: max(0, tileWidth), height: height)
+                }
             }
         }
     }
 
-    private func largeSeats(_ graph: RigGraph) -> Set<Seat.ID> {
-        var set = largeWhileFocused ?? largeByState(graph)
-        if let focused = terminals.focusedSeatID { set.insert(focused) }
-        return set
+    private func columns(_ count: Int, width: CGFloat, min: CGFloat) -> Int {
+        guard count > 0 else { return 1 }
+        return Swift.max(1, Swift.min(count, Int((width + Metrics.spacing) / (min + Metrics.spacing))))
     }
 
-    /// Seats that are working or need you get large tiles; idle ones get short tail tiles.
-    private func largeByState(_ graph: RigGraph) -> Set<Seat.ID> {
-        let prompting = Set(rig.prompts.map(\.seatID))
-        return Set(
-            graph.seats.filter { prompting.contains($0.id) || [.working, .needsYou].contains(SeatPhase($0)) }.map(\.id))
+    private func rows(_ count: Int, cols: Int) -> Int { count == 0 ? 0 : (count + cols - 1) / cols }
+
+    private func share(_ height: CGFloat, rows: Int) -> CGFloat {
+        guard rows > 0 else { return 0 }
+        return (height - CGFloat(rows - 1) * Metrics.spacing) / CGFloat(rows)
+    }
+
+    private func largeSeats(_ graph: RigGraph) -> [Seat.ID] {
+        var ids = largeWhileFocused ?? largeByState(graph)
+        if let focused = terminals.focusedSeatID, !ids.contains(focused) { ids.append(focused) }
+        return ids
+    }
+
+    /// Prompts first, oldest first (each stalls a turn), then other seats that need you, then working ones.
+    private func largeByState(_ graph: RigGraph) -> [Seat.ID] {
+        var ids = rig.needsYou.compactMap { entry -> Seat.ID? in
+            if case .prompt(let prompt, _) = entry { prompt.seatID } else { nil }
+        }
+        for phase in [SeatPhase.needsYou, .working] {
+            ids += graph.seats.filter { SeatPhase($0) == phase && !ids.contains($0.id) }.map(\.id)
+        }
+        return ids
     }
 
     /// Esc leaves Type mode instead of reaching the agent, so a stray Esc never interrupts a turn.
@@ -85,26 +140,35 @@ struct TerminalTile: View {
     let large: Bool
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
-    @State private var width: CGFloat = 400
+    @State private var bodySize = CGSize(width: 400, height: 200)
+    @State private var composing = false
 
     private var terminals: TerminalStore { rig.terminals }
     private var focused: Bool { terminals.focusedSeatID == seat.id }
-    private var phase: SeatPhase { rig.prompts.contains { $0.seatID == seat.id } ? .needsYou : SeatPhase(seat) }
+    private var prompt: PromptInstance? { rig.prompts.first { $0.seatID == seat.id } }
+    private var phase: SeatPhase { prompt != nil ? .needsYou : SeatPhase(seat) }
+    private var attention: Bool { phase == .needsYou }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            // minWidth 0: a pane too wide even at the smallest font is clipped, not allowed to widen the tile.
+            Divider()
+            // Min sizes 0: a pane larger than the tile is clipped, never allowed to grow it.
             screen
-                .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .bottomLeading)
                 .clipped()
-                .background(Color(white: 0.08))
+                .onGeometryChange(for: CGSize.self) {
+                    $0.size
+                } action: {
+                    bodySize = $0
+                }
                 .overlay {
                     // SwiftTerm's NSView takes clicks for itself; this layer catches them until the tile has focus.
                     // A real Button, so VoiceOver and the keyboard can focus a tile too.
                     if !focused {
                         Button {
                             terminals.focus(seat)
+                            selection.select(seat: seat, in: rig)
                         } label: {
                             Color.clear.contentShape(Rectangle())
                         }
@@ -112,30 +176,35 @@ struct TerminalTile: View {
                         .accessibilityLabel("Focus \(seat.displayName)'s terminal")
                     }
                 }
-            // Answer bar: a prompt can be answered from any tile without moving focus.
-            if let prompt = rig.prompts.first(where: { $0.seatID == seat.id }) {
-                PermissionControl(prompt: prompt, linked: prompt.linkedQItem(in: rig.items), compact: true)
-                    .padding(10)
-                    .background(.red.opacity(0.06))
+            if let prompt {
+                Divider()
+                // Answer bar: a prompt can be answered from any tile without moving focus.
+                PermissionControl(
+                    prompt: prompt, linked: prompt.linkedQItem(in: rig.items), compact: true,
+                    paneShowsPrompt: large, hint: "click to answer · keys go to the focused tile"
+                )
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.attention.opacity(0.08))
+                .background(Color.tileChrome)
             }
-            if focused { typeBar }
+            Divider()
+            footer
         }
-        .onGeometryChange(for: CGFloat.self) {
-            $0.size.width
-        } action: {
-            width = $0
-        }
-        .clipShape(.rect(cornerRadius: 10))
+        // Fill the frame the grid gives the tile, and clip to it, whatever the terminal's own size.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Color.terminalBody)
+        .clipShape(.rect(cornerRadius: 12))
         .overlay {
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(
-                    phase == .needsYou ? Color.red : phase.isDown ? phase.color : Color(nsColor: .separatorColor),
-                    style: StrokeStyle(lineWidth: phase == .needsYou ? 2 : 1, dash: phase.isDown ? [5, 3] : []))
+                    attention ? Color.attention : phase.isDown ? phase.color : Color(nsColor: .separatorColor),
+                    style: StrokeStyle(lineWidth: attention ? 1.5 : 1, dash: phase.isDown ? [5, 3] : []))
         }
         .overlay {
             // Focus ring: separate from the attention border and from selection.
             if focused {
-                RoundedRectangle(cornerRadius: 13)
+                RoundedRectangle(cornerRadius: 15)
                     .strokeBorder(
                         Color.primary, style: StrokeStyle(lineWidth: 2, dash: terminals.typing ? [6, 4] : [])
                     )
@@ -144,51 +213,85 @@ struct TerminalTile: View {
         }
     }
 
+    // MARK: Header
+
     private var header: some View {
         HStack(spacing: 8) {
             StatusDot(phase: phase)
             Button(seat.displayName) { selection.select(seat: seat, in: rig) }
                 .buttonStyle(.plain)
                 .font(.callout.weight(.semibold))
+                .lineLimit(1)
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 Text(stateLine(now: context.date))
                     .font(.caption)
-                    .foregroundStyle(phase == .idle || phase == .unknown ? .secondary : phase.color)
+                    .foregroundStyle(phase == .idle || phase == .unknown ? Color.secondary : phase.color)
+                    .lineLimit(1)
             }
-            Spacer()
-            if let item = seat.currentQItems.first {
-                Button(shortQItemID(item.id)) { selection.select(qitem: item.id) }
-                    .buttonStyle(.plain)
-                    .font(.caption.monospaced())
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 1)
-                    .background(.orange.opacity(0.25), in: .rect(cornerRadius: 4))
-                    .overlay {
-                        if selection.qitemID == item.id {
-                            RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary, lineWidth: 1.5).padding(-2)
-                        }
+            .layoutPriority(-1)
+            Spacer(minLength: 6)
+            if focused && terminals.typing {
+                Label("typing", systemImage: "keyboard").font(.caption).foregroundStyle(.secondary)
+            }
+            workChip
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 34)
+        // Tint over the chrome, not over the black terminal body, so light mode stays light.
+        .background(attention ? Color.attention.opacity(0.14) : .clear)
+        .background(Color.tileChrome)
+    }
+
+    /// The seat's current qitem, or the one it is holding; "no work" otherwise.
+    @ViewBuilder private var workChip: some View {
+        if let (id, held) = work {
+            Button {
+                selection.select(qitem: id)
+            } label: {
+                HStack(spacing: 5) {
+                    Circle().fill(held ? Color.secondary : .orange).frame(width: 6, height: 6)
+                    Text(held ? "\(shortQItemID(id)) held" : shortQItemID(id))
+                }
+                .font(.caption.monospaced())
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(.quaternary, in: .rect(cornerRadius: 6))
+                .overlay {
+                    if selection.qitemID == id {
+                        RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary, lineWidth: 1.5).padding(-2)
                     }
-                    .help(item.bodyExcerpt)
+                }
             }
+            .buttonStyle(.plain)
+            .help(rig.item(id)?.summary ?? seat.currentQItems.first?.bodyExcerpt ?? id)
+        } else {
+            Text("no work").font(.caption).foregroundStyle(.tertiary)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(.background)
-        .overlay {
-            if selection.seatID == seat.id {
-                Rectangle().frame(height: 2).foregroundStyle(Color.accentColor).frame(
-                    maxHeight: .infinity, alignment: .bottom)
-            }
+    }
+
+    private var work: (QItem.ID, held: Bool)? {
+        if let current = seat.currentQItems.first { return (current.id, false) }
+        guard let session = seat.sessionName else { return nil }
+        let held = rig.items.first { item in
+            guard item.destination == session, case .blocked = workStatus(item) else { return false }
+            return true
         }
+        return held.map { ($0.id, true) }
     }
 
     private func stateLine(now: Date) -> String {
         var parts = [phase.label]
+        if let prompt {
+            parts.append("permission")
+            if let age = compactAge(since: prompt.observedAt, now: now) { parts.append(age) }
+            return parts.joined(separator: " · ")
+        }
         if let age = compactAge(since: seat.activity?.since, now: now) { parts.append(age) }
         if terminals.isStale(seat, now: now) && !focused && !phase.isDown { parts.append("stale") }
-        if focused { parts.append("live") }
         return parts.joined(separator: " · ")
     }
+
+    // MARK: Screen
 
     @ViewBuilder private var screen: some View {
         if phase.isDown {
@@ -196,56 +299,108 @@ struct TerminalTile: View {
             Text(phase == .down(.lost) ? "The tmux session is gone." : "No session running.")
                 .font(.callout)
                 .foregroundStyle(Color(white: 0.65))
-                .frame(maxWidth: .infinity, minHeight: 80)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let snap = terminals.snapshot(seat) {
-            // Small tiles show the pane's last 8 rows; large ones up to 30; the focused one all of it.
-            let attachRows = snap.rows + snap.statusRows
-            let shownRows = focused ? attachRows : min(snap.rows, large ? 30 : 8)
-            // The focused tile shows the whole pane, so it also fits a height that leaves room for the others.
-            let font = TerminalSurface.fittingFontSize(
-                cols: snap.cols, rows: focused ? shownRows : 0, width: width - 16, height: focused ? 460 : .infinity)
-            if focused, let attach = terminals.attach {
-                TerminalSurface(
-                    source: .attached(attach), cols: snap.cols, rows: shownRows, fontSize: font,
-                    interactive: terminals.typing
-                )
-                .fixedSize()
-                .padding(2)
-            } else {
-                TerminalSurface(
-                    source: .snapshot(snap, lastRows: shownRows), cols: snap.cols, rows: shownRows, fontSize: font,
-                    interactive: false
-                )
-                .fixedSize()
-                .padding(2)
-                .allowsHitTesting(false)
+            let inner = CGSize(width: bodySize.width - 24, height: bodySize.height - 12)
+            // Readable first: a pane wider than the tile at 8.5 pt is clipped on the right.
+            let font = TerminalSurface.fittingFontSize(cols: snap.cols, width: inner.width, range: 8.5...13)
+            let fitRows = max(2, Int(inner.height / TerminalSurface.lineHeight(font)))
+            Group {
+                if focused, terminals.typing, let attach = terminals.attach, let size = terminals.attachSize {
+                    // Type mode: the live client, sized to the tile so it is drawn whole. (Positioned partly
+                    // outside its clip, SwiftTerm's view of an attached client draws nothing.)
+                    TerminalSurface(
+                        source: .attached(attach), cols: size.cols, rows: size.rows, fontSize: font,
+                        interactive: true
+                    )
+                    .fixedSize()
+                    .onChange(of: fitRows, initial: true) {
+                        let cols = min(snap.cols, Int(inner.width / TerminalSurface.advance(font)))
+                        terminals.fitAttach(GridSize(cols: cols, rows: fitRows))
+                    }
+                } else {
+                    // The tail of the pane, as many rows as fit; tiles never scroll. A focused tile shows this
+                    // too until Type mode: snapshots refresh every second and on every seat event.
+                    let rows = min(snap.rows, fitRows)
+                    TerminalSurface(
+                        source: .snapshot(snap, lastRows: rows), cols: snap.cols, rows: rows, fontSize: font,
+                        interactive: false
+                    )
+                    .fixedSize()
+                    .allowsHitTesting(false)
+                }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
         } else {
             Text(seat.tmuxPane == nil ? "No tmux pane bound to this seat." : "Waiting for tmux…")
                 .font(.callout)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 80)
+                .foregroundStyle(Color(white: 0.65))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
-    private var typeBar: some View {
-        HStack(spacing: 10) {
+    // MARK: Footer
+
+    @ViewBuilder private var footer: some View {
+        Group {
+            if focused {
+                focusedBar
+            } else if composing {
+                HStack(alignment: .top, spacing: 8) {
+                    MessageComposer(seat: seat, showsCaption: false)
+                    Button("Close", systemImage: "xmark") { composing = false }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                        .padding(.top, 5)
+                }
+            } else {
+                Button {
+                    composing = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                        Text(messagePrompt).lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(phase.isDown || seat.sessionName == nil)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(minHeight: 34)
+        .background(Color.tileChrome)
+    }
+
+    private var messagePrompt: String {
+        if phase.isDown { return "\(seat.displayName) isn't running" }
+        if phase == .working { return "Message \(seat.displayName) · delivers after this turn" }
+        return "Message \(seat.displayName)"
+    }
+
+    private var focusedBar: some View {
+        @Bindable var terminals = terminals
+        return VStack(alignment: .leading, spacing: 8) {
+            Picker("Input", selection: $terminals.typing) {
+                Text("Message · rig send").tag(false)
+                Text("Type into terminal").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .help("Message waits for a safe moment; typing sends keys straight to tmux until Esc")
             if terminals.typing {
                 Label("Keys go straight to tmux · Esc to stop", systemImage: "keyboard")
                     .font(.caption)
-                Spacer()
-                Button("Stop typing") { terminals.typing = false }
-                    .controlSize(.small)
+                    .foregroundStyle(.secondary)
             } else {
-                // Message mode: the composer sends through `rig send`, which waits for a safe moment.
-                MessageComposer(seat: seat)
-                Button("Type into terminal") { terminals.typing = true }
-                    .controlSize(.small)
-                    .help("Keys go straight to tmux until Esc")
+                MessageComposer(seat: seat, showsCaption: false)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(.background)
     }
 }

@@ -176,9 +176,15 @@ final class AppStore {
     }
 
     #if DEBUG
-        /// OPENRIG_DEBUG_OPEN="<rig>[/<canvas|queue|terminals>][/<session or qitem id>]" opens that view at launch,
+        /// OPENRIG_DEBUG_OPEN="<rig>[/<canvas|queue|terminals>][/<session or qitem id>][/typing]" opens that view at launch,
         /// for screenshots when the UI can't be clicked (a locked screen, CI).
         private func openDebugTarget() async {
+            // OPENRIG_DEBUG_APPEARANCE=dark|light overrides the system appearance.
+            switch ProcessInfo.processInfo.environment["OPENRIG_DEBUG_APPEARANCE"] {
+            case "dark"?: NSApp.appearance = NSAppearance(named: .darkAqua)
+            case "light"?: NSApp.appearance = NSAppearance(named: .aqua)
+            default: break
+            }
             // OPENRIG_DEBUG_SIZE="<width>x<height>" resizes the window.
             if let size = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SIZE"]?.split(separator: "x"),
                 size.count == 2, let w = Double(size[0]), let h = Double(size[1]),
@@ -195,6 +201,10 @@ final class AppStore {
             await store.refresh()
             if let seat = store.seat(session: parts[2]) {
                 selection.select(seat: seat, in: store)
+                if viewMode == .terminals {
+                    store.terminals.focus(seat)
+                    store.terminals.typing = parts.count > 3 && parts[3] == "typing"
+                }
             } else if store.item(parts[2]) != nil {
                 selection.select(qitem: parts[2])
             }

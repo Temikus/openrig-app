@@ -20,6 +20,17 @@ struct TerminalSurface: NSViewRepresentable {
 
     static func font(_ size: CGFloat) -> NSFont { .monospacedSystemFont(ofSize: size, weight: .regular) }
 
+    /// Width of one cell at `size`.
+    static func advance(_ size: CGFloat) -> CGFloat {
+        ("W" as NSString).size(withAttributes: [.font: font(100)]).width / 100 * size
+    }
+
+    /// Height of one row at `size`.
+    static func lineHeight(_ size: CGFloat) -> CGFloat {
+        let probe = font(100)
+        return (probe.ascender - probe.descender + probe.leading) / 100 * size
+    }
+
     /// Largest font size, in half points, whose grid fits `width` (and `height`, when given).
     static func fittingFontSize(
         cols: Int, rows: Int = 0, width: CGFloat, height: CGFloat = .infinity, range: ClosedRange<CGFloat> = 6...13

@@ -40,7 +40,7 @@ enum SeatPhase: Equatable {
     var color: Color {
         switch self {
         case .working: .green
-        case .needsYou: .red
+        case .needsYou: .attention
         case .down(let p) where p.needsYou: .orange
         default: .secondary
         }
@@ -117,7 +117,7 @@ struct SeatNode: View {
         .overlay {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(
-                    phase == .needsYou ? Color.red : phase.isDown ? phase.color : Color(nsColor: .separatorColor),
+                    phase == .needsYou ? Color.attention : phase.isDown ? phase.color : Color(nsColor: .separatorColor),
                     style: StrokeStyle(lineWidth: 1, dash: phase.isDown ? [5, 3] : []))
         }
         .overlay {
