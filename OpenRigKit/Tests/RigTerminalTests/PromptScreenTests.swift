@@ -4,9 +4,8 @@ import Testing
 @testable import RigTerminal
 
 @Suite struct PromptScreenTests {
-    func fixture() throws -> [String] {
-        let url = try #require(
-            Bundle.module.url(forResource: "claude-permission-prompt", withExtension: "txt", subdirectory: "Fixtures"))
+    func fixture(_ name: String = "claude-permission-prompt") throws -> [String] {
+        let url = try #require(Bundle.module.url(forResource: name, withExtension: "txt", subdirectory: "Fixtures"))
         return try String(contentsOf: url, encoding: .utf8).components(separatedBy: "\n")
     }
 
@@ -29,6 +28,38 @@ import Testing
         #expect(screen.declineKey == "4")
         // Option 3 here switches the seat to auto mode; it must never be what "decline" sends.
         #expect(screen.options[2].text.contains("auto mode"))
+    }
+
+    // Both recorded live. Choosing option 2 on the Bash one wrote `Bash(mkdir -p …)` and `Read(//tmp/**)`
+    // to the project's .claude/settings.local.json; the read one saved nothing on disk.
+    @Test func remembersOnlyARuleOption() throws {
+        let read = try #require(PromptScreen(lines: try fixture()))
+        #expect(read.rememberOption?.number == 2)
+        #expect(read.rememberOption?.text.hasSuffix("from this project") == true, "continuation line folded in")
+        #expect(read.rememberLabel?.hasPrefix("Allow reading from /Users/someone/.openrig/workspace and") == true)
+
+        let bash = try #require(PromptScreen(lines: try fixture("claude-permission-prompt-bash")))
+        #expect(bash.command == "mkdir -p /tmp/openrig-apptest-probe && ls -ld /tmp/openrig-apptest-probe")
+        #expect(bash.allowOnceKey == "1")
+        #expect(bash.declineKey == "4")
+        #expect(bash.rememberOption?.number == 2)
+        #expect(bash.rememberLabel == "Allow access to /tmp and mkdir -p /tmp/openrig-apptest-probe commands")
+
+        var lines = try fixture("claude-permission-prompt-bash")
+        let two = try #require(lines.firstIndex { $0.contains("2. Yes, and allow") })
+        lines[two + 1] = ""
+        lines[two] = "   2. Yes, and always allow access to /tmp from this project"
+        #expect(PromptScreen(lines: lines)?.rememberLabel == "Always allow access to /tmp from this project")
+        lines[two] = "   2. Yes, and switch to plan mode"
+        #expect(PromptScreen(lines: lines)?.rememberOption == nil, "a mode switch isn't a rule")
+        lines.remove(at: two + 1)
+        lines[two] = "   2. Yes, and don\u{2019}t ask again for mkdir commands in /tmp"
+        #expect(PromptScreen(lines: lines)?.rememberLabel == "Don\u{2019}t ask again for mkdir commands in /tmp")
+
+        // With no such option nothing stands in for it: not "switch to auto mode", not "Yes".
+        lines.remove(at: two)
+        let none = try #require(PromptScreen(lines: lines))
+        #expect(none.rememberOption == nil)
     }
 
     // A command that draws its own dashed rule must not split the box: the app would show only

@@ -264,7 +264,7 @@ Pin exact versions in `Package.swift` and commit `Package.resolved`. Current ver
 2. **Driving permission prompts.** `--dangerously-interact` is the only sanctioned path, and it is audited and guarded. The option numbering ("1", "3") is specific to Claude Code and could change. `permission_stop` is Claude-only and no live one was observed. Codex seats may need a different mechanism or be left out of v1.
 3. **Internal HTTP API drift.** Mitigated by the version gate, lenient decoding and live contract tests. The alternative is CLI-only reads at a latency cost.
 4. **Pane geometry ownership.** Should the app's focused client resize a seat that Herdr or another terminal is also showing?
-5. **"Always allow in this project…"** Which command writes that rule (`rig seat set-permissions` or `rig policy`) was not traced. Proposed: defer past v1.
+5. **"Always allow in this project…"** Which command writes that rule (`rig seat set-permissions` or `rig policy`) was not traced. Proposed: defer past v1. *Resolved after M6: no rig command; it is the prompt's own option 2.*
 6. **Next-hop wire.** There is no data source. Options are to drop it in v1, derive it from `rig workflow` for workflow-bound items, or ask upstream for a field.
 7. **Short qitem ids.** The design's `q-0409` needs a display rule, for example the last 4 hex characters with the full id on hover.
 8. **Daemon terminal WebSocket.** Enable `ui.enabled`, or ask upstream to decouple it? It would remove the attach client entirely.
@@ -332,7 +332,6 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - **Before answering**, the control re-reads both the daemon's `permission_stop` and the pane; any difference shows "Prompt changed · View terminal" and sends nothing.
 - `rig send` exit 1 counts as "sent, not confirmed" only when its JSON says `sent: true`; a refusal also exits 1.
 - Verified live on a throwaway rig (`rig create openrig-apptest`): Allow once answered a real prompt and the seat left Needs you; Decline + redirect cancelled a prompt and delivered the message. `rig queue resolve` for a linked held row was not exercised (no such row).
-- "Always allow…" stays disabled (risk 5).
 
 ### M6
 - **Daemon down**: the last data stays on screen, dimmed, under a banner ("Daemon stopped. Showing data from 4:43 pm, read-only.") with Start daemon (`rig daemon start`) and Retry; the sidebar footer has the same Start button. Writes are refused while offline, and their buttons disable. Verified by pointing the app at a local proxy (`OPENRIG_URL`) and stopping and restarting the proxy; the real daemon was never stopped.
@@ -348,3 +347,5 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - **Board width bug.** The board subtracted the split view's safe-area insets from a width that already excluded the sidebar and inspector, so at 1440 pt it measured 460 pt: the Needs-you strip never showed and columns stayed at their minimum. Fixed.
 - **Wide panes.** A 170-column pane at the 6 pt minimum font is wider than a tile column; the tile now clips it instead of widening and pushing the grid under the sidebar.
 - **DEBUG launch hooks** for screenshots without clicking (a locked screen): `OPENRIG_DEBUG_OPEN=<rig>/<view>/<session>`, `OPENRIG_DEBUG_SIZE=<w>x<h>`, and `OPENRIG_DEBUG_PROMPT` now takes several `;`-separated prompts.
+- **Remember (was "Always allow…").** No rig command writes the rule: it is the prompt's own option 2, which Claude Code words several ways (all seen live). "Yes, and allow access to /tmp and mkdir … commands" wrote `Bash(mkdir -p …)` and `Read(//tmp/**)` to the project's `.claude/settings.local.json`; "Yes, allow reading from … from this project" saved nothing on disk, so it lasts the session. The ⌄ menu item is labelled with the option's own words and picks it by label like Yes and No; a mode switch ("switch to auto mode") never matches.
+- **Restoring a lost seat.** `rig up <rig> --existing` reported `fully_restored` for a seat killed before its first turn, but Claude exited at once ("No conversation found") and the seat sat at a shell (`generation_mismatch`). The inspector only offers the `--plan` preview to copy.

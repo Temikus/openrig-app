@@ -77,8 +77,10 @@ struct PermissionControl: View {
                         .disabled(actions.isRunning(key))
                     Menu {
                         Button("View terminal") { viewTerminal() }
-                        Button("Always allow in this project…") {}
-                            .disabled(true)  // PLAN.md risk 5: the command that writes the rule isn't traced yet.
+                        // The prompt's own "don't ask again" option; Claude Code saves the rule. Its exact wording
+                        // is the label, so the user sees what scope they're granting.
+                        Button(screen?.rememberLabel ?? "Always allow…", action: remember)
+                            .disabled(screen?.rememberOption == nil || actions.offline || actions.isRunning(key))
                     } label: {
                         Image(systemName: "chevron.down")
                     }
@@ -120,6 +122,20 @@ struct PermissionControl: View {
                 .answerPrompt(session: prompt.session, keys: yes, reason: "OpenRig.app: allow once \(command)"),
                 key: key, success: "Allowed once")
             if ok { await resolveHeldRow(decision: "allow once: \(command)") }
+            rig.scheduleRefresh()
+        }
+    }
+
+    private func remember() {
+        Task {
+            guard await stillThePrompt(), let option = screen?.rememberOption else { return }
+            let command = screen?.command ?? prompt.command
+            let ok = await actions.perform(
+                .answerPrompt(
+                    session: prompt.session, keys: String(option.number),
+                    reason: "OpenRig.app: \(option.text) for \(command)"),
+                key: key, success: "Allowed and remembered")
+            if ok { await resolveHeldRow(decision: "\(option.text): \(command)") }
             rig.scheduleRefresh()
         }
     }

@@ -28,6 +28,34 @@ public struct PromptScreen: Equatable, Sendable {
         options.first { $0.text == "No" || $0.text.hasPrefix("No,") }.map { String($0.number) }
     }
 
+    /// The option that lets this kind of call through again without asking. Claude Code words it many
+    /// ways, all seen live: "Yes, allow reading from … from this project" (this session only),
+    /// "Yes, and allow access to … and … commands" (saved to the project's settings.local.json),
+    /// "Yes, and always allow access to … from this project". Only "Yes, [and] [always] allow …" and
+    /// "Yes, [and] don't ask again …" count: "Yes, and switch to auto mode" also starts with "Yes, ".
+    public var rememberOption: Option? {
+        options.first { option in
+            guard let grant = Self.grant(option.text) else { return false }
+            var rest = grant.lowercased()
+            if rest.hasPrefix("always ") { rest.removeFirst(7) }
+            return rest.hasPrefix("allow ") || rest.hasPrefix("don't ask again")
+                || rest.hasPrefix("don\u{2019}t ask again")
+        }
+    }
+
+    /// The remember option as a menu label, in Claude Code's words: "Always allow access to /tmp from this project".
+    public var rememberLabel: String? {
+        guard let text = rememberOption?.text, let grant = Self.grant(text) else { return nil }
+        return grant.prefix(1).uppercased() + grant.dropFirst()
+    }
+
+    /// "Yes, and allow x" → "allow x"; nil unless the option starts with "Yes, ".
+    private static func grant(_ text: String) -> Substring? {
+        guard text.hasPrefix("Yes, ") else { return nil }
+        let rest = text.dropFirst(5)
+        return rest.hasPrefix("and ") ? rest.dropFirst(4) : rest
+    }
+
     public init?(lines raw: [String]) {
         let lines = raw.map { strippingEscapes($0).trimmingTrailingWhitespace() }
         guard let ask = lines.lastIndex(where: { $0.contains("Do you want to proceed?") }) else { return nil }
