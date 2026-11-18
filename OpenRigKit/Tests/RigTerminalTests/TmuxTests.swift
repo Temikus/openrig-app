@@ -139,10 +139,15 @@ struct TmuxIntegrationTests {
         // A view that subscribes after tmux's first paint still gets the screen.
         try await Task.sleep(for: .milliseconds(500))
         let received = Received()
+        let old = first.subscribe { _ in }
         first.subscribe { received.append($0) }
         try await waitFor { String(decoding: received.bytes, as: UTF8.self).contains("one@test") }
+        // SwiftUI builds a tile's new view before dismantling the old one: the old view leaving
+        // must not cut off the new one.
+        first.unsubscribe(old)
         // Typing goes through the attached client.
         first.send(ArraySlice("echo typed-here\r".utf8))
+        try await waitFor { String(decoding: received.bytes, as: UTF8.self).contains("typed-here") }
 
         focus.focus(session: "two@test", cols: 40, rows: 10)
         try await waitFor {

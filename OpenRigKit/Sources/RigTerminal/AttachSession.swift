@@ -16,16 +16,25 @@ public final class AttachSession: LocalProcessDelegate, @unchecked Sendable {
     // Keep recent output so a late subscriber still sees the screen.
     private let lock = NSLock()
     private var backlog: [UInt8] = []
-    private var subscriber: (@Sendable (ArraySlice<UInt8>) -> Void)?
+    // Several at once: SwiftUI builds a tile's new view before it dismantles the old one.
+    private var subscribers: [Int: @Sendable (ArraySlice<UInt8>) -> Void] = [:]
+    private var nextToken = 0
     private static let backlogLimit = 256 * 1024
 
-    /// Delivers the backlog, then every later chunk, on the process's queue. Pass nil to stop.
-    public func subscribe(_ handler: (@Sendable (ArraySlice<UInt8>) -> Void)?) {
+    /// Delivers the backlog, then every later chunk, on the process's queue, until `unsubscribe`.
+    @discardableResult
+    public func subscribe(_ handler: @escaping @Sendable (ArraySlice<UInt8>) -> Void) -> Int {
         // Replay under the lock so no newer chunk can reach the handler before the backlog does.
         lock.lock()
         defer { lock.unlock() }
-        subscriber = handler
-        if let handler, !backlog.isEmpty { handler(backlog[...]) }
+        nextToken += 1
+        subscribers[nextToken] = handler
+        if !backlog.isEmpty { handler(backlog[...]) }
+        return nextToken
+    }
+
+    public func unsubscribe(_ token: Int) {
+        lock.withLock { _ = subscribers.removeValue(forKey: token) }
     }
 
     public init(tmux: Tmux, session: String, cols: Int = 80, rows: Int = 24) {
@@ -68,9 +77,9 @@ public final class AttachSession: LocalProcessDelegate, @unchecked Sendable {
         lock.lock()
         backlog.append(contentsOf: slice)
         if backlog.count > Self.backlogLimit { backlog.removeFirst(backlog.count - Self.backlogLimit) }
-        let handler = subscriber
+        let handlers = Array(subscribers.values)
         lock.unlock()
-        handler?(slice)
+        for handler in handlers { handler(slice) }
     }
 
     public func getWindowSize() -> winsize {

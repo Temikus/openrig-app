@@ -87,14 +87,16 @@ struct TerminalSurface: NSViewRepresentable {
         var lastFed: [UInt8] = []
         var grid = (cols: 0, rows: 0)
         private var session: AttachSession?
+        private var token: Int?
 
         func bind(_ next: AttachSession?) {
             guard next !== session else { return }
-            session?.subscribe(nil)
+            if let token { session?.unsubscribe(token) }
             session = next
+            token = nil
             lastFed = []
             guard let next else { return }
-            next.subscribe { [weak self] slice in
+            token = next.subscribe { [weak self] slice in
                 let bytes = Array(slice)
                 DispatchQueue.main.async { self?.view?.feed(byteArray: bytes[...]) }
             }
