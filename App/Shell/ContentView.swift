@@ -3,13 +3,32 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppStore.self) private var store
+    @State private var showsInspector = true
 
     var body: some View {
+        @Bindable var store = store
         NavigationSplitView {
             RigSidebar()
                 .navigationSplitViewColumnWidth(min: 200, ideal: 230)
         } detail: {
             RigDetail()
+                .inspector(isPresented: $showsInspector) {
+                    InspectorPanel()
+                        .inspectorColumnWidth(min: 260, ideal: 320, max: 420)
+                }
+        }
+        .environment(store.selection)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Picker("View", selection: $store.viewMode) {
+                    ForEach(ViewMode.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button("Inspector", systemImage: "sidebar.right") { showsInspector.toggle() }
+            }
         }
     }
 }
@@ -29,7 +48,7 @@ struct RigSidebar: View {
             }
         }
         .overlay {
-            if store.rigs.isEmpty, case .running = store.daemon {
+            if store.rigs.isEmpty, store.isUp {
                 ContentUnavailableView(
                     "No rigs", systemImage: "square.dashed", description: Text("Start one with rig up."))
             }
@@ -73,6 +92,9 @@ struct DaemonStatusFooter: View {
                 Image(systemName: health.isHealthy ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(health.isHealthy ? .green : .orange)
                 Text("Daemon \(health.semver ?? "")")
+                if !store.isLive {
+                    Text("· polling").foregroundStyle(.secondary)
+                }
             case .unreachable(_, let since):
                 Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
                 Text("Daemon stopped · since \(since, style: .time)")
@@ -95,16 +117,26 @@ struct DaemonStatusFooter: View {
 
 // MARK: - Detail
 
-/// Placeholder for the canvas (M1): the selected rig's pods and seats as a list.
 struct RigDetail: View {
     @Environment(AppStore.self) private var store
 
     var body: some View {
         Group {
-            if let rig = store.selectedRig, let graph = store.selectedGraph {
-                SeatList(graph: graph)
-                    .navigationTitle(rig.name)
-                    .navigationSubtitle("\(graph.seats.count) seats · \(graph.edges.count) spec edges")
+            if let rig = store.rig, let summary = store.selectedRig {
+                Group {
+                    switch store.viewMode {
+                    case .canvas:
+                        CanvasView()
+                    case .queue:
+                        ContentUnavailableView(
+                            "Queue board", systemImage: "rectangle.split.3x1", description: Text("Coming in M2."))
+                    case .terminals:
+                        ContentUnavailableView("Terminals", systemImage: "terminal", description: Text("Coming in M3."))
+                    }
+                }
+                .environment(rig)
+                .navigationTitle(summary.name)
+                .navigationSubtitle(subtitle(rig))
             } else if case .unreachable(let reason, _) = store.daemon {
                 ContentUnavailableView {
                     Label("Daemon not reachable", systemImage: "bolt.horizontal.circle")
@@ -113,85 +145,30 @@ struct RigDetail: View {
                 } actions: {
                     Button("Retry") { Task { await store.refreshNow() } }
                 }
-            } else if let error = store.graphError {
-                ContentUnavailableView(
-                    "Couldn't load rig", systemImage: "exclamationmark.triangle", description: Text(error))
             } else {
                 ContentUnavailableView("Select a rig", systemImage: "circle.hexagongrid")
             }
         }
     }
-}
 
-struct SeatList: View {
-    let graph: RigGraph
-
-    var body: some View {
-        List {
-            ForEach(graph.pods) { pod in
-                Section(pod.label) {
-                    ForEach(graph.seats(in: pod.id)) { seat in
-                        SeatRow(seat: seat)
-                    }
-                }
-            }
-        }
+    private func subtitle(_ rig: RigStore) -> String {
+        guard let graph = rig.graph else { return "" }
+        let working = graph.seats.filter { SeatPhase($0) == .working }.count
+        return "\(graph.seats.count) seats · \(working) working · \(store.isLive ? "live" : "polling")"
     }
 }
 
-struct SeatRow: View {
-    let seat: Seat
+struct InspectorPanel: View {
+    @Environment(AppStore.self) private var store
+    @Environment(SelectionStore.self) private var selection
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(seat.displayName).font(.body.monospaced())
-                Text([seat.runtime, seat.model].compactMap(\.self).joined(separator: " · "))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            ActivityBadge(activity: seat.activity, needsAttention: seat.needsAttention)
+        if let rig = store.rig, let graph = rig.graph, let seat = rig.seat(selection.seatID) {
+            SeatInspector(seat: seat, graph: graph)
+                .id(seat.id)
+        } else {
+            ContentUnavailableView(
+                "No selection", systemImage: "cursorarrow.click", description: Text("Select a seat."))
         }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// Amber means work in flight, red means it needs you (design rule). Always paired with text.
-struct ActivityBadge: View {
-    let activity: AgentActivity?
-    let needsAttention: Bool
-
-    var body: some View {
-        Label(title, systemImage: symbol)
-            .font(.caption)
-            .foregroundStyle(tint)
-            .opacity(activity?.stale == true ? 0.6 : 1)
-            .help(activity?.stale == true ? "Last report is stale" : "")
-    }
-
-    private var state: ActivityState { activity?.state ?? .unknown }
-
-    private var title: String {
-        if needsAttention || state == .needsInput { return "Needs you" }
-        switch state {
-        case .running: return "Working"
-        case .idle: return "Idle"
-        default: return state == .unknown ? "Unknown" : state.rawValue
-        }
-    }
-
-    private var symbol: String {
-        if needsAttention || state == .needsInput { return "exclamationmark.circle.fill" }
-        switch state {
-        case .running: return "circle.dotted.circle"
-        case .idle: return "moon.zzz"
-        default: return "questionmark.circle"
-        }
-    }
-
-    private var tint: Color {
-        if needsAttention || state == .needsInput { return .red }
-        return state == .running ? .orange : .secondary
     }
 }

@@ -7,15 +7,24 @@ let package = Package(
     products: [
         .library(name: "RigModel", targets: ["RigModel"]),
         .library(name: "RigClient", targets: ["RigClient"]),
+        .library(name: "RigCanvasLayout", targets: ["RigCanvasLayout"]),
+        .library(name: "RigDomain", targets: ["RigDomain"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-collections.git", exact: "1.7.5")
     ],
     targets: [
         .target(name: "RigModel"),
         .target(name: "RigClient", dependencies: ["RigModel"]),
-        .testTarget(
-            name: "RigModelTests",
-            dependencies: ["RigModel"],
-            resources: [.copy("Fixtures")]
+        .target(name: "RigDomain", dependencies: ["RigModel", "RigCanvasLayout"]),
+        .target(name: "RigFixtures", path: "Tests/RigFixtures", resources: [.copy("Fixtures")]),
+        .testTarget(name: "RigModelTests", dependencies: ["RigModel", "RigFixtures"]),
+        .testTarget(name: "RigDomainTests", dependencies: ["RigDomain", "RigFixtures"]),
+        .target(
+            name: "RigCanvasLayout",
+            dependencies: [.product(name: "HeapModule", package: "swift-collections")]
         ),
         .testTarget(name: "RigClientTests", dependencies: ["RigClient"]),
+        .testTarget(name: "RigCanvasLayoutTests", dependencies: ["RigCanvasLayout"]),
     ]
 )

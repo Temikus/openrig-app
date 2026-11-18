@@ -7,7 +7,7 @@ export DEVELOPER_DIR := env("DEVELOPER_DIR", "/Applications/Xcode.app/Contents/D
 build_root := env("OPENRIG_BUILD_ROOT", home_directory() / "Library/Caches/openrig-app")
 spm := "--package-path OpenRigKit --scratch-path " + quote(build_root / "spm")
 derived := build_root / "DerivedData"
-fixtures := "OpenRigKit/Tests/RigModelTests/Fixtures"
+fixtures := "OpenRigKit/Tests/RigFixtures/Fixtures"
 daemon := env("OPENRIG_URL", "http://127.0.0.1:7433")
 
 default:

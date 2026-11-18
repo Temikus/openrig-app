@@ -279,3 +279,19 @@ Pin exact versions in `Package.swift` and commit `Package.resolved`. Current ver
 ## References
 - Daemon routes: `/opt/homebrew/Cellar/openrig/0.7.11/libexec/lib/node_modules/@openrig/cli/daemon/dist/server.js`, plus `routes/queue.js`, `routes/events.js`, `routes/terminal-ws.js`.
 - Design: Paper file "OpenRig — Canvas prototype", page "Starter · Rig canvas" (https://app.paper.design/file/01M7P253KBMTNSBCBX3V1CRWRB/p-2-0), including the "Inline action states" board.
+
+## Implementation notes
+
+Deviations and discoveries, by milestone. Each line is something the plan above doesn't say.
+
+### M0
+- Lint is `swift format` from the toolchain, not SwiftLint.
+
+### M1
+- **SSE client is hand-written** (`RigClient/EventStream.swift`, about 150 lines) instead of a library. It splits raw bytes because `AsyncBytes.lines` drops the blank lines that end SSE messages.
+- **URLSession withholds the response until body bytes arrive**, and a quiet daemon sends none. Each connection asks for one already-seen event (`replay=1`, or `Last-Event-ID` one back) so "live" shows at once.
+- **Queue and seat-activity events carry no `rigId`.** The app uses the global stream and filters by event type.
+- **`can_observe` points from observer to observed.** Observe wires and layout ranking reverse it.
+- `RigDomain` depends on `RigCanvasLayout` for the graph-to-layout adapter.
+- Router costs added beyond the plan: vertical runs outside channels cost 3x, and crossing a pod that is neither end's costs 2.5x. Without them, trunks hug pod borders.
+- Fixtures moved to a shared `RigFixtures` test-support target.

@@ -1,13 +1,11 @@
 import Foundation
+import RigFixtures
 import Testing
 
 @testable import RigModel
 
-// Fixtures were recorded from a live rig 0.7.11 daemon (`just record-fixtures`),
-// except graph-edge-cases.json, which is hand-written.
 func fixture<T: Decodable>(_ name: String, as type: T.Type = T.self) throws -> T {
-    let url = try #require(Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures"))
-    return try JSONDecoder().decode(T.self, from: Data(contentsOf: url))
+    try RigFixtures.decode(name)
 }
 
 @Suite struct HealthDecoding {
@@ -98,5 +96,26 @@ func fixture<T: Decodable>(_ name: String, as type: T.Type = T.self) throws -> T
 
         #expect(graph.edges.map(\.kind.rawValue) == ["delegates_to", "mentors"], "edge without a target is dropped")
         #expect(graph.edges[1].id == "seat-2-mentors-seat-1")
+    }
+}
+
+@Suite struct FormattingTests {
+    @Test func shortIDs() {
+        #expect(shortQItemID("qitem-20261111110308-f963e5f7") == "q-e5f7")
+        #expect(shortQItemID("abc") == "q-abc")
+    }
+
+    @Test(arguments: ["2026-11-18T03:18:49.547Z", "2026-11-18T03:18:49Z", "2026-11-18 03:18:49"])
+    func daemonDates(raw: String) throws {
+        let date = try #require(parseDaemonDate(raw))
+        #expect(Int(date.timeIntervalSince1970) == 1_794_971_929)
+    }
+
+    @Test func activitySinceFromRecordedGraph() throws {
+        let graph: RigGraph = try fixture("graph-denkeeper")
+        let lead = try #require(graph.seats.first { $0.logicalId == "orch.lead" })
+        #expect(lead.activity?.since == parseDaemonDate("2026-11-18T03:18:49.547Z"))
+        let b1 = try #require(graph.seats.first { $0.logicalId == "dev.b1" })
+        #expect(b1.activity?.since == nil, "idle seats report no eventAt")
     }
 }

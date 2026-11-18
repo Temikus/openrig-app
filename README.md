@@ -7,7 +7,7 @@ A native SwiftUI app for [OpenRig](https://openrig.dev): see what each agent sea
 
 It talks to the local `rig` daemon. Reads use the daemon's HTTP API; actions run the `rig` CLI. See [PLAN.md](PLAN.md) for the design and milestones.
 
-**Status:** M0. The app finds the daemon and lists rigs, pods and seats. The canvas, queue board and terminals come next.
+**Status:** M1. Read-only canvas: pods, seats and spec edges laid out and routed metro-style, updated live from the daemon's event stream. The queue board and terminals come next.
 
 ## Requirements
 
@@ -33,7 +33,9 @@ Build output goes to `~/Library/Caches/openrig-app` (override with `OPENRIG_BUIL
 | Path | What |
 |---|---|
 | `OpenRigKit/Sources/RigModel` | Daemon payload types, decoded leniently because the HTTP API is internal |
-| `OpenRigKit/Sources/RigClient` | Daemon discovery and HTTP reads |
+| `OpenRigKit/Sources/RigClient` | Daemon discovery, HTTP reads, and the event stream |
+| `OpenRigKit/Sources/RigCanvasLayout` | Pod and seat layout, and the orthogonal wire router |
+| `OpenRigKit/Sources/RigDomain` | Pure logic that turns daemon data into what the views show |
 | `App/` | SwiftUI app |
 | `project.yml` | XcodeGen spec for the app target |
 

@@ -171,20 +171,24 @@ public struct AgentActivity: Decodable, Sendable, Hashable {
     public var reason: String?
     /// True when the daemon's evidence is old; treat `state` as a guess.
     public var stale: Bool
+    /// When the evidence for `state` was observed.
+    public var since: Date?
 
-    public init(state: ActivityState, reason: String? = nil, stale: Bool = false) {
+    public init(state: ActivityState, reason: String? = nil, stale: Bool = false, since: Date? = nil) {
         self.state = state
         self.reason = reason
         self.stale = stale
+        self.since = since
     }
 
-    private enum CodingKeys: String, CodingKey { case state, reason, stale }
+    private enum CodingKeys: String, CodingKey { case state, reason, stale, eventAt }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         state = c.lenient(ActivityState.self, .state) ?? .unknown
         reason = c.lenient(String.self, .reason)
         stale = c.lenient(Bool.self, .stale) ?? false
+        since = c.lenient(String.self, .eventAt).flatMap(parseDaemonDate)
     }
 }
 

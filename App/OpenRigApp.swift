@@ -8,13 +8,21 @@ struct OpenRigApp: App {
         WindowGroup("OpenRig") {
             ContentView()
                 .environment(store)
-                .task { await store.run() }
-                .frame(minWidth: 800, minHeight: 500)
+                .task { await store.runPolling() }
+                .task { await store.runEvents() }
+                .frame(minWidth: 820, minHeight: 520)
         }
+        .defaultSize(width: 1440, height: 900)
         .commands {
-            CommandGroup(after: .toolbar) {
+            CommandGroup(before: .toolbar) {
+                ForEach(Array(ViewMode.allCases.enumerated()), id: \.element) { index, mode in
+                    Button(mode.title) { store.viewMode = mode }
+                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")))
+                }
+                Divider()
                 Button("Refresh") { Task { await store.refreshNow() } }
                     .keyboardShortcut("r")
+                Divider()
             }
         }
     }

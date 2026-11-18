@@ -18,6 +18,10 @@ targets:
         product: RigModel
       - package: OpenRigKit
         product: RigClient
+      - package: OpenRigKit
+        product: RigDomain
+      - package: OpenRigKit
+        product: RigCanvasLayout
     info:
       path: App/Info.plist
       properties:
