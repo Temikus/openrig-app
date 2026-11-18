@@ -183,7 +183,8 @@ struct RigDetail: View {
     private func subtitle(_ rig: RigStore) -> String {
         guard let graph = rig.graph else { return "" }
         let working = graph.seats.filter { SeatPhase($0) == .working }.count
-        return "\(graph.seats.count) seats · \(working) working · \(store.isLive ? "live" : "polling")"
+        return
+            "\(graph.seats.count) \(graph.seats.count == 1 ? "seat" : "seats") · \(working) working · \(store.isLive ? "live" : "polling")"
     }
 }
 

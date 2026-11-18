@@ -49,23 +49,38 @@ public struct PromptInstance: Equatable, Sendable, Identifiable {
 /// One row of the Needs-you strip and popover.
 public enum NeedsYouEntry: Identifiable, Equatable, Sendable {
     case prompt(PromptInstance, linked: QItem?)
+    /// A seat that went down on its own.
+    case seat(Seat, SeatPresence)
     case qitem(QItem)
 
     public var id: String {
         switch self {
         case .prompt(let p, _): p.id
+        case .seat(let s, _): "seat:\(s.id)"
         case .qitem(let q): "qitem:\(q.id)"
         }
     }
 }
 
-/// Live permission prompts first (they stall a turn), then held rows waiting on a person.
-/// A held row already shown as a prompt's linked work isn't listed again.
-public func needsYouEntries(prompts: [PromptInstance], items: [QItem]) -> [NeedsYouEntry] {
-    let promptEntries = prompts.map { NeedsYouEntry.prompt($0, linked: $0.linkedQItem(in: items)) }
+/// Live permission prompts first, oldest first (each stalls a turn), then seats that went down,
+/// then held rows waiting on a person. A held row already shown as a prompt's linked work isn't listed again.
+public func needsYouEntries(prompts: [PromptInstance], seats: [Seat], items: [QItem]) -> [NeedsYouEntry] {
+    let ordered = prompts.enumerated().sorted { a, b in
+        switch (a.element.observedAt, b.element.observedAt) {
+        case (let x?, let y?) where x != y: x < y
+        case (.some, nil): true
+        case (nil, .some): false
+        default: a.offset < b.offset
+        }
+    }
+    let promptEntries = ordered.map { NeedsYouEntry.prompt($0.element, linked: $0.element.linkedQItem(in: items)) }
     let linked = Set(
         promptEntries.compactMap { entry -> String? in
             if case .prompt(_, let q) = entry { q?.id } else { nil }
         })
-    return promptEntries + needsYou(items).filter { !linked.contains($0.id) }.map(NeedsYouEntry.qitem)
+    let down = seats.compactMap { seat -> NeedsYouEntry? in
+        let p = presence(seat)
+        return p.needsYou ? .seat(seat, p) : nil
+    }
+    return promptEntries + down + needsYou(items).filter { !linked.contains($0.id) }.map(NeedsYouEntry.qitem)
 }

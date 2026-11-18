@@ -182,7 +182,7 @@ struct PodGroup: View {
                 HStack {
                     Text(title.uppercased()).font(.caption.weight(.semibold)).tracking(0.8)
                     Spacer()
-                    if seatCount > 0 { Text("\(seatCount) seats").font(.caption) }
+                    if seatCount > 0 { Text(seatCount == 1 ? "1 seat" : "\(seatCount) seats").font(.caption) }
                 }
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 16)

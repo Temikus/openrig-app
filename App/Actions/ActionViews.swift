@@ -62,19 +62,28 @@ struct MessageComposer: View {
     @State private var text = ""
 
     private var key: String { "send:\(seat.id)" }
+    /// No session to type into; `rig send` would fail.
+    private var isDown: Bool { SeatPhase(seat).isDown }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .bottom, spacing: 8) {
-                TextField("Message \(seat.displayName)…", text: $text, axis: .vertical)
-                    .lineLimit(1...5)
-                    .textFieldStyle(.roundedBorder)
+                TextField(
+                    isDown ? "\(seat.displayName) isn't running" : "Message \(seat.displayName)…", text: $text,
+                    axis: .vertical
+                )
+                .lineLimit(1...5)
+                .textFieldStyle(.roundedBorder)
+                .disabled(isDown)
                 Button("Send", systemImage: "arrow.up.circle.fill", action: send)
                     .labelStyle(.iconOnly)
                     .font(.title2)
                     .buttonStyle(.borderless)
                     .keyboardShortcut(.return, modifiers: .command)
-                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || seat.sessionName == nil)
+                    .disabled(
+                        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || seat.sessionName == nil
+                            || isDown
+                    )
                     .help(action.map(\.displayCommand) ?? "")
             }
             HStack {

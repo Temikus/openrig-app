@@ -48,6 +48,11 @@ struct SeatInspector: View {
     @ViewBuilder private var queue: some View {
         let q = seat.sessionName.map { seatQueue(for: $0, in: rig.items) }
         VStack(alignment: .leading, spacing: 12) {
+            if case .down(let presence) = SeatPhase(seat) {
+                DownSeatNotice(seat: seat, presence: presence)
+                    .padding(10)
+                    .background(presence.needsYou ? Color.orange.opacity(0.08) : .clear, in: .rect(cornerRadius: 10))
+            }
             if let prompt = rig.prompts.first(where: { $0.seatID == seat.id }) {
                 Text("Needs you").font(.subheadline.weight(.semibold)).foregroundStyle(.red)
                 NeedsYouRow(entry: .prompt(prompt, linked: prompt.linkedQItem(in: rig.items)))

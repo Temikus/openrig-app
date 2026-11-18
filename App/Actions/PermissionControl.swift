@@ -202,12 +202,32 @@ struct NeedsYouRow: View {
                             .font(.caption.monospaced())
                             .help(linked.summary)
                     }
-                    if let at = prompt.observedAt {
-                        Text(at, style: .relative).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    TimelineView(.periodic(from: .now, by: 30)) { context in
+                        if let age = compactAge(since: prompt.observedAt, now: context.date) {
+                            Text(age).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                        }
                     }
                 }
                 .font(.callout)
                 PermissionControl(prompt: prompt, linked: linked, compact: true)
+            case .seat(let seat, let presence):
+                Button {
+                    selection.select(seat: seat, in: rig)
+                } label: {
+                    HStack(spacing: 6) {
+                        StatusDot(phase: .down(presence))
+                        Text(seat.displayName).font(.callout.weight(.semibold))
+                        Text(SeatPhase.down(presence).label).foregroundStyle(.orange)
+                        Spacer()
+                        if let item = seat.currentQItems.first {
+                            Text("\(shortQItemID(item.id)) stalled").font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .font(.callout)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             case .qitem(let item):
                 Button {
                     selection.select(qitem: item.id)
@@ -226,11 +246,23 @@ struct NeedsYouRow: View {
             }
         }
         .padding(10)
-        .background(.red.opacity(0.06), in: .rect(cornerRadius: 10))
+        .background(tint.opacity(0.06), in: .rect(cornerRadius: 10))
         .overlay {
-            if case .qitem(let item) = entry, selection.qitemID == item.id {
+            if isSelected {
                 RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary, lineWidth: 1.5)
             }
+        }
+    }
+
+    private var tint: Color {
+        if case .seat = entry { .orange } else { .red }
+    }
+
+    private var isSelected: Bool {
+        switch entry {
+        case .qitem(let item): selection.qitemID == item.id
+        case .seat(let seat, _): selection.seatID == seat.id
+        case .prompt: false
         }
     }
 }

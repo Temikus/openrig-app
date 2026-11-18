@@ -66,6 +66,8 @@ public struct Seat: Sendable, Identifiable, Hashable {
     public var runtime: String?
     public var model: String?
     public var status: SeatStatus
+    /// `ready`, `attention_required` (also set when the seat's session is missing) or `failed`.
+    public var startupStatus: String?
     public var activity: AgentActivity?
     public var tmuxPane: String?
     public var needsAttention: Bool
@@ -85,7 +87,8 @@ public struct Seat: Sendable, Identifiable, Hashable {
     public init(
         id: String, podID: Pod.ID? = nil, logicalId: String, sessionName: String? = nil,
         kind: NodeKind = .agent, runtime: String? = nil, model: String? = nil,
-        status: SeatStatus = .running, activity: AgentActivity? = nil, tmuxPane: String? = nil,
+        status: SeatStatus = .running, startupStatus: String? = nil, activity: AgentActivity? = nil,
+        tmuxPane: String? = nil,
         needsAttention: Bool = false, heldReason: String? = nil, contextUsedPercent: Int? = nil,
         currentQItems: [QItemRef] = [], work: WorkCounts = WorkCounts()
     ) {
@@ -97,6 +100,7 @@ public struct Seat: Sendable, Identifiable, Hashable {
         self.runtime = runtime
         self.model = model
         self.status = status
+        self.startupStatus = startupStatus
         self.activity = activity
         self.tmuxPane = tmuxPane
         self.needsAttention = needsAttention
@@ -117,6 +121,7 @@ public struct Seat: Sendable, Identifiable, Hashable {
             runtime: d.runtime,
             model: d.model,
             status: d.status ?? SeatStatus(rawValue: "unknown"),
+            startupStatus: d.startupStatus,
             activity: d.agentActivity,
             tmuxPane: d.binding?.tmuxPane,
             needsAttention: d.needsAttention ?? false,
@@ -241,6 +246,11 @@ public struct SeatStatus: OpenString {
     public init(rawValue: String) { self.rawValue = rawValue }
 
     public static let running = SeatStatus(rawValue: "running")
+    /// The reconciler found the tmux session gone.
+    public static let detached = SeatStatus(rawValue: "detached")
+    /// Stopped, on purpose or not; the daemon doesn't say which.
+    public static let exited = SeatStatus(rawValue: "exited")
+    public static let failed = SeatStatus(rawValue: "failed")
 }
 
 public struct NodeKind: OpenString {
@@ -297,6 +307,7 @@ struct RawNodeData: Decodable {
     var runtime: String?
     var model: String?
     var status: SeatStatus?
+    var startupStatus: String?
     var agentActivity: AgentActivity?
     var binding: Binding?
     var needsAttention: Bool?
@@ -310,7 +321,7 @@ struct RawNodeData: Decodable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case logicalId, podLabel, canonicalSessionName, nodeKind, runtime, model, status, agentActivity
+        case logicalId, podLabel, canonicalSessionName, nodeKind, runtime, model, status, startupStatus, agentActivity
         case binding, needsAttention, heldReason, contextUsedPercentage, currentQitems
         case pendingWorkCount, inProgressWorkCount, blockedWorkCount
     }
@@ -324,6 +335,7 @@ struct RawNodeData: Decodable {
         runtime = c.lenient(String.self, .runtime)
         model = c.lenient(String.self, .model)
         status = c.lenient(SeatStatus.self, .status)
+        startupStatus = c.lenient(String.self, .startupStatus)
         agentActivity = c.lenient(AgentActivity.self, .agentActivity)
         binding = c.lenient(Binding.self, .binding)
         needsAttention = c.lenient(Bool.self, .needsAttention)

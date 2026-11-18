@@ -59,7 +59,7 @@ import Testing
             item("q-work", .inProgress, from: "lead@r", to: "review-design@r"),
             item("q-held", .blocked, from: "lead@r", to: "dev@r", blockedOn: "external:decision"),
         ]
-        let entries = needsYouEntries(prompts: [instance], items: rows)
+        let entries = needsYouEntries(prompts: [instance], seats: [], items: rows)
         #expect(entries.map(\.id) == ["prompt:s1", "qitem:q-held"])
         if case .prompt(_, let linked) = entries[0] {
             #expect(linked?.id == "q-work")
@@ -71,7 +71,8 @@ import Testing
     @Test func heldRowOwnedByAPromptingSeatIsNotListedTwice() throws {
         let held = item("q-held", .blocked, from: "lead@r", to: "review-design@r", blockedOn: "external:prompt")
         let s = Seat(id: "s1", logicalId: "review.design", sessionName: "review-design@r", currentQItems: [])
-        let entries = needsYouEntries(prompts: [try #require(PromptInstance(seat: s, stop: stop))], items: [held])
+        let entries = needsYouEntries(
+            prompts: [try #require(PromptInstance(seat: s, stop: stop))], seats: [], items: [held])
         #expect(entries.count == 1)
         if case .prompt(_, let linked) = entries[0] { #expect(linked?.id == "q-held") }
     }

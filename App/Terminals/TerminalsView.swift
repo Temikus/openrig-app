@@ -63,7 +63,9 @@ struct TerminalsView: View {
 
     /// Seats that are working or need you get large tiles; idle ones get short tail tiles.
     private func largeByState(_ graph: RigGraph) -> Set<Seat.ID> {
-        Set(graph.seats.filter { [.working, .needsYou].contains(SeatPhase($0)) }.map(\.id))
+        let prompting = Set(rig.prompts.map(\.seatID))
+        return Set(
+            graph.seats.filter { prompting.contains($0.id) || [.working, .needsYou].contains(SeatPhase($0)) }.map(\.id))
     }
 
     /// Esc leaves Type mode instead of reaching the agent, so a stray Esc never interrupts a turn.
@@ -87,13 +89,15 @@ struct TerminalTile: View {
 
     private var terminals: TerminalStore { rig.terminals }
     private var focused: Bool { terminals.focusedSeatID == seat.id }
-    private var phase: SeatPhase { SeatPhase(seat) }
+    private var phase: SeatPhase { rig.prompts.contains { $0.seatID == seat.id } ? .needsYou : SeatPhase(seat) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
+            // minWidth 0: a pane too wide even at the smallest font is clipped, not allowed to widen the tile.
             screen
-                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
+                .clipped()
                 .background(Color(white: 0.08))
                 .overlay {
                     // SwiftTerm's NSView takes clicks for itself; this layer catches them until the tile has focus.
@@ -125,8 +129,8 @@ struct TerminalTile: View {
         .overlay {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(
-                    phase == .needsYou ? Color.red : Color(nsColor: .separatorColor),
-                    lineWidth: phase == .needsYou ? 2 : 1)
+                    phase == .needsYou ? Color.red : phase.isDown ? phase.color : Color(nsColor: .separatorColor),
+                    style: StrokeStyle(lineWidth: phase == .needsYou ? 2 : 1, dash: phase.isDown ? [5, 3] : []))
         }
         .overlay {
             // Focus ring: separate from the attention border and from selection.
@@ -149,7 +153,7 @@ struct TerminalTile: View {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 Text(stateLine(now: context.date))
                     .font(.caption)
-                    .foregroundStyle(phase == .needsYou ? Color.red : .secondary)
+                    .foregroundStyle(phase == .idle || phase == .unknown ? .secondary : phase.color)
             }
             Spacer()
             if let item = seat.currentQItems.first {
@@ -181,13 +185,19 @@ struct TerminalTile: View {
     private func stateLine(now: Date) -> String {
         var parts = [phase.label]
         if let age = compactAge(since: seat.activity?.since, now: now) { parts.append(age) }
-        if terminals.isStale(seat, now: now) && !focused { parts.append("stale") }
+        if terminals.isStale(seat, now: now) && !focused && !phase.isDown { parts.append("stale") }
         if focused { parts.append("live") }
         return parts.joined(separator: " · ")
     }
 
     @ViewBuilder private var screen: some View {
-        if let snap = terminals.snapshot(seat) {
+        if phase.isDown {
+            // A dead pane's last snapshot would look live; say what happened instead.
+            Text(phase == .down(.lost) ? "The tmux session is gone." : "No session running.")
+                .font(.callout)
+                .foregroundStyle(Color(white: 0.65))
+                .frame(maxWidth: .infinity, minHeight: 80)
+        } else if let snap = terminals.snapshot(seat) {
             // Small tiles show the pane's last 8 rows; large ones up to 30; the focused one all of it.
             let attachRows = snap.rows + snap.statusRows
             let shownRows = focused ? attachRows : min(snap.rows, large ? 30 : 8)

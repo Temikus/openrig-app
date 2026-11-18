@@ -4,11 +4,16 @@ import RigModel
 import SwiftUI
 
 /// Seat state as the UI names it. Colour is always paired with a word.
-enum SeatPhase {
+enum SeatPhase: Equatable {
     case working, needsYou, idle, unknown
+    /// The session is gone: crashed, exited, or never started.
+    case down(SeatPresence)
 
     init(_ seat: Seat) {
-        if seat.needsAttention || seat.activity?.state == .needsInput {
+        let p = presence(seat)
+        if p != .live {
+            self = .down(p)
+        } else if seat.needsAttention || seat.activity?.state == .needsInput {
             self = .needsYou
         } else {
             switch seat.activity?.state {
@@ -25,15 +30,24 @@ enum SeatPhase {
         case .needsYou: "needs you"
         case .idle: "idle"
         case .unknown: "unknown"
+        case .down(.lost): "session lost"
+        case .down(.failed): "failed to start"
+        case .down: "exited"
         }
     }
 
+    /// Orange, not red: red means a question is waiting, and nothing here is asking.
     var color: Color {
         switch self {
         case .working: .green
         case .needsYou: .red
-        case .idle, .unknown: .secondary
+        case .down(let p) where p.needsYou: .orange
+        default: .secondary
         }
+    }
+
+    var isDown: Bool {
+        if case .down = self { true } else { false }
     }
 }
 
@@ -42,7 +56,11 @@ struct StatusDot: View {
 
     var body: some View {
         Group {
-            if phase == .unknown {
+            if phase.isDown {
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .heavy))
+                    .foregroundStyle(phase.color)
+            } else if phase == .unknown {
                 Circle().strokeBorder(phase.color, lineWidth: 1.5)
             } else {
                 Circle().fill(phase.color)
@@ -98,7 +116,9 @@ struct SeatNode: View {
         .background(.background, in: .rect(cornerRadius: 10))
         .overlay {
             RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(phase == .needsYou ? Color.red : Color(nsColor: .separatorColor), lineWidth: 1)
+                .strokeBorder(
+                    phase == .needsYou ? Color.red : phase.isDown ? phase.color : Color(nsColor: .separatorColor),
+                    style: StrokeStyle(lineWidth: 1, dash: phase.isDown ? [5, 3] : []))
         }
         .overlay {
             if isSelected {
@@ -130,7 +150,7 @@ struct SeatNode: View {
             TimelineView(.periodic(from: .now, by: 30)) { context in
                 Text(stateLine(now: context.date))
                     .font(.caption)
-                    .foregroundStyle(phase == .needsYou ? Color.red : phase == .working ? .green : .secondary)
+                    .foregroundStyle(phase == .idle || phase == .unknown ? .secondary : phase.color)
                     .lineLimit(1)
                     .padding(.leading, 15)
             }
@@ -158,7 +178,7 @@ struct SeatNode: View {
     @ViewBuilder private var workLine: some View {
         VStack(alignment: .leading, spacing: 3) {
             if let item = seat.currentQItems.first {
-                Text("\(shortQItemID(item.id)) · in progress")
+                Text("\(shortQItemID(item.id)) · \(phase.isDown ? "stalled" : "in progress")")
                     .font(.caption.monospaced())
                     .foregroundStyle(item.id == selectedQItem ? Color.primary : .secondary)
                     .padding(.horizontal, item.id == selectedQItem ? 4 : 0)

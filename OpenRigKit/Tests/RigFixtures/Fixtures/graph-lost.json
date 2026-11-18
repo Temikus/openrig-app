@@ -1,0 +1,127 @@
+{
+  "nodes": [
+    {
+      "id": "pod-01M7PPRFV3DCRZ1FDKRND9T1J2",
+      "type": "podGroup",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "logicalId": "main",
+        "podLabel": "Main",
+        "podNamespace": "main",
+        "rigId": "01M7PPRFV27443T61Q5H8FQC37",
+        "role": null,
+        "runtime": null,
+        "model": null,
+        "status": null,
+        "binding": null,
+        "nodeKind": "agent",
+        "startupStatus": null,
+        "canonicalSessionName": null,
+        "podId": "01M7PPRFV3DCRZ1FDKRND9T1J2",
+        "restoreOutcome": "n-a",
+        "oriented": "n-a",
+        "resumeToken": null,
+        "resolvedSpecName": null,
+        "profile": null,
+        "edgeCount": 0,
+        "contextUsedPercentage": null,
+        "contextFresh": false,
+        "contextAvailability": "unknown",
+        "contextTotalInputTokens": null,
+        "contextTotalOutputTokens": null,
+        "agentActivity": null,
+        "currentQitems": [],
+        "terminalActive": null,
+        "hasAssignedWork": false,
+        "assignedWorkCount": 0,
+        "pendingWorkCount": 0,
+        "inProgressWorkCount": 0,
+        "blockedWorkCount": 0,
+        "identityVerdict": null,
+        "heldReason": null
+      }
+    },
+    {
+      "id": "01M7PPRFW9JRFSK61QG2CZCS12",
+      "type": "rigNode",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "parentId": "pod-01M7PPRFV3DCRZ1FDKRND9T1J2",
+      "data": {
+        "logicalId": "main.lead",
+        "podLabel": "Main",
+        "podNamespace": "main",
+        "rigId": "01M7PPRFV27443T61Q5H8FQC37",
+        "role": null,
+        "runtime": "claude-code",
+        "model": null,
+        "effort": null,
+        "advisor": null,
+        "status": "running",
+        "binding": {
+          "id": "01M7PPRFZ9WSKARJD6T8NNDA3M",
+          "nodeId": "01M7PPRFW9JRFSK61QG2CZCS12",
+          "attachmentType": "tmux",
+          "tmuxSession": "main-lead@openrig-apptest",
+          "tmuxWindow": null,
+          "tmuxPane": "%28",
+          "externalSessionName": null,
+          "cmuxWorkspace": null,
+          "cmuxSurface": null,
+          "updatedAt": "2026-11-18 06:50:56"
+        },
+        "nodeKind": "agent",
+        "startupStatus": "attention_required",
+        "canonicalSessionName": "main-lead@openrig-apptest",
+        "podId": "01M7PPRFV3DCRZ1FDKRND9T1J2",
+        "restoreOutcome": "n-a",
+        "oriented": "n-a",
+        "resumeToken": "47f84973-66a2-4409-8194-b758465e7576",
+        "resolvedSpecName": "orchestrator",
+        "profile": "default",
+        "edgeCount": 0,
+        "contextUsedPercentage": null,
+        "contextFresh": false,
+        "contextAvailability": "unknown",
+        "contextTotalInputTokens": null,
+        "contextTotalOutputTokens": null,
+        "needsAttention": false,
+        "agentActivity": {
+          "state": "unknown",
+          "reason": "session_missing",
+          "evidenceSource": "tmux_session",
+          "sampledAt": "2026-11-18T06:52:43.171Z",
+          "evidence": "main-lead@openrig-apptest"
+        },
+        "currentQitems": [],
+        "terminalActive": false,
+        "hasAssignedWork": false,
+        "assignedWorkCount": 0,
+        "pendingWorkCount": 0,
+        "inProgressWorkCount": 0,
+        "blockedWorkCount": 0,
+        "identityVerdict": {
+          "nodeId": "01M7PPRFW9JRFSK61QG2CZCS12",
+          "verdict": "pane_missing",
+          "evidenceSource": "tmux_session",
+          "reason": "session_missing",
+          "evidence": {
+            "registeredPane": "%28",
+            "observedPid": null,
+            "observedCommand": null,
+            "matchedLayer": null
+          },
+          "sessionName": "main-lead@openrig-apptest",
+          "observedAt": "2026-11-18T06:52:43.171Z"
+        },
+        "heldReason": null
+      }
+    }
+  ],
+  "edges": []
+}

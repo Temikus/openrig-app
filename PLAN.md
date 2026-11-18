@@ -340,5 +340,11 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - **Reduce Transparency**: the floating legend uses an opaque surface instead of glass.
 - **Narrow windows (to the 820 pt minimum)** exposed two layout feedback loops that crashed AppKit: the canvas refit when scroll bars appeared or disappeared (now ignores changes under 20 pt and fits with a 4% margin), and the board's fixed-size filter row setting the detail column's minimum width (now scrolls). Both were reproduced and verified with scripted resizes across all three views.
 - At the minimum width the toolbar moves Needs you, Queue task and the inspector button into its overflow menu. `.visibilityPriority` (macOS 27) could keep Needs you visible.
-- Not drawn yet, from the design reviews: crashed-seat and two-prompts-at-once states.
 - **Lesson**: pipe gate commands with `set -o pipefail`; a `| tail` hid a lint failure in the M5 commit.
+
+### After M6
+- **Down seats.** Killing a test seat's tmux session leaves `status: running` until the daemon's reconciler marks it `detached`, but the activity reason turns `session_missing` at once (recorded as `graph-lost.json`). `presence(_:)` reads both, plus `exited` and `failed`. A lost or failed seat is drawn with an orange ✕ and a dashed border, its work line says "stalled", its composer disables, and it joins Needs you after prompts. The app doesn't restore seats: `rig up <rig> --existing` restores the whole rig, so the inspector offers its `--plan` preview to copy.
+- **Two prompts at once.** Each seat keeps its own control. Needs you lists prompts oldest first, and a prompting seat's terminal tile is large with the red border even before the daemon flags attention.
+- **Board width bug.** The board subtracted the split view's safe-area insets from a width that already excluded the sidebar and inspector, so at 1440 pt it measured 460 pt: the Needs-you strip never showed and columns stayed at their minimum. Fixed.
+- **Wide panes.** A 170-column pane at the 6 pt minimum font is wider than a tile column; the tile now clips it instead of widening and pushing the grid under the sidebar.
+- **DEBUG launch hooks** for screenshots without clicking (a locked screen): `OPENRIG_DEBUG_OPEN=<rig>/<view>/<session>`, `OPENRIG_DEBUG_SIZE=<w>x<h>`, and `OPENRIG_DEBUG_PROMPT` now takes several `;`-separated prompts.

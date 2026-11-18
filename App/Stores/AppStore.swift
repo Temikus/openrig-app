@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import RigClient
@@ -161,8 +162,33 @@ final class AppStore {
         self.rigs = rigs.filter { !$0.isArchived }
         if selectedRigID == nil || !self.rigs.contains(where: { $0.id == selectedRigID }) {
             selectedRigID = self.rigs.first?.id
+            #if DEBUG
+                await openDebugTarget()
+            #endif
         }
     }
+
+    #if DEBUG
+        /// OPENRIG_DEBUG_OPEN="<rig>[/<canvas|queue|terminals>][/<session>]" opens that view at launch,
+        /// for screenshots when the UI can't be clicked (a locked screen, CI).
+        private func openDebugTarget() async {
+            // OPENRIG_DEBUG_SIZE="<width>x<height>" resizes the window.
+            if let size = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SIZE"]?.split(separator: "x"),
+                size.count == 2, let w = Double(size[0]), let h = Double(size[1]),
+                let window = NSApp.windows.first(where: \.isVisible)
+            {
+                window.setFrame(NSRect(x: 0, y: 0, width: w, height: h), display: true)
+            }
+            guard let spec = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_OPEN"] else { return }
+            let parts = spec.split(separator: "/").map(String.init)
+            guard let rig = rigs.first(where: { $0.name == parts.first }) else { return }
+            selectedRigID = rig.id
+            if parts.count > 1, let mode = ViewMode(rawValue: parts[1]) { viewMode = mode }
+            guard parts.count > 2, let store = self.rig else { return }
+            await store.refresh()
+            if let seat = store.seat(session: parts[2]) { selection.select(seat: seat, in: store) }
+        }
+    #endif
 }
 
 extension DaemonError {

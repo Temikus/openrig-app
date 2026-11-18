@@ -23,6 +23,9 @@ final class RigStore {
     /// Each Claude seat's permission stop, refreshed with the graph.
     private(set) var stops: [Seat.ID: PermissionStop] = [:]
     let terminals = TerminalStore()
+    #if DEBUG
+        private let launched = Date.now
+    #endif
 
     /// Seat heights measured by the canvas. Layout depends on them, so changes re-run layout.
     private var seatSizes: [String: CGSize] = [:]
@@ -60,7 +63,7 @@ final class RigStore {
         (graph?.seats ?? []).compactMap { seat in stops[seat.id].flatMap { PromptInstance(seat: seat, stop: $0) } }
     }
 
-    var needsYou: [NeedsYouEntry] { needsYouEntries(prompts: prompts, items: items) }
+    var needsYou: [NeedsYouEntry] { needsYouEntries(prompts: prompts, seats: graph?.seats ?? [], items: items) }
 
     /// The prompt as drawn on the seat's pane: the only place the command is visible
     /// (the daemon reports "Bash: details withheld").
@@ -96,15 +99,17 @@ final class RigStore {
             if await promptScreen(for: id) == nil { shown[id] = PermissionStop(state: .completed) }
         }
         #if DEBUG
-            // OPENRIG_DEBUG_PROMPT="<session>|<command>" shows a fake prompt on that seat, to see the control
-            // without a real one. Answering it re-reads the real (absent) prompt, so nothing is sent.
-            if let spec = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_PROMPT"],
-                let bar = spec.firstIndex(of: "|"),
-                let seat = graph.seats.first(where: { $0.sessionName == String(spec[..<bar]) })
+            // OPENRIG_DEBUG_PROMPT="<session>|<command>[;<session>|<command>…]" shows fake prompts, to see the
+            // control without a real one. Answering re-reads the real (absent) prompt, so nothing is sent.
+            for (n, spec) in (ProcessInfo.processInfo.environment["OPENRIG_DEBUG_PROMPT"] ?? "")
+                .split(separator: ";").enumerated()
             {
+                guard let bar = spec.firstIndex(of: "|"),
+                    let seat = graph.seats.first(where: { $0.sessionName == String(spec[..<bar]) })
+                else { continue }
                 shown[seat.id] = PermissionStop(
                     state: .requestObserved, command: String(spec[spec.index(after: bar)...]),
-                    observedAt: Date(timeIntervalSince1970: 1_800_000_000), actor: "main")
+                    observedAt: launched - Double(n) * 60, actor: "main")
             }
         #endif
         if shown != stops { stops = shown }

@@ -7,7 +7,7 @@ struct QueueBoardView: View {
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
     @State private var filter = BoardFilter()
-    /// Width not covered by the floating inspector; four columns share it.
+    /// The board's width; four columns share it.
     @State private var visibleWidth: CGFloat = 1000
 
     var body: some View {
@@ -44,8 +44,10 @@ struct QueueBoardView: View {
                     }
                     .padding(16)
                 }
-                .onGeometryChange(for: CGFloat.self) { geo in
-                    geo.size.width - geo.safeAreaInsets.leading - geo.safeAreaInsets.trailing
+                // The split view already places this beside the sidebar and inspector. Its safe-area insets
+                // still report both, so subtracting them would count them twice.
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.width
                 } action: {
                     visibleWidth = $0
                 }

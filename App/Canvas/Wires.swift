@@ -150,7 +150,7 @@ struct Minimap: View {
             for seat in graph.seats {
                 guard let frame = layout.seats[seat.id] else { continue }
                 let phase = SeatPhase(seat)
-                let color: Color = phase == .needsYou ? .red : phase == .working ? .green : .secondary
+                let color = phase.color
                 context.fill(Path(roundedRect: frame.scaled(scale), cornerRadius: 2), with: .color(color.opacity(0.7)))
             }
             let view = CGRect(
