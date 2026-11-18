@@ -14,6 +14,13 @@ enum ViewMode: String, CaseIterable, Identifiable {
         case .terminals: "Terminals"
         }
     }
+    var systemImage: String {
+        switch self {
+        case .canvas: "point.3.connected.trianglepath.dotted"
+        case .queue: "rectangle.split.3x1"
+        case .terminals: "terminal"
+        }
+    }
 }
 
 /// Daemon status, the rig list, and the store for the selected rig.

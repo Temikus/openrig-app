@@ -338,7 +338,7 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - **Version gate**: rig 0.7.x is tested; any other minor version shows an "untested" banner (`DaemonHealth.compatibility`, tested).
 - **Reduce Transparency**: the floating legend uses an opaque surface instead of glass.
 - **Narrow windows (to the 820 pt minimum)** exposed two layout feedback loops that crashed AppKit: the canvas refit when scroll bars appeared or disappeared (now ignores changes under 20 pt and fits with a 4% margin), and the board's fixed-size filter row setting the detail column's minimum width (now scrolls). Both were reproduced and verified with scripted resizes across all three views.
-- At the minimum width the toolbar moves Needs you, Queue task and the inspector button into its overflow menu. `.visibilityPriority` (macOS 27) could keep Needs you visible.
+- At the minimum width the toolbar moves Needs you, Queue task and the inspector button into its overflow menu. `.visibilityPriority` (macOS 27) could keep Needs you visible. (Fixed after M6; see below.)
 - **Lesson**: pipe gate commands with `set -o pipefail`; a `| tail` hid a lint failure in the M5 commit.
 
 ### After M6
@@ -353,3 +353,4 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - **Resolve, live.** A row blocked on `external:…` shows in Needs you, and its inspector now leads with a Resolve panel (decision text, then `rig queue resolve --decision`). On the test rig the resolve went through as `operator-human@kernel` with no bearer, the row moved to in progress through the event stream and left Needs you, and the owner was nudged and closed it. Gap 8 is closed. (The prompt flow resolves a linked held row with the same action.)
 - **Block sends `--note`, not `--summary`.** rig 0.7.11 refuses `--summary` on a block (`summary_evidence_not_persistable`) unless the blocker is a registered human seat; `operator-human@kernel` isn't one, so every summary the Block panel sent failed. The decision owed now goes in the transition note.
 - **Queue rows.** `canceled` (an aborted workflow's open packets) is closed, not in progress. Rows with no summary (workflow packets) show their body's first line.
+- **Needs you at narrow widths.** Below 1100 pt the view switcher shows icons and Needs you shows a bell and a count, and both carry `.visibilityPriority(.high)` (macOS 26.1+). At the 820 pt minimum every toolbar item now fits in all three views, with no overflow menu.

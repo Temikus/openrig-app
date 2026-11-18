@@ -285,6 +285,7 @@ struct NeedsYouRow: View {
 
 /// Toolbar button with a count; opens the Needs-you list anchored to it.
 struct NeedsYouButton: View {
+    var compact = false
     @Environment(AppStore.self) private var app
     @State private var open = false
 
@@ -293,14 +294,21 @@ struct NeedsYouButton: View {
         Button {
             open.toggle()
         } label: {
-            Label {
-                Text(entries.isEmpty ? "Needs you" : "Needs you \(entries.count)")
-            } icon: {
-                Image(systemName: entries.isEmpty ? "bell" : "bell.badge.fill")
-                    .foregroundStyle(entries.isEmpty ? Color.secondary : .red)
+            if compact {
+                HStack(spacing: 4) {
+                    bell(entries)
+                    if !entries.isEmpty { Text("\(entries.count)").monospacedDigit() }
+                }
+            } else {
+                Label {
+                    Text(entries.isEmpty ? "Needs you" : "Needs you \(entries.count)")
+                } icon: {
+                    bell(entries)
+                }
+                .labelStyle(.titleAndIcon)
             }
         }
-        .labelStyle(.titleAndIcon)
+        .accessibilityLabel(entries.isEmpty ? "Needs you" : "Needs you, \(entries.count)")
         .help(entries.isEmpty ? "Nothing needs you" : "\(entries.count) waiting on you")
         .popover(isPresented: $open, arrowEdge: .bottom) {
             if let rig = app.rig {
@@ -311,6 +319,13 @@ struct NeedsYouButton: View {
                     .environment(app)
             }
         }
+    }
+}
+
+extension NeedsYouButton {
+    fileprivate func bell(_ entries: [NeedsYouEntry]) -> some View {
+        Image(systemName: entries.isEmpty ? "bell" : "bell.badge.fill")
+            .foregroundStyle(entries.isEmpty ? Color.secondary : .red)
     }
 }
 

@@ -5,6 +5,8 @@ struct ContentView: View {
     @Environment(AppStore.self) private var store
     @State private var showsInspector = true
     @State private var showsQueueTask = false
+    /// Too narrow for the full toolbar: Needs you shrinks to a bell and a count so it never overflows.
+    @State private var narrow = false
 
     var body: some View {
         @Bindable var store = store
@@ -20,17 +22,29 @@ struct ContentView: View {
         }
         .environment(store.selection)
         .environment(store.actions)
+        .onGeometryChange(for: Bool.self) {
+            $0.size.width < 1100
+        } action: {
+            narrow = $0
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Picker("View", selection: $store.viewMode) {
-                    ForEach(ViewMode.allCases) { Text($0.title).tag($0) }
+                    ForEach(ViewMode.allCases) { mode in
+                        Label(mode.title, systemImage: mode.systemImage)
+                            .labelStyle(.adaptive(iconOnly: narrow))
+                            .help(mode.title)
+                            .tag(mode)
+                    }
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
             }
+            .keptVisible()
             ToolbarItem(placement: .primaryAction) {
-                NeedsYouButton()
+                NeedsYouButton(compact: narrow)
             }
+            .keptVisible()
             ToolbarItem(placement: .primaryAction) {
                 Button("Queue task", systemImage: "plus") { showsQueueTask = true }
                     .labelStyle(.titleAndIcon)
@@ -51,6 +65,29 @@ struct ContentView: View {
             ToolbarItem(placement: .primaryAction) {
                 Button("Inspector", systemImage: "sidebar.right") { showsInspector.toggle() }
             }
+        }
+    }
+}
+
+/// Title only, or icon only when space is short.
+struct AdaptiveLabelStyle: LabelStyle {
+    let iconOnly: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        if iconOnly { configuration.icon } else { configuration.title }
+    }
+}
+
+extension LabelStyle where Self == AdaptiveLabelStyle {
+    static func adaptive(iconOnly: Bool) -> AdaptiveLabelStyle { AdaptiveLabelStyle(iconOnly: iconOnly) }
+}
+
+extension ToolbarContent {
+    /// Stays in the toolbar when the window is too narrow for every item; others go to the overflow menu first.
+    @ToolbarContentBuilder func keptVisible() -> some ToolbarContent {
+        if #available(macOS 26.1, *) {
+            visibilityPriority(.high)
+        } else {
+            self
         }
     }
 }
