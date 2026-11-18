@@ -8,6 +8,10 @@ options:
 packages:
   OpenRigKit:
     path: OpenRigKit
+  # The app imports SwiftTerm's view directly; same pin as OpenRigKit/Package.swift.
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm.git
+    exactVersion: 1.99.2
 targets:
   OpenRig:
     type: application
@@ -22,6 +26,9 @@ targets:
         product: RigDomain
       - package: OpenRigKit
         product: RigCanvasLayout
+      - package: OpenRigKit
+        product: RigTerminal
+      - package: SwiftTerm
     info:
       path: App/Info.plist
       properties:

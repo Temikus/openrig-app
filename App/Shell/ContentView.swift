@@ -130,7 +130,7 @@ struct RigDetail: View {
                     case .queue:
                         QueueBoardView()
                     case .terminals:
-                        ContentUnavailableView("Terminals", systemImage: "terminal", description: Text("Coming in M3."))
+                        TerminalsView()
                     }
                 }
                 .environment(rig)

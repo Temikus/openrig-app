@@ -304,3 +304,13 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - Queue fixtures replace summaries, bodies and resolutions with placeholder text; the rows are agents' free text.
 - The board's columns size to the width the floating inspector leaves, 220 pt minimum, then scroll sideways.
 - Work wires were not seen live: neither local rig had active qitems during M2. Unit tests cover their geometry and kinds.
+
+### M3
+- **SwiftTerm 1.99.2 ships a build-tool plugin** (generated build info). Xcode asks for "Trust & Enable" once per machine; CI passes `-skipPackagePluginValidation` (`just build -skipPackagePluginValidation`). 1.18.0, the last version without the plugin, needs the separately downloaded Metal toolchain.
+- **The focused client attaches with `-f ignore-size`** at the pane's size, plus one row when the status bar is on. It never resizes panes that other terminals show (risk 4, decided). Tiles pick a font size that fits the pane's columns instead of scaling the image.
+- **Attach output is buffered** (256 KB) and replayed to a late subscriber: tmux paints the whole screen once on attach, usually before the view binds.
+- **Small tiles show the tail of the pane** ending at the last line with text or the cursor, so blank rows at the bottom don't hide the prompt.
+- **Esc in Type mode is swallowed** and returns to Message mode, so a stray Esc can't interrupt an agent mid-turn.
+- SwiftTerm's view takes clicks itself; unfocused tiles put a transparent Button over it to take focus (also reachable by VoiceOver).
+- Verified live: focusing a tile adds exactly one tmux client, moving focus keeps the total, leaving the view removes it.
+- The daemon's terminal WebSocket (spike item) was not tried; snapshots plus one attach met the bar.

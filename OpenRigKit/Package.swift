@@ -9,14 +9,18 @@ let package = Package(
         .library(name: "RigClient", targets: ["RigClient"]),
         .library(name: "RigCanvasLayout", targets: ["RigCanvasLayout"]),
         .library(name: "RigDomain", targets: ["RigDomain"]),
+        .library(name: "RigTerminal", targets: ["RigTerminal"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-collections.git", exact: "1.7.5")
+        .package(url: "https://github.com/apple/swift-collections.git", exact: "1.7.5"),
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.99.2"),
     ],
     targets: [
         .target(name: "RigModel"),
         .target(name: "RigClient", dependencies: ["RigModel"]),
         .target(name: "RigDomain", dependencies: ["RigModel", "RigCanvasLayout"]),
+        .target(name: "RigTerminal", dependencies: [.product(name: "SwiftTerm", package: "SwiftTerm")]),
+        .testTarget(name: "RigTerminalTests", dependencies: ["RigTerminal"]),
         .target(name: "RigFixtures", path: "Tests/RigFixtures", resources: [.copy("Fixtures")]),
         .testTarget(name: "RigModelTests", dependencies: ["RigModel", "RigFixtures"]),
         .testTarget(name: "RigDomainTests", dependencies: ["RigDomain", "RigFixtures", "RigClient"]),

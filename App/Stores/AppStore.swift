@@ -117,6 +117,7 @@ final class AppStore {
         default:
             // seat.*, agent.*, node.* and queue.* change what the graph shows.
             rig?.scheduleRefresh()
+            if event.type == "seat.activity_changed" { rig?.terminals.poke() }
         }
     }
 

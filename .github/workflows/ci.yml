@@ -22,4 +22,6 @@ jobs:
       - run: just lint
       # No rig daemon on the runner: live-daemon tests skip themselves.
       - run: just test
-      - run: just build
+      # SwiftTerm's build-info plugin needs approval; a runner can't click "Trust & Enable" in Xcode.
+      # Locally it is trusted once in Xcode instead.
+      - run: just build -skipPackagePluginValidation

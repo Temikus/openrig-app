@@ -19,6 +19,7 @@ final class RigStore {
     private(set) var error: String?
     private(set) var lastUpdated: Date?
     private(set) var layout: CanvasLayout?
+    let terminals = TerminalStore()
 
     /// Seat heights measured by the canvas. Layout depends on them, so changes re-run layout.
     private var seatSizes: [String: CGSize] = [:]

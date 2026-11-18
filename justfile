@@ -17,9 +17,9 @@ default:
 gen:
     xcodegen generate --quiet
 
-# Build the app (Debug, ad-hoc signed)
-build: gen
-    xcodebuild -project OpenRig.xcodeproj -scheme OpenRig -configuration Debug \
+# Build the app (Debug, ad-hoc signed). Extra xcodebuild flags pass through.
+build *flags: gen
+    xcodebuild {{ flags }} -project OpenRig.xcodeproj -scheme OpenRig -configuration Debug \
         -destination "generic/platform=macOS" -derivedDataPath {{ quote(derived) }} -quiet build
 
 # Run package tests; live-daemon tests skip themselves when no daemon answers
