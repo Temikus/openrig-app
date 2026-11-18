@@ -31,6 +31,23 @@ import Testing
         #expect(screen.options[2].text.contains("auto mode"))
     }
 
+    // A command that draws its own dashed rule must not split the box: the app would show only
+    // the tail of the command while "Yes" approves all of it. Refuse to read such a prompt.
+    @Test func refusesABoxWithExtraRules() throws {
+        var lines = try fixture()
+        let open = try #require(lines.firstIndex { $0.hasPrefix("╌╌╌") })
+        lines.insert(String(repeating: "╌", count: 80), at: open + 2)
+        lines.insert(" rm -rf ~/important", at: open + 2)
+        #expect(PromptScreen(lines: lines) == nil)
+    }
+
+    @Test func refusesBoxDrawingInsideTheCommand() throws {
+        var lines = try fixture()
+        let open = try #require(lines.firstIndex { $0.hasPrefix("╌╌╌") })
+        lines.insert(" │ echo ╌╌╌ hidden", at: open + 1)
+        #expect(PromptScreen(lines: lines) == nil)
+    }
+
     @Test func noPromptOnScreen() {
         #expect(PromptScreen(lines: ["$ ls", "file.txt", "$"]) == nil)
     }

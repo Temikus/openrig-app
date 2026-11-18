@@ -32,13 +32,19 @@ public struct PromptScreen: Equatable, Sendable {
         let lines = raw.map { strippingEscapes($0).trimmingTrailingWhitespace() }
         guard let ask = lines.lastIndex(where: { $0.contains("Do you want to proceed?") }) else { return nil }
 
-        // The command sits between the two dashed rules just above the question.
+        // The command sits between exactly two dashed rules, below the header's solid rule.
+        // The command's own output can draw rules too, so any other count is refused: showing part
+        // of a command while "Yes" approves all of it would be worse than sending the user to the pane.
         let isDashed = { (s: String) in s.trimmingCharacters(in: .whitespaces).hasPrefix("╌╌╌") }
         let isRule = { (s: String) in s.trimmingCharacters(in: .whitespaces).hasPrefix("───") }
-        guard let close = lines[..<ask].lastIndex(where: isDashed),
-            let open = lines[..<close].lastIndex(where: isDashed)
-        else { return nil }
-        command = lines[(open + 1)..<close]
+        let headerRule = lines[..<ask].lastIndex(where: isRule) ?? -1
+        let dashed = lines.indices.filter { $0 > headerRule && $0 < ask && isDashed(lines[$0]) }
+        guard dashed.count == 2 else { return nil }
+        let (open, close) = (dashed[0], dashed[1])
+        let body = lines[(open + 1)..<close]
+        guard !body.contains(where: { $0.contains("╌") || $0.contains("───") }) else { return nil }
+        command =
+            body
             .map { line in
                 var s = Substring(line).drop { $0 == " " }
                 if s.hasPrefix("│") { s = s.dropFirst().drop { $0 == " " } }
@@ -48,7 +54,7 @@ public struct PromptScreen: Equatable, Sendable {
             .joined(separator: "\n")
 
         // Header: the first text line after the solid rule; the description is the last line before the box.
-        let headerStart = (lines[..<open].lastIndex(where: isRule) ?? -1) + 1
+        let headerStart = headerRule + 1
         let header = lines[headerStart..<open].map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         title = header.first ?? "Permission"
         description = header.count > 1 ? header.last : nil
