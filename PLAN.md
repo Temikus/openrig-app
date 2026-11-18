@@ -323,3 +323,13 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - **`just test-live`** (opt-in, `OPENRIG_LIVE_WRITES=1`) creates one self-addressed qitem, notes it, closes it as canceled, and requires each step on the event stream within 1 s.
 - Verified in the app: a note and a close made from the inspector reached the daemon as `operator-human@kernel`, and the board updated through the event stream within about a second. Handoff, block, nudge and send were not run live (they would touch agents); argv tests cover them.
 - `Resolve` (answering a human-gated HELD row) moves to M5 with the permission control.
+
+### M5
+- **The daemon withholds the command** (`"command": "Bash: details withheld"`). The control reads the prompt off the seat's pane (`PromptScreen`, tested on a live capture) to show the title, the agent's reason and the full command.
+- **Answers pick options by label, never by position.** Allow once sends the number of the option reading exactly "Yes"; decline sends the option reading "No". On Claude Code's current menu, option 3 is "Yes, and switch to auto mode", so the planned "3 for redirect" would have changed the seat's mode. With no such label on screen, the button disables.
+- **Esc can't be sent**: as a character it reaches the prompt as the start of an escape sequence and does nothing.
+- **A decline sends no hook**, so the daemon keeps reporting the prompt and `rig send` refuses. The app waits for the pane to clear, runs `rig seat clear-attention --reason …` if the daemon still holds the prompt, then sends the redirect. Needs you lists a prompt only while the pane still shows one.
+- **Before answering**, the control re-reads both the daemon's `permission_stop` and the pane; any difference shows "Prompt changed · View terminal" and sends nothing.
+- `rig send` exit 1 counts as "sent, not confirmed" only when its JSON says `sent: true`; a refusal also exits 1.
+- Verified live on a throwaway rig (`rig create openrig-apptest`): Allow once answered a real prompt and the seat left Needs you; Decline + redirect cancelled a prompt and delivered the message. `rig queue resolve` for a linked held row was not exercised (no such row).
+- "Always allow…" stays disabled (risk 5).

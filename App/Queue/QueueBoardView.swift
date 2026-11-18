@@ -16,9 +16,17 @@ struct QueueBoardView: View {
             let columns = board(rig.items, filter: filter, now: now)
             VStack(alignment: .leading, spacing: 0) {
                 filterRow(now: now)
-                let asks = needsYou(rig.items)
-                if !asks.isEmpty {
-                    NeedsYouStrip(items: asks)
+                // Below 720 pt the strip folds into the toolbar's Needs-you popover.
+                let asks = rig.needsYou
+                if !asks.isEmpty && visibleWidth >= 720 {
+                    ScrollView(.horizontal) {
+                        HStack(alignment: .top, spacing: 10) {
+                            ForEach(asks) { NeedsYouRow(entry: $0).frame(width: 380) }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+                    }
+                    .scrollIndicators(.never)
                 }
                 ScrollView(.horizontal) {
                     HStack(alignment: .top, spacing: 14) {
@@ -239,45 +247,6 @@ struct StatusTag: View {
         case .closed, .handedOff: .secondary
         default: .primary
         }
-    }
-}
-
-/// Items waiting on the human, above the columns.
-struct NeedsYouStrip: View {
-    let items: [QItem]
-    @Environment(RigStore.self) private var rig
-    @Environment(SelectionStore.self) private var selection
-
-    var body: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                Label("Needs you", systemImage: "exclamationmark.circle.fill")
-                    .foregroundStyle(.red)
-                    .font(.callout.weight(.semibold))
-                ForEach(items) { item in
-                    Button {
-                        selection.select(qitem: item.id)
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text(shortQItemID(item.id)).font(.caption.monospaced())
-                            Text(item.summary).lineLimit(1)
-                            Text("· \(rig.displayName(session: item.destination))").foregroundStyle(.secondary)
-                        }
-                        .font(.callout)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(.red.opacity(0.1), in: .capsule)
-                        .overlay {
-                            if selection.qitemID == item.id { Capsule().strokeBorder(Color.primary, lineWidth: 1.5) }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-        }
-        .scrollIndicators(.never)
     }
 }
 

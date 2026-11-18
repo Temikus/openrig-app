@@ -29,6 +29,9 @@ struct ContentView: View {
                 .labelsHidden()
             }
             ToolbarItem(placement: .primaryAction) {
+                NeedsYouButton()
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button("Queue task", systemImage: "plus") { showsQueueTask = true }
                     .labelStyle(.titleAndIcon)
                     .buttonStyle(.glassProminent)

@@ -1,4 +1,5 @@
 import RigCanvasLayout
+import RigDomain
 import RigModel
 import SwiftUI
 
@@ -69,14 +70,29 @@ struct SeatNode: View {
     let isSelected: Bool
     let selectedQItem: QItem.ID?
     let showsModel: Bool
+    var prompt: PromptInstance?
+    var linked: QItem?
+    var select: () -> Void = {}
 
-    private var phase: SeatPhase { SeatPhase(seat) }
+    private var phase: SeatPhase { prompt == nil ? SeatPhase(seat) : .needsYou }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
-            Divider()
-            workLine
+            Button(action: select) {
+                VStack(alignment: .leading, spacing: 0) {
+                    header
+                    Divider()
+                    workLine
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if let prompt {
+                Divider()
+                // Inline permission card, so the prompt can be answered from the canvas.
+                PermissionControl(prompt: prompt, linked: linked, compact: true)
+                    .padding(10)
+            }
         }
         .frame(width: LayoutMetrics().seatWidth, alignment: .leading)
         .background(.background, in: .rect(cornerRadius: 10))
@@ -126,6 +142,11 @@ struct SeatNode: View {
 
     private func stateLine(now: Date) -> String {
         var parts = [phase.label]
+        if let prompt {
+            parts.append("permission")
+            if let age = compactAge(since: prompt.observedAt, now: now) { parts.append(age) }
+            return parts.joined(separator: " · ")
+        }
         if phase == .needsYou, let reason = seat.activity?.reason {
             parts.append(reason.replacingOccurrences(of: "_", with: " "))
         }

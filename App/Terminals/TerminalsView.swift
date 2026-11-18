@@ -108,6 +108,12 @@ struct TerminalTile: View {
                         .accessibilityLabel("Focus \(seat.displayName)'s terminal")
                     }
                 }
+            // Answer bar: a prompt can be answered from any tile without moving focus.
+            if let prompt = rig.prompts.first(where: { $0.seatID == seat.id }) {
+                PermissionControl(prompt: prompt, linked: prompt.linkedQItem(in: rig.items), compact: true)
+                    .padding(10)
+                    .background(.red.opacity(0.06))
+            }
             if focused { typeBar }
         }
         .onGeometryChange(for: CGFloat.self) {

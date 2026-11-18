@@ -23,6 +23,14 @@ public enum RigAction: Sendable, Equatable {
     case close(id: String, reason: CloseReason, target: String?, resolution: String?)
     case note(id: String, text: String)
     case newDeadline(id: String, at: Date)
+    /// Types `keys` into a permission prompt. `--dangerously-interact` is the only sanctioned way in;
+    /// the reason lands in the daemon's audit log.
+    case answerPrompt(session: String, keys: String, reason: String)
+    /// Unparks a row blocked on a human, recording the decision.
+    case resolve(id: String, decision: String)
+    /// Records that a prompt the daemon still holds is gone. Declines send no hook,
+    /// and `rig send` refuses until this is done.
+    case clearAttention(session: String, reason: String)
 
     /// Arguments after `rig`. Passed to exec directly; no shell sees them.
     public var arguments: [String] {
@@ -50,6 +58,12 @@ public enum RigAction: Sendable, Equatable {
             args = ["queue", "update", id, "--note", text]
         case .newDeadline(let id, let at):
             args = ["queue", "update", id, "--closure-required-at", at.formatted(.iso8601)]
+        case .answerPrompt(let session, let keys, let reason):
+            args = ["send", session, keys, "--dangerously-interact", "--reason", reason]
+        case .resolve(let id, let decision):
+            args = ["queue", "resolve", id, "--decision", decision]
+        case .clearAttention(let session, let reason):
+            args = ["seat", "clear-attention", session, "--reason", reason]
         }
         return args + ["--json"]
     }

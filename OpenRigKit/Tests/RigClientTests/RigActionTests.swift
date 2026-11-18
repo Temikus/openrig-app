@@ -77,6 +77,31 @@ import Testing
             ])
     }
 
+    @Test func answerPromptIsAuditedInteraction() {
+        let a = RigAction.answerPrompt(
+            session: "rd@r", keys: "1", reason: "OpenRig.app: allow once npx playwright test")
+        #expect(
+            a.arguments == [
+                "send", "rd@r", "1", "--dangerously-interact", "--reason",
+                "OpenRig.app: allow once npx playwright test",
+                "--json",
+            ])
+    }
+
+    @Test func resolve() {
+        #expect(
+            RigAction.resolve(id: "q", decision: "allow once: ls").arguments == [
+                "queue", "resolve", "q", "--decision", "allow once: ls", "--json",
+            ])
+    }
+
+    @Test func clearAttention() {
+        #expect(
+            RigAction.clearAttention(session: "s@r", reason: "declined").arguments == [
+                "seat", "clear-attention", "s@r", "--reason", "declined", "--json",
+            ])
+    }
+
     @Test func displayCommandQuotesForTheUser() {
         let a = RigAction.send(session: "b1@r", text: "it's done")
         #expect(a.displayCommand == "rig send b1@r 'it'\\''s done' --json")

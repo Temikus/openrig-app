@@ -36,11 +36,16 @@ final class ActionStore {
                 clearLater(key)
                 return true
             }
-            // `rig send` exits 1 when it can't confirm delivery; the text may still have landed.
-            if case .send = action, result.status == 1 {
-                status[key] = .succeeded("Sent, delivery not confirmed")
-                clearLater(key)
-                return true
+            // `rig send` exits 1 when it can't confirm delivery: the keys may still have landed.
+            // A refusal also exits 1, so trust only the JSON's own "sent" flag.
+            switch action {
+            case .send, .answerPrompt:
+                if result.status == 1, Self.reportsSent(result) {
+                    status[key] = .succeeded("\(success), not confirmed")
+                    clearLater(key)
+                    return true
+                }
+            default: break
             }
             status[key] = .failed(Self.message(from: result))
         } catch {
@@ -56,6 +61,17 @@ final class ActionStore {
             try? await Task.sleep(for: .seconds(4))
             if case .succeeded = status[key] { status[key] = nil }
         }
+    }
+
+    static func reportsSent(_ result: CLIResult) -> Bool {
+        struct Envelope: Decodable {
+            var ok: Bool?
+            var sent: Bool?
+        }
+        guard let data = result.stdout.data(using: .utf8),
+            let env = try? JSONDecoder().decode(Envelope.self, from: data)
+        else { return false }
+        return env.sent == true || (env.sent == nil && env.ok == true)
     }
 
     /// The CLI's own explanation: its JSON `error`, else stderr, else stdout.

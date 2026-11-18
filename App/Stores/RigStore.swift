@@ -5,6 +5,7 @@ import RigCanvasLayout
 import RigClient
 import RigDomain
 import RigModel
+import RigTerminal
 
 /// One rig's graph and queue, plus the canvas geometry derived from them.
 @MainActor @Observable
@@ -19,6 +20,8 @@ final class RigStore {
     private(set) var error: String?
     private(set) var lastUpdated: Date?
     private(set) var layout: CanvasLayout?
+    /// Each Claude seat's permission stop, refreshed with the graph.
+    private(set) var stops: [Seat.ID: PermissionStop] = [:]
     let terminals = TerminalStore()
 
     /// Seat heights measured by the canvas. Layout depends on them, so changes re-run layout.
@@ -52,6 +55,61 @@ final class RigStore {
         seat(session: session)?.displayName ?? String(session.split(separator: "@").first ?? Substring(session))
     }
 
+    /// Open permission prompts, in seat order.
+    var prompts: [PromptInstance] {
+        (graph?.seats ?? []).compactMap { seat in stops[seat.id].flatMap { PromptInstance(seat: seat, stop: $0) } }
+    }
+
+    var needsYou: [NeedsYouEntry] { needsYouEntries(prompts: prompts, items: items) }
+
+    /// The prompt as drawn on the seat's pane: the only place the command is visible
+    /// (the daemon reports "Bash: details withheld").
+    func promptScreen(for seatID: Seat.ID) async -> PromptScreen? {
+        guard let tmux = terminals.tmux, let pane = seat(seatID)?.tmuxPane,
+            let lines = try? await tmux.screen(pane: pane)
+        else { return nil }
+        return PromptScreen(lines: lines)
+    }
+
+    /// Reads the seat's prompt now, bypassing the cached copy; used right before answering.
+    func currentStop(session: String) async -> PermissionStop {
+        (try? await client.seatStatus(session: session).permissionStop) ?? .unavailable
+    }
+
+    private func refreshStops(_ graph: RigGraph) async {
+        let client = self.client
+        let seats = graph.seats.filter { $0.runtime == "claude-code" && $0.sessionName != nil }
+        let fresh = await withTaskGroup(of: (Seat.ID, PermissionStop).self) { group in
+            for seat in seats {
+                group.addTask {
+                    (seat.id, (try? await client.seatStatus(session: seat.sessionName!).permissionStop) ?? .unavailable)
+                }
+            }
+            var result: [Seat.ID: PermissionStop] = [:]
+            for await (id, stop) in group { result[id] = stop }
+            return result
+        }
+        var shown = fresh
+        // A declined prompt sends no hook, so the daemon can report one that is already gone.
+        // Trust the pane: list a prompt only while the seat's screen still shows one.
+        for (id, stop) in fresh where stop.state == .requestObserved && terminals.tmux != nil {
+            if await promptScreen(for: id) == nil { shown[id] = PermissionStop(state: .completed) }
+        }
+        #if DEBUG
+            // OPENRIG_DEBUG_PROMPT="<session>|<command>" shows a fake prompt on that seat, to see the control
+            // without a real one. Answering it re-reads the real (absent) prompt, so nothing is sent.
+            if let spec = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_PROMPT"],
+                let bar = spec.firstIndex(of: "|"),
+                let seat = graph.seats.first(where: { $0.sessionName == String(spec[..<bar]) })
+            {
+                shown[seat.id] = PermissionStop(
+                    state: .requestObserved, command: String(spec[spec.index(after: bar)...]),
+                    observedAt: Date(timeIntervalSince1970: 1_800_000_000), actor: "main")
+            }
+        #endif
+        if shown != stops { stops = shown }
+    }
+
     func refresh() async {
         do {
             async let graphRequest = client.graph(rigID: rigID)
@@ -65,6 +123,7 @@ final class RigStore {
                 chains = ChainIndex(rows)
                 recompute()
             }
+            await refreshStops(fresh)
         } catch let error as DaemonError {
             self.error = error.userMessage
         } catch {

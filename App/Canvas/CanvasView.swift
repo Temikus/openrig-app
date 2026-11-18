@@ -125,14 +125,13 @@ struct CanvasContent: View {
             }
             ForEach(graph.seats) { seat in
                 if let frame = layout.seats[seat.id] {
-                    Button {
-                        selection.select(seat: seat, in: rig)
-                    } label: {
-                        SeatNode(
-                            seat: seat, isSelected: selection.seatID == seat.id, selectedQItem: selection.qitemID,
-                            showsModel: seat.model != nil && seat.model != commonModel)
-                    }
-                    .buttonStyle(.plain)
+                    // Not wrapped in a Button: the node holds its own buttons (the permission control).
+                    let prompt = rig.prompts.first { $0.seatID == seat.id }
+                    SeatNode(
+                        seat: seat, isSelected: selection.seatID == seat.id, selectedQItem: selection.qitemID,
+                        showsModel: seat.model != nil && seat.model != commonModel,
+                        prompt: prompt, linked: prompt?.linkedQItem(in: rig.items)
+                    ) { selection.select(seat: seat, in: rig) }
                     .onGeometryChange(for: CGFloat.self) {
                         $0.size.height
                     } action: {

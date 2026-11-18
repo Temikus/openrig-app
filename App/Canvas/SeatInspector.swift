@@ -48,6 +48,10 @@ struct SeatInspector: View {
     @ViewBuilder private var queue: some View {
         let q = seat.sessionName.map { seatQueue(for: $0, in: rig.items) }
         VStack(alignment: .leading, spacing: 12) {
+            if let prompt = rig.prompts.first(where: { $0.seatID == seat.id }) {
+                Text("Needs you").font(.subheadline.weight(.semibold)).foregroundStyle(.red)
+                NeedsYouRow(entry: .prompt(prompt, linked: prompt.linkedQItem(in: rig.items)))
+            }
             if let q, !(q.needsYou.isEmpty && q.owned.isEmpty && q.delegated.isEmpty) {
                 group("Needs you", q.needsYou)
                 group("Owned", q.owned)

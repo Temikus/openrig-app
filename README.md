@@ -7,7 +7,7 @@ A native SwiftUI app for [OpenRig](https://openrig.dev): see what each agent sea
 
 It talks to the local `rig` daemon. Reads use the daemon's HTTP API; actions run the `rig` CLI. See [PLAN.md](PLAN.md) for the design and milestones.
 
-**Status:** M4. Canvas, queue board and terminals, plus actions through the `rig` CLI: message, queue a task, hand off, block, close, nudge, note. Permission prompts and the Needs-you flow come next.
+**Status:** M5. Canvas, queue board, terminals, actions through the `rig` CLI, and answering permission prompts (Allow once, Decline with a redirect) from the canvas, the board, the Needs-you popover or a terminal tile.
 
 ## Requirements
 

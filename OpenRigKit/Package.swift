@@ -20,7 +20,7 @@ let package = Package(
         .target(name: "RigClient", dependencies: ["RigModel"]),
         .target(name: "RigDomain", dependencies: ["RigModel", "RigCanvasLayout"]),
         .target(name: "RigTerminal", dependencies: [.product(name: "SwiftTerm", package: "SwiftTerm")]),
-        .testTarget(name: "RigTerminalTests", dependencies: ["RigTerminal"]),
+        .testTarget(name: "RigTerminalTests", dependencies: ["RigTerminal"], resources: [.copy("Fixtures")]),
         .target(name: "RigFixtures", path: "Tests/RigFixtures", resources: [.copy("Fixtures")]),
         .testTarget(name: "RigModelTests", dependencies: ["RigModel", "RigFixtures"]),
         .testTarget(name: "RigDomainTests", dependencies: ["RigDomain", "RigFixtures", "RigClient"]),

@@ -37,6 +37,10 @@ public struct DaemonHTTP: Sendable {
         try await get("/api/queue/list", query: ["rig": rigName, "limit": String(limit)])
     }
 
+    public func seatStatus(session: String) async throws(DaemonError) -> SeatStatusReport {
+        try await get("/api/seat/status/\(session)")
+    }
+
     public func qitem(id: String) async throws(DaemonError) -> QItem {
         try await get("/api/queue/\(id)")
     }
