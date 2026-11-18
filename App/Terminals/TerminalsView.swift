@@ -221,12 +221,11 @@ struct TerminalTile: View {
                 Button("Stop typing") { terminals.typing = false }
                     .controlSize(.small)
             } else {
-                Text("Viewing live. Messages to the seat arrive with actions (M4).")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
+                // Message mode: the composer sends through `rig send`, which waits for a safe moment.
+                MessageComposer(seat: seat)
                 Button("Type into terminal") { terminals.typing = true }
                     .controlSize(.small)
+                    .help("Keys go straight to tmux until Esc")
             }
         }
         .padding(.horizontal, 10)

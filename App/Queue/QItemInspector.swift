@@ -8,6 +8,11 @@ struct QItemInspector: View {
     @Environment(SelectionStore.self) private var selection
 
     var body: some View {
+        // Redraws every 30 s so "Created 3 minutes ago" stays true.
+        TimelineView(.periodic(from: .now, by: 30)) { _ in content }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -29,12 +34,16 @@ struct QItemInspector: View {
                         row("Close by", closeBy.formatted(date: .abbreviated, time: .shortened))
                     }
                     if let priority = item.priority { row("Priority", priority) }
-                    if let created = item.created { row("Created", created.formatted(.relative(presentation: .named))) }
-                    if let updated = item.updated { row("Updated", updated.formatted(.relative(presentation: .named))) }
+                    if let created = item.created { row("Created", relative(created)) }
+                    if let updated = item.updated { row("Updated", relative(updated)) }
                     if let blocked = item.blockedOn { row("Blocked on", blocked) }
                     if let resolution = item.resolution { row("Resolution", resolution) }
                 }
                 .font(.callout)
+
+                if workStatus(item).isActive {
+                    QItemActions(item: item)
+                }
 
                 ChainOfRecordView(chain: rig.chains.chain(for: item.id))
 
@@ -54,6 +63,11 @@ struct QItemInspector: View {
         }
         // Margins on the scroll content, not padding inside it, so the inspector's own insets are respected.
         .contentMargins(16, for: .scrollContent)
+    }
+
+    /// "3 minutes ago". Re-evaluated whenever the inspector redraws, which the 30 s timeline forces.
+    private func relative(_ date: Date) -> String {
+        date.formatted(.relative(presentation: .named))
     }
 
     private func row(_ label: String, _ value: String) -> some View {

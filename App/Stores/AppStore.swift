@@ -32,6 +32,7 @@ final class AppStore {
     private(set) var isLive = false
     private(set) var rig: RigStore?
     let selection = SelectionStore()
+    let actions = ActionStore()
     var viewMode: ViewMode = .canvas
 
     var selectedRigID: RigSummary.ID? {

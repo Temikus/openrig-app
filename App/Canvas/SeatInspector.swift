@@ -39,6 +39,8 @@ struct SeatInspector: View {
                 case .spec: spec
                 }
             }
+            Divider()
+            MessageComposer(seat: seat)
         }
         .padding(16)
     }

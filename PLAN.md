@@ -314,3 +314,12 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - SwiftTerm's view takes clicks itself; unfocused tiles put a transparent Button over it to take focus (also reachable by VoiceOver).
 - Verified live: focusing a tile adds exactly one tmux client, moving focus keeps the total, leaving the view removes it.
 - The daemon's terminal WebSocket (spike item) was not tried; snapshots plus one attach met the bar.
+
+### M4
+- **Identity verified**: `rig queue whoami` and every write accept `OPENRIG_SESSION_NAME=operator-human@kernel` from outside a seat; transitions record it as the actor (risk 1, closed).
+- **Queue task always nudges** the destination (the CLI default). Live tests use `--no-nudge`, because a nudge to the human seat types into its terminal.
+- **Hand-off targets** are limited to the owner's `delegates_to` seats, as planned. "Also tell" runs `rig send` only after the handoff succeeds.
+- **Nudge opens an editable message** rather than sending at once; it types into an agent's pane.
+- **`just test-live`** (opt-in, `OPENRIG_LIVE_WRITES=1`) creates one self-addressed qitem, notes it, closes it as canceled, and requires each step on the event stream within 1 s.
+- Verified in the app: a note and a close made from the inspector reached the daemon as `operator-human@kernel`, and the board updated through the event stream within about a second. Handoff, block, nudge and send were not run live (they would touch agents); argv tests cover them.
+- `Resolve` (answering a human-gated HELD row) moves to M5 with the permission control.

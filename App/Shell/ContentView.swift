@@ -4,6 +4,7 @@ import SwiftUI
 struct ContentView: View {
     @Environment(AppStore.self) private var store
     @State private var showsInspector = true
+    @State private var showsQueueTask = false
 
     var body: some View {
         @Bindable var store = store
@@ -18,6 +19,7 @@ struct ContentView: View {
                 }
         }
         .environment(store.selection)
+        .environment(store.actions)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Picker("View", selection: $store.viewMode) {
@@ -26,6 +28,23 @@ struct ContentView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
             }
+            ToolbarItem(placement: .primaryAction) {
+                Button("Queue task", systemImage: "plus") { showsQueueTask = true }
+                    .labelStyle(.titleAndIcon)
+                    .buttonStyle(.glassProminent)
+                    .disabled(store.rig == nil)
+                    .keyboardShortcut("n")
+                    .popover(isPresented: $showsQueueTask, arrowEdge: .bottom) {
+                        if let rig = store.rig {
+                            QueueTaskForm(
+                                rig: rig, preselected: rig.seat(store.selection.seatID)?.sessionName,
+                                done: { showsQueueTask = false }
+                            )
+                            .environment(store.actions)
+                        }
+                    }
+            }
+            ToolbarSpacer(.fixed)
             ToolbarItem(placement: .primaryAction) {
                 Button("Inspector", systemImage: "sidebar.right") { showsInspector.toggle() }
             }

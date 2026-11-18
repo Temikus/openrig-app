@@ -26,6 +26,10 @@ build *flags: gen
 test:
     swift test {{ spm }}
 
+# Tests that write to the real queue: one self-addressed qitem, created and closed by the test
+test-live:
+    OPENRIG_LIVE_WRITES=1 swift test {{ spm }} --filter LiveWriteTests
+
 # Check formatting
 lint:
     swift format lint --strict --recursive OpenRigKit/Package.swift OpenRigKit/Sources OpenRigKit/Tests App
