@@ -120,14 +120,14 @@ import Testing
     }
 
     @Test func environmentStampsTheHumanSeatAndAPath() {
-        let env = RigCLI.environment(base: ["HOME": "/Users/x", "PATH": "/usr/bin"], actor: "operator-human@kernel")
-        #expect(env["OPENRIG_SESSION_NAME"] == "operator-human@kernel")
+        let env = RigCLI.environment(base: ["HOME": "/Users/x", "PATH": "/usr/bin"], actor: "human@host")
+        #expect(env["OPENRIG_SESSION_NAME"] == "human@host")
         #expect(env["PATH"]?.hasPrefix("/opt/homebrew/bin:") == true, "Node's shebang needs Homebrew on PATH")
         #expect(env["NO_COLOR"] == "1")
     }
 
     @Test func failureCarriesStderr() async throws {
-        let cli = RigCLI(executable: URL(filePath: "/bin/sh"), actor: "operator-human@kernel")
+        let cli = RigCLI(executable: URL(filePath: "/bin/sh"), actor: "human@host")
         // /bin/sh stands in for rig: exercises stdin, exit codes and stderr capture end to end.
         let result = try await cli.run(arguments: ["-c", "cat; echo oops >&2; exit 3"], stdin: "hello")
         #expect(result.status == 3)
@@ -145,9 +145,9 @@ import Testing
     })
 struct LiveCLITests {
     @Test func whoamiAsTheHumanSeat() async throws {
-        let cli = try #require(RigCLI.locate(actor: "operator-human@kernel"))
+        let cli = try #require(RigCLI.locate())
         let result = try await cli.run(arguments: ["queue", "whoami", "--json"])
         #expect(result.succeeded, "\(result.stderr)")
-        #expect(result.stdout.contains("\"session\":\"operator-human@kernel\""))
+        #expect(result.stdout.contains("\"session\":\"human@host\""))
     }
 }

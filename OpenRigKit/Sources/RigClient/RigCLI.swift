@@ -1,4 +1,5 @@
 import Foundation
+import RigModel
 
 public enum Priority: String, CaseIterable, Sendable {
     case routine, urgent, critical
@@ -114,7 +115,7 @@ public struct RigCLI: Sendable {
     public static let searchPaths = ["/opt/homebrew/bin/rig", "/usr/local/bin/rig"]
 
     /// GUI apps don't inherit the shell's PATH, so look in the usual install places.
-    public static func locate(searchPaths: [String] = searchPaths, actor: String = "operator-human@kernel") -> RigCLI? {
+    public static func locate(searchPaths: [String] = searchPaths, actor: String = Human.session) -> RigCLI? {
         searchPaths.first { FileManager.default.isExecutableFile(atPath: $0) }
             .map { RigCLI(executable: URL(filePath: $0), actor: actor) }
     }

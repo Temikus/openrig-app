@@ -46,6 +46,11 @@ public struct DaemonHTTP: Sendable {
         try await get("/api/workflow/list")
     }
 
+    /// People and shared channels registered with the gateway, and the default person.
+    public func participants() async throws(DaemonError) -> GatewayParticipants {
+        try await get("/api/gateway/participants")
+    }
+
     public func qitem(id: String) async throws(DaemonError) -> QItem {
         try await get("/api/queue/\(id)")
     }

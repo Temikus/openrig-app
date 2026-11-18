@@ -12,13 +12,18 @@ final class ActionStore {
         case failed(String)
     }
 
-    let cli: RigCLI?
+    private(set) var cli: RigCLI?
     private(set) var status: [String: Status] = [:]
     /// Set while the daemon is unreachable: writes would fail, so their buttons disable.
     var offline = false
 
-    init(cli: RigCLI? = RigCLI.locate(actor: "operator-human@kernel")) {
+    init(cli: RigCLI? = RigCLI.locate()) {
         self.cli = cli
+    }
+
+    /// Stamps later writes with `session` as the actor.
+    func act(as session: String) {
+        cli?.actor = session
     }
 
     func isRunning(_ key: String) -> Bool { status[key] == .running }

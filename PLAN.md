@@ -260,7 +260,7 @@ Pin exact versions in `Package.swift` and commit `Package.resolved`. Current ver
 
 ## 8. Risks and open questions, ranked
 
-1. **Who is "you"? Decided: act as `operator-human@kernel`.** The app stamps that seat as the actor on every CLI action (via `OPENRIG_SESSION_NAME`), so history reads "closed by operator-human". Verify in M4 that every write route accepts it.
+1. **Who is "you"? Revised: act as a person, never as `operator-human@kernel`.** That seat is the TUI's own pane ("not a human inbox"), so an agent replying to it typed into the TUI and the message was lost. The app now acts as the gateway's default person (`<id>@external`) and falls back to `human@host`, the unnamed person, when nobody is registered. A message from either address tells the agent to reply with a queue row. Unregistered, `human@host` has no wake route, so the daemon's stuck sweep pings the sender about every reply; registering a person (`rig gateway human add <id> --default`) avoids that. The actor is set via `OPENRIG_SESSION_NAME`, read from `GET /api/gateway/participants`, and changes without a relaunch.
 2. **Driving permission prompts.** `--dangerously-interact` is the only sanctioned path, and it is audited and guarded. The option numbering ("1", "3") is specific to Claude Code and could change. `permission_stop` is Claude-only and no live one was observed. Codex seats may need a different mechanism or be left out of v1.
 3. **Internal HTTP API drift.** Mitigated by the version gate, lenient decoding and live contract tests. The alternative is CLI-only reads at a latency cost.
 4. **Pane geometry ownership.** Should the app's focused client resize a seat that Herdr or another terminal is also showing?

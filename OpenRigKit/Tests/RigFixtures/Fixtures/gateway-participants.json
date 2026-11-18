@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "participants": [
+    {
+      "id": "sam",
+      "address": "sam@external",
+      "kind": "person",
+      "displayName": "Sam",
+      "organization": null,
+      "groups": [],
+      "policy": [],
+      "default": true
+    }
+  ],
+  "default": {
+    "id": "sam",
+    "source": "chosen"
+  },
+  "organizations": {},
+  "groups": {},
+  "warnings": [],
+  "participantFile": {
+    "path": "/Users/x/.openrig/gateway/participants.yaml",
+    "exists": true
+  }
+}

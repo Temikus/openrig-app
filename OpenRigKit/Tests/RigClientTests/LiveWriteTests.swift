@@ -1,4 +1,5 @@
 import Foundation
+import RigModel
 import Testing
 
 @testable import RigClient
@@ -12,7 +13,7 @@ import Testing
         ProcessInfo.processInfo.environment["OPENRIG_LIVE_WRITES"] == "1" && RigCLI.locate() != nil
     })
 struct LiveWriteTests {
-    let me = "operator-human@kernel"
+    let me = Human.session
 
     @Test(.timeLimit(.minutes(1))) func actionsComeBackThroughTheEventStream() async throws {
         let cli = try #require(RigCLI.locate(actor: me))
@@ -27,10 +28,13 @@ struct LiveWriteTests {
         try await Task.sleep(for: .milliseconds(500))
 
         // Create: raw args, because the app's Queue task always nudges and this must not.
+        // A row to a human address must name evidence the human can judge (the daemon's convention C3).
+        let evidence = FileManager.default.temporaryDirectory.appending(path: "openrig-app-live-test.md")
+        try "openrig-app live test".write(to: evidence, atomically: true, encoding: .utf8)
         let created = try await cli.run(
             arguments: [
-                "queue", "create", "--destination", me, "--summary", "openrig-app live test", "--body-file", "-",
-                "--no-nudge", "--json",
+                "queue", "create", "--destination", me, "--summary", "openrig-app live test", "--evidence-ref",
+                evidence.path, "--body-file", "-", "--no-nudge", "--json",
             ], stdin: "Created by OpenRigKit's LiveWriteTests; closed by the same test.")
         #expect(created.succeeded, "\(created.stderr)")
         let id = try #require(created.stdout.firstMatch(of: /qitem-[0-9A-Za-z-]+/).map { String($0.output) })

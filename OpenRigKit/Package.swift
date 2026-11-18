@@ -28,7 +28,7 @@ let package = Package(
             name: "RigCanvasLayout",
             dependencies: [.product(name: "HeapModule", package: "swift-collections")]
         ),
-        .testTarget(name: "RigClientTests", dependencies: ["RigClient"]),
+        .testTarget(name: "RigClientTests", dependencies: ["RigClient", "RigModel"]),
         .testTarget(name: "RigCanvasLayoutTests", dependencies: ["RigCanvasLayout"]),
     ]
 )

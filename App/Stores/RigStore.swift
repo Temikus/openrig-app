@@ -13,6 +13,8 @@ final class RigStore {
     let rigID: String
     let rigName: String
     var client: DaemonHTTP
+    /// The app's own address, from AppStore.
+    var me = Human.session
 
     private(set) var graph: RigGraph?
     private(set) var items: [QItem] = []
@@ -55,9 +57,10 @@ final class RigStore {
         return items.first { $0.id == id }
     }
 
-    /// The seat's short name, or the session's name part for seats outside this rig.
+    /// The seat's short name, or the session's name part for seats outside this rig. The app's own address reads "You".
     func displayName(session: String) -> String {
-        seat(session: session)?.displayName ?? String(session.split(separator: "@").first ?? Substring(session))
+        if session == me || Human.isYou(session) { return "You" }
+        return seat(session: session)?.displayName ?? String(session.split(separator: "@").first ?? Substring(session))
     }
 
     /// Open permission prompts, in seat order.

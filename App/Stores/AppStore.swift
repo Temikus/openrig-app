@@ -43,6 +43,8 @@ final class AppStore {
     private(set) var rig: RigStore?
     let selection = SelectionStore()
     let actions = ActionStore()
+    /// Who the app acts as; see `Human.address(in:)`.
+    private(set) var me = Human.session
     var viewMode: ViewMode = .canvas
 
     var selectedRigID: RigSummary.ID? {
@@ -52,6 +54,7 @@ final class AppStore {
             rig = selectedRigID.map { id in
                 RigStore(rigID: id, rigName: rigs.first { $0.id == id }?.name ?? id, client: client)
             }
+            rig?.me = me
             Task { await rig?.refresh() }
         }
     }
@@ -168,6 +171,7 @@ final class AppStore {
 
     private func refreshRigs() async {
         guard let rigs = try? await client.rigs() else { return }
+        await refreshIdentity()
         self.rigs = rigs.filter { !$0.isArchived }
         if selectedRigID == nil || !self.rigs.contains(where: { $0.id == selectedRigID }) {
             selectedRigID = self.rigs.first?.id
@@ -175,6 +179,16 @@ final class AppStore {
                 await openDebugTarget()
             #endif
         }
+    }
+
+    /// Registering a person (`rig gateway human add … --default`) takes effect without a relaunch.
+    private func refreshIdentity() async {
+        guard let gateway = try? await client.participants() else { return }
+        let address = Human.address(in: gateway)
+        guard address != me else { return }
+        me = address
+        actions.act(as: address)
+        rig?.me = address
     }
 
     #if DEBUG
