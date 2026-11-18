@@ -1,3 +1,4 @@
+import RigDomain
 import RigModel
 import SwiftUI
 
@@ -5,10 +6,11 @@ struct SeatInspector: View {
     let seat: Seat
     let graph: RigGraph
     @Environment(SelectionStore.self) private var selection
-    @State private var tab: Tab = .overview
+    @State private var tab: Tab = .queue
+    @Environment(RigStore.self) private var rig
 
     enum Tab: String, CaseIterable, Identifiable {
-        case overview = "Overview", spec = "Spec"
+        case queue = "Queue", overview = "Overview", spec = "Spec"
         var id: Self { self }
     }
 
@@ -32,12 +34,35 @@ struct SeatInspector: View {
 
             ScrollView {
                 switch tab {
+                case .queue: queue
                 case .overview: overview
                 case .spec: spec
                 }
             }
         }
         .padding(16)
+    }
+
+    @ViewBuilder private var queue: some View {
+        let q = seat.sessionName.map { seatQueue(for: $0, in: rig.items) }
+        VStack(alignment: .leading, spacing: 12) {
+            if let q, !(q.needsYou.isEmpty && q.owned.isEmpty && q.delegated.isEmpty) {
+                group("Needs you", q.needsYou)
+                group("Owned", q.owned)
+                group("Delegated", q.delegated)
+            } else {
+                Text("No active work.").foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private func group(_ title: String, _ items: [QItem]) -> some View {
+        if !items.isEmpty {
+            Text(title).font(.subheadline.weight(.semibold))
+                .foregroundStyle(title == "Needs you" ? Color.red : .secondary)
+            ForEach(items) { QItemCard(item: $0, now: .now) }
+        }
     }
 
     private var overview: some View {

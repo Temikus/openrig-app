@@ -19,7 +19,7 @@ let package = Package(
         .target(name: "RigDomain", dependencies: ["RigModel", "RigCanvasLayout"]),
         .target(name: "RigFixtures", path: "Tests/RigFixtures", resources: [.copy("Fixtures")]),
         .testTarget(name: "RigModelTests", dependencies: ["RigModel", "RigFixtures"]),
-        .testTarget(name: "RigDomainTests", dependencies: ["RigDomain", "RigFixtures"]),
+        .testTarget(name: "RigDomainTests", dependencies: ["RigDomain", "RigFixtures", "RigClient"]),
         .target(
             name: "RigCanvasLayout",
             dependencies: [.product(name: "HeapModule", package: "swift-collections")]

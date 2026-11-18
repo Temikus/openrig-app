@@ -295,3 +295,12 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - `RigDomain` depends on `RigCanvasLayout` for the graph-to-layout adapter.
 - Router costs added beyond the plan: vertical runs outside channels cost 3x, and crossing a pod that is neither end's costs 2.5x. Without them, trunks hug pod borders.
 - Fixtures moved to a shared `RigFixtures` test-support target.
+
+### M2
+- **`handedOffTo` is a session, not a qitem id.** Successors are found by indexing rows on `handedOffFrom`. `chainOfRecord` is ancestor ids, oldest first, ending with the direct predecessor.
+- **Needs you (until M5)** = blocked on a ref that isn't a qitem (for example `external:person-decision-pr602`), or a row with `humanQuestions`. Permission prompts join it in M5.
+- **Next-hop wire dropped for v1** (risk 6): no data source. Past hops draw for the selected item's chain.
+- **Short ids**: `q-` plus the last four hex characters (risk 7), full id on hover.
+- Queue fixtures replace summaries, bodies and resolutions with placeholder text; the rows are agents' free text.
+- The board's columns size to the width the floating inspector leaves, 220 pt minimum, then scroll sideways.
+- Work wires were not seen live: neither local rig had active qitems during M2. Unit tests cover their geometry and kinds.

@@ -32,8 +32,21 @@ public struct DaemonHTTP: Sendable {
         try await get("/api/rigs/\(rigID)/graph")
     }
 
-    func get<T: Decodable>(_ path: String) async throws(DaemonError) -> T {
-        var request = URLRequest(url: baseURL.appending(path: path), timeoutInterval: timeout)
+    /// All queue rows whose source or destination is in the rig, newest first.
+    public func queue(rigName: String, limit: Int = 500) async throws(DaemonError) -> [QItem] {
+        try await get("/api/queue/list", query: ["rig": rigName, "limit": String(limit)])
+    }
+
+    public func qitem(id: String) async throws(DaemonError) -> QItem {
+        try await get("/api/queue/\(id)")
+    }
+
+    func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws(DaemonError) -> T {
+        var url = baseURL.appending(path: path)
+        if !query.isEmpty {
+            url.append(queryItems: query.keys.sorted().map { URLQueryItem(name: $0, value: query[$0]) })
+        }
+        var request = URLRequest(url: url, timeoutInterval: timeout)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
         let data: Data

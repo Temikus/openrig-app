@@ -6,6 +6,7 @@ import SwiftUI
 /// The rig as a node graph: pods, seats, and spec edges routed metro-style.
 struct CanvasView: View {
     @Environment(RigStore.self) private var rig
+    @Environment(SelectionStore.self) private var selection
     @State private var zoom: CGFloat = 1
     @State private var pinchStart: CGFloat?
     @State private var scroll = ScrollPosition(edge: .top)
@@ -16,7 +17,7 @@ struct CanvasView: View {
     var body: some View {
         if let graph = rig.graph, let layout = rig.layout {
             ScrollView([.horizontal, .vertical]) {
-                CanvasContent(graph: graph, layout: layout, routes: rig.routes)
+                CanvasContent(graph: graph, layout: layout, routes: rig.routes(selected: selection.qitemID))
                     .frame(width: layout.bounds.width, height: layout.bounds.height)
                     .scaleEffect(zoom, anchor: .topLeading)
                     .frame(
@@ -115,14 +116,20 @@ struct CanvasContent: View {
                     .frame(width: pod.frame.width, height: pod.frame.height)
                     .offset(x: pod.frame.minX, y: pod.frame.minY)
             }
-            WireLayer(routes: routes)
+            WireLayer(routes: routes, selectedQItem: selection.qitemID)
+            ForEach(chips, id: \.wire.id) { chip in
+                WireChip(
+                    item: chip.item, kind: chip.wire.kind, isSelected: chip.item.id == selection.qitemID
+                ) { selection.select(qitem: chip.item.id) }
+                .position(chip.anchor)
+            }
             ForEach(graph.seats) { seat in
                 if let frame = layout.seats[seat.id] {
                     Button {
-                        selection.seatID = seat.id
+                        selection.select(seat: seat, in: rig)
                     } label: {
                         SeatNode(
-                            seat: seat, isSelected: selection.seatID == seat.id,
+                            seat: seat, isSelected: selection.seatID == seat.id, selectedQItem: selection.qitemID,
                             showsModel: seat.model != nil && seat.model != commonModel)
                     }
                     .buttonStyle(.plain)
@@ -138,6 +145,15 @@ struct CanvasContent: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { selection.clear() }
+    }
+
+    /// One label per work wire (not past hops), placed clear of the seats.
+    private var chips: [(wire: Wire, item: QItem, anchor: CGPoint)] {
+        let seats = Array(layout.seats.values)
+        return routes.wires.compactMap { wire in
+            guard wire.id.hasPrefix("q:"), let item = rig.item(String(wire.id.dropFirst(2))) else { return nil }
+            return (wire, item, chipAnchor(for: wire, avoiding: seats))
+        }
     }
 
     private var podFrames: [(id: String, title: String, count: Int, frame: CGRect)] {

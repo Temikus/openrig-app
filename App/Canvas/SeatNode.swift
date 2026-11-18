@@ -67,6 +67,7 @@ func compactAge(since date: Date?, now: Date) -> String? {
 struct SeatNode: View {
     let seat: Seat
     let isSelected: Bool
+    let selectedQItem: QItem.ID?
     let showsModel: Bool
 
     private var phase: SeatPhase { SeatPhase(seat) }
@@ -138,7 +139,13 @@ struct SeatNode: View {
             if let item = seat.currentQItems.first {
                 Text("\(shortQItemID(item.id)) · in progress")
                     .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(item.id == selectedQItem ? Color.primary : .secondary)
+                    .padding(.horizontal, item.id == selectedQItem ? 4 : 0)
+                    .overlay {
+                        if item.id == selectedQItem {
+                            RoundedRectangle(cornerRadius: 4).strokeBorder(Color.primary, lineWidth: 1.5)
+                        }
+                    }
                     .help(item.id)
                 Text(item.bodyExcerpt.isEmpty ? "No summary" : item.bodyExcerpt)
                     .font(.callout)

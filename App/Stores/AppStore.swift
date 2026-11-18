@@ -38,7 +38,9 @@ final class AppStore {
         didSet {
             guard selectedRigID != oldValue else { return }
             selection.clear()
-            rig = selectedRigID.map { RigStore(rigID: $0, client: client) }
+            rig = selectedRigID.map { id in
+                RigStore(rigID: id, rigName: rigs.first { $0.id == id }?.name ?? id, client: client)
+            }
             Task { await rig?.refresh() }
         }
     }

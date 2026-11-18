@@ -7,7 +7,7 @@ A native SwiftUI app for [OpenRig](https://openrig.dev): see what each agent sea
 
 It talks to the local `rig` daemon. Reads use the daemon's HTTP API; actions run the `rig` CLI. See [PLAN.md](PLAN.md) for the design and milestones.
 
-**Status:** M1. Read-only canvas: pods, seats and spec edges laid out and routed metro-style, updated live from the daemon's event stream. The queue board and terminals come next.
+**Status:** M2. Read-only canvas and queue board: pods, seats, spec edges and work wires, the queue as columns with chains of record, and one selection shared across views, all live from the daemon. Terminals come next.
 
 ## Requirements
 

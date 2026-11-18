@@ -28,6 +28,7 @@ struct WireStyle {
 
 struct WireLayer: View {
     let routes: RouteResult
+    let selectedQItem: QItem.ID?
 
     var body: some View {
         Canvas { context, _ in
@@ -36,7 +37,14 @@ struct WireLayer: View {
             for kind in order {
                 let style = WireStyle.of(kind)
                 for wire in routes.wires where wire.kind == kind {
-                    context.stroke(Path(roundedPath(wire.points)), with: .color(style.color), style: style.strokeStyle)
+                    let path = Path(roundedPath(wire.points))
+                    if let selectedQItem, wire.id == "q:\(selectedQItem)" {
+                        // Selection ring: a wider halo under the wire.
+                        context.stroke(
+                            path, with: .color(.primary.opacity(0.25)),
+                            style: StrokeStyle(lineWidth: style.width + 6, lineCap: .round, lineJoin: .round))
+                    }
+                    context.stroke(path, with: .color(style.color), style: style.strokeStyle)
                     if let start = wire.points.first, let end = wire.points.last {
                         for p in [start, end] {
                             context.fill(
@@ -164,5 +172,32 @@ struct Minimap: View {
 extension CGRect {
     func scaled(_ s: CGFloat) -> CGRect {
         CGRect(x: minX * s, y: minY * s, width: width * s, height: height * s)
+    }
+}
+
+/// The label on a work wire, e.g. "q-0412" or "q-0409 · blocked". Click selects the qitem.
+struct WireChip: View {
+    let item: QItem
+    let kind: WireKind
+    let isSelected: Bool
+    let select: () -> Void
+
+    var body: some View {
+        Button(action: select) {
+            Text(kind == .needsYou ? "\(shortQItemID(item.id)) · blocked" : shortQItemID(item.id))
+                .font(.caption2.monospaced().weight(.semibold))
+                .foregroundStyle(.black)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(WireStyle.of(kind).color, in: .rect(cornerRadius: 4))
+                .overlay {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary, lineWidth: 2).padding(-3)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .help(item.summary)
+        .accessibilityLabel("\(shortQItemID(item.id)), \(item.summary)")
     }
 }

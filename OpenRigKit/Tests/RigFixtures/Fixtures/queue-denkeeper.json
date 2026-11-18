@@ -1,0 +1,6634 @@
+[
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-recovery-3682ac9fe84cd513",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 421,
+        "at": "2026-11-18T01:02:36.116Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-recovery-3682ac9fe84cd513",
+    "tsCreated": "2026-11-18T00:47:36.123Z",
+    "tsUpdated": "2026-11-18T01:02:36.115Z",
+    "sourceSession": "orch-plan@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "stuck-sweep-finding",
+      "stuck-sweep:stalled-after-claim:qitem-20261116110008-d35caccc",
+      "recovery-for:qitem-20261116110008-d35caccc"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of d513",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-18T00:47:37.079Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118002925-6b5d141c",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 414,
+        "at": "2026-11-18T00:32:44.790Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118002925-6b5d141c",
+    "tsCreated": "2026-11-18T00:29:25.344Z",
+    "tsUpdated": "2026-11-18T00:32:44.790Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261118002832-7d81e848f379c9c6",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261118002832-7d81e848f379c9c6"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 141c",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:32:44.600Z",
+    "lastNudgeAttempt": "2026-11-18T00:29:26.530Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118002832-7d81e848f379c9c6",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 408,
+        "at": "2026-11-18T00:29:25.346Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118002832-7d81e848f379c9c6",
+    "tsCreated": "2026-11-18T00:28:32.697Z",
+    "tsUpdated": "2026-11-18T00:29:25.344Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of c9c6",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:28:37.866Z",
+    "lastNudgeAttempt": "2026-11-18T00:28:33.963Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118001859-73d61033",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 403,
+        "at": "2026-11-18T00:20:28.118Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118001859-73d61033",
+    "tsCreated": "2026-11-18T00:18:59.738Z",
+    "tsUpdated": "2026-11-18T00:20:28.118Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261118001753-1639c383",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261118000754-da829daee0e96287",
+      "qitem-20261118001208-d465d0da",
+      "qitem-20261118001229-5f8e2090",
+      "qitem-20261118001354-173e4d16",
+      "qitem-20261118001407-10c46eb0",
+      "qitem-20261118001730-a8536f5e",
+      "qitem-20261118001753-1639c383"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 1033",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:20:27.949Z",
+    "lastNudgeAttempt": "2026-11-18T00:19:00.770Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118001753-1639c383",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 398,
+        "at": "2026-11-18T00:18:59.738Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118001753-1639c383",
+    "tsCreated": "2026-11-18T00:17:53.172Z",
+    "tsUpdated": "2026-11-18T00:18:59.738Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261118001730-a8536f5e",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261118000754-da829daee0e96287",
+      "qitem-20261118001208-d465d0da",
+      "qitem-20261118001229-5f8e2090",
+      "qitem-20261118001354-173e4d16",
+      "qitem-20261118001407-10c46eb0",
+      "qitem-20261118001730-a8536f5e"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of c383",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:17:59.127Z",
+    "lastNudgeAttempt": "2026-11-18T00:17:54.161Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118001730-a8536f5e",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 394,
+        "at": "2026-11-18T00:17:53.172Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118001730-a8536f5e",
+    "tsCreated": "2026-11-18T00:17:30.319Z",
+    "tsUpdated": "2026-11-18T00:17:53.172Z",
+    "sourceSession": "dev-b2@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261118001407-10c46eb0",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261118000754-da829daee0e96287",
+      "qitem-20261118001208-d465d0da",
+      "qitem-20261118001229-5f8e2090",
+      "qitem-20261118001354-173e4d16",
+      "qitem-20261118001407-10c46eb0"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 6f5e",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-18T00:17:31.354Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118001407-10c46eb0",
+      "owner": "dev-b2@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 390,
+        "at": "2026-11-18T00:17:30.320Z"
+      },
+      "liveness": {
+        "subject": "dev-b2@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b2@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118001407-10c46eb0",
+    "tsCreated": "2026-11-18T00:14:07.746Z",
+    "tsUpdated": "2026-11-18T00:17:30.319Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b2@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261118001354-173e4d16",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261118000754-da829daee0e96287",
+      "qitem-20261118001208-d465d0da",
+      "qitem-20261118001229-5f8e2090",
+      "qitem-20261118001354-173e4d16"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 6eb0",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:14:11.756Z",
+    "lastNudgeAttempt": "2026-11-18T00:14:08.765Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118001354-173e4d16",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 386,
+        "at": "2026-11-18T00:14:07.747Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118001354-173e4d16",
+    "tsCreated": "2026-11-18T00:13:54.894Z",
+    "tsUpdated": "2026-11-18T00:14:07.746Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "dev-b2@denkeeper",
+    "handedOffFrom": "qitem-20261118001229-5f8e2090",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261118000754-da829daee0e96287",
+      "qitem-20261118001208-d465d0da",
+      "qitem-20261118001229-5f8e2090"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 4d16",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "dev-b2@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-18T00:13:55.923Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118001229-5f8e2090",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 382,
+        "at": "2026-11-18T00:13:54.894Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118001229-5f8e2090",
+    "tsCreated": "2026-11-18T00:12:29.734Z",
+    "tsUpdated": "2026-11-18T00:13:54.894Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261118001208-d465d0da",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261118000754-da829daee0e96287",
+      "qitem-20261118001208-d465d0da"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 2090",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:12:33.337Z",
+    "lastNudgeAttempt": "2026-11-18T00:12:30.856Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118001208-d465d0da",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 378,
+        "at": "2026-11-18T00:12:29.735Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118001208-d465d0da",
+    "tsCreated": "2026-11-18T00:12:08.818Z",
+    "tsUpdated": "2026-11-18T00:12:29.734Z",
+    "sourceSession": "dev-b2@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261118000754-da829daee0e96287",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261118000754-da829daee0e96287"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of d0da",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-18T00:12:09.952Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118000754-da829daee0e96287",
+      "owner": "dev-b2@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 374,
+        "at": "2026-11-18T00:12:08.818Z"
+      },
+      "liveness": {
+        "subject": "dev-b2@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b2@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118000754-da829daee0e96287",
+    "tsCreated": "2026-11-18T00:07:54.905Z",
+    "tsUpdated": "2026-11-18T00:12:08.818Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b2@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 6287",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:07:58.603Z",
+    "lastNudgeAttempt": "2026-11-18T00:07:55.917Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118000736-f75adc6f",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 370,
+        "at": "2026-11-18T00:07:54.185Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118000736-f75adc6f",
+    "tsCreated": "2026-11-18T00:07:36.917Z",
+    "tsUpdated": "2026-11-18T00:07:54.185Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "urgent",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261118000641-8101dd14",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261117235847-408449e11e28db83",
+      "qitem-20261117235918-c9656042",
+      "qitem-20261117235945-d84fc836",
+      "qitem-20261118000625-e2da357d",
+      "qitem-20261118000641-8101dd14"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of dc6f",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:07:54.021Z",
+    "lastNudgeAttempt": "2026-11-18T00:07:38.023Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118000710-4e42d25a",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 364,
+        "at": "2026-11-18T00:07:36.224Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118000710-4e42d25a",
+    "tsCreated": "2026-11-18T00:07:10.401Z",
+    "tsUpdated": "2026-11-18T00:07:36.223Z",
+    "sourceSession": "review-design@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:design",
+      "verdict:approved"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261118000642-13ad635985cc1613",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261118000642-13ad635985cc1613"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of d25a",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:07:36.026Z",
+    "lastNudgeAttempt": "2026-11-18T00:07:11.414Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118000642-13ad635985cc1613",
+      "owner": "review-design@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 361,
+        "at": "2026-11-18T00:07:10.401Z"
+      },
+      "liveness": {
+        "subject": "review-design@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-design@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118000642-13ad635985cc1613",
+    "tsCreated": "2026-11-18T00:06:42.132Z",
+    "tsUpdated": "2026-11-18T00:07:10.401Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-design@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:design"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 1613",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:06:46.507Z",
+    "lastNudgeAttempt": "2026-11-18T00:06:43.307Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118000641-8101dd14",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 365,
+        "at": "2026-11-18T00:07:36.917Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118000641-8101dd14",
+    "tsCreated": "2026-11-18T00:06:41.002Z",
+    "tsUpdated": "2026-11-18T00:07:36.917Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "urgent",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261118000625-e2da357d",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261117235847-408449e11e28db83",
+      "qitem-20261117235918-c9656042",
+      "qitem-20261117235945-d84fc836",
+      "qitem-20261118000625-e2da357d"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of dd14",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:06:47.454Z",
+    "lastNudgeAttempt": "2026-11-18T00:06:42.082Z",
+    "lastNudgeResult": "verified",
+    "lastNudgeWireResult": "verified",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118000625-e2da357d",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 355,
+        "at": "2026-11-18T00:06:41.002Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118000625-e2da357d",
+    "tsCreated": "2026-11-18T00:06:25.179Z",
+    "tsUpdated": "2026-11-18T00:06:41.002Z",
+    "sourceSession": "dev-b1@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "urgent",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261117235945-d84fc836",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261117235847-408449e11e28db83",
+      "qitem-20261117235918-c9656042",
+      "qitem-20261117235945-d84fc836"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 357d",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-18T00:06:26.234Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118000026-b455efcd",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 349,
+        "at": "2026-11-18T00:00:45.990Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118000026-b455efcd",
+    "tsCreated": "2026-11-18T00:00:26.878Z",
+    "tsUpdated": "2026-11-18T00:00:45.990Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261117235846-0a522554",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261117234832-3ae1255c17fd9b68",
+      "qitem-20261117234917-0d8bcebc",
+      "qitem-20261117235151-98416535",
+      "qitem-20261117235824-e2f4b8a6",
+      "qitem-20261117235846-0a522554"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of efcd",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:00:45.816Z",
+    "lastNudgeAttempt": "2026-11-18T00:00:27.959Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261117235945-d84fc836",
+      "owner": "dev-b1@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 351,
+        "at": "2026-11-18T00:06:25.180Z"
+      },
+      "liveness": {
+        "subject": "dev-b1@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b1@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261117235945-d84fc836",
+    "tsCreated": "2026-11-17T23:59:45.465Z",
+    "tsUpdated": "2026-11-18T00:06:25.179Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b1@denkeeper",
+    "state": "handed-off",
+    "priority": "urgent",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261117235918-c9656042",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261117235847-408449e11e28db83",
+      "qitem-20261117235918-c9656042"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of c836",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-17T23:59:57.429Z",
+    "lastNudgeAttempt": "2026-11-17T23:59:46.590Z",
+    "lastNudgeResult": "verified",
+    "lastNudgeWireResult": "verified",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261117235918-c9656042",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 340,
+        "at": "2026-11-17T23:59:45.466Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261117235918-c9656042",
+    "tsCreated": "2026-11-17T23:59:18.791Z",
+    "tsUpdated": "2026-11-17T23:59:45.465Z",
+    "sourceSession": "review-design@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "urgent",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:design",
+      "verdict:changes-requested"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "dev-b1@denkeeper",
+    "handedOffFrom": "qitem-20261117235847-408449e11e28db83",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261117235847-408449e11e28db83"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 6042",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "dev-b1@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-17T23:59:19.977Z",
+    "lastNudgeResult": "verified",
+    "lastNudgeWireResult": "verified",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261117235847-408449e11e28db83",
+      "owner": "review-design@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 338,
+        "at": "2026-11-17T23:59:18.797Z"
+      },
+      "liveness": {
+        "subject": "review-design@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-design@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261117235847-408449e11e28db83",
+    "tsCreated": "2026-11-17T23:58:47.616Z",
+    "tsUpdated": "2026-11-17T23:59:18.791Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-design@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:design"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of db83",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-17T23:58:51.347Z",
+    "lastNudgeAttempt": "2026-11-17T23:58:48.740Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261117235846-0a522554",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 343,
+        "at": "2026-11-18T00:00:26.879Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261117235846-0a522554",
+    "tsCreated": "2026-11-17T23:58:46.799Z",
+    "tsUpdated": "2026-11-18T00:00:26.878Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261117235824-e2f4b8a6",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261117234832-3ae1255c17fd9b68",
+      "qitem-20261117234917-0d8bcebc",
+      "qitem-20261117235151-98416535",
+      "qitem-20261117235824-e2f4b8a6"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 2554",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-17T23:58:50.937Z",
+    "lastNudgeAttempt": "2026-11-17T23:58:47.842Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261117235824-e2f4b8a6",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 332,
+        "at": "2026-11-17T23:58:46.800Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261117235824-e2f4b8a6",
+    "tsCreated": "2026-11-17T23:58:24.504Z",
+    "tsUpdated": "2026-11-17T23:58:46.799Z",
+    "sourceSession": "dev-b1@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261117235151-98416535",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261117234832-3ae1255c17fd9b68",
+      "qitem-20261117234917-0d8bcebc",
+      "qitem-20261117235151-98416535"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of b8a6",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-17T23:58:25.545Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261117235223-f392081b",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 327,
+        "at": "2026-11-17T23:52:43.492Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261117235223-f392081b",
+    "tsCreated": "2026-11-17T23:52:23.634Z",
+    "tsUpdated": "2026-11-17T23:52:43.491Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261117234831-0f1eeedc",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116222438-54228b04ec09716a",
+      "qitem-20261116223631-75622c12",
+      "qitem-20261117234831-0f1eeedc"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 081b",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-17T23:52:43.323Z",
+    "lastNudgeAttempt": "2026-11-17T23:52:24.693Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261117235151-98416535",
+      "owner": "dev-b1@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 328,
+        "at": "2026-11-17T23:58:24.505Z"
+      },
+      "liveness": {
+        "subject": "dev-b1@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b1@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261117235151-98416535",
+    "tsCreated": "2026-11-17T23:51:51.390Z",
+    "tsUpdated": "2026-11-17T23:58:24.504Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b1@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261117234917-0d8bcebc",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261117234832-3ae1255c17fd9b68",
+      "qitem-20261117234917-0d8bcebc"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 6535",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-17T23:52:05.699Z",
+    "lastNudgeAttempt": "2026-11-17T23:51:52.943Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261117234917-0d8bcebc",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 317,
+        "at": "2026-11-17T23:51:51.391Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261117234917-0d8bcebc",
+    "tsCreated": "2026-11-17T23:49:17.458Z",
+    "tsUpdated": "2026-11-17T23:51:51.390Z",
+    "sourceSession": "review-design@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:design",
+      "verdict:changes-requested"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "dev-b1@denkeeper",
+    "handedOffFrom": "qitem-20261117234832-3ae1255c17fd9b68",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261117234832-3ae1255c17fd9b68"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of cebc",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "dev-b1@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-17T23:49:18.696Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261117234832-3ae1255c17fd9b68",
+      "owner": "review-design@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 315,
+        "at": "2026-11-17T23:49:17.458Z"
+      },
+      "liveness": {
+        "subject": "review-design@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-design@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261117234832-3ae1255c17fd9b68",
+    "tsCreated": "2026-11-17T23:48:32.872Z",
+    "tsUpdated": "2026-11-17T23:49:17.458Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-design@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:design"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 9b68",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-17T23:48:37.739Z",
+    "lastNudgeAttempt": "2026-11-17T23:48:34.055Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261117234831-0f1eeedc",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 322,
+        "at": "2026-11-17T23:52:23.635Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261117234831-0f1eeedc",
+    "tsCreated": "2026-11-17T23:48:31.939Z",
+    "tsUpdated": "2026-11-17T23:52:23.634Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116223631-75622c12",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116222438-54228b04ec09716a",
+      "qitem-20261116223631-75622c12"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of eedc",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-17T23:48:36.902Z",
+    "lastNudgeAttempt": "2026-11-17T23:48:33.100Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116225021-7f1fd5cf",
+      "owner": "dev-b1@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 309,
+        "at": "2026-11-17T23:47:36.446Z"
+      },
+      "liveness": {
+        "subject": "dev-b1@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b1@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116225021-7f1fd5cf",
+    "tsCreated": "2026-11-16T22:50:21.953Z",
+    "tsUpdated": "2026-11-17T23:47:36.446Z",
+    "sourceSession": "daemon@kernel",
+    "destinationSession": "dev-b1@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "wake-escalation",
+      "prompt-destination:orch-lead@denkeeper",
+      "wake-prompt-refusal",
+      "prompt-episode:orch-lead@denkeeper|8bdc94d4788d1e61#262af3fb-715e-4962-a176-47ce1836dc8f",
+      "recovery-for:qitem-recovery-cc65234d2a0e8b7e"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of d5cf",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": null,
+    "lastNudgeResult": null,
+    "lastNudgeWireResult": null,
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116224021-e24c3497",
+      "owner": "orch-plan@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 279,
+        "at": "2026-11-16T22:42:28.546Z"
+      },
+      "liveness": {
+        "subject": "orch-plan@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-plan@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116224021-e24c3497",
+    "tsCreated": "2026-11-16T22:40:21.816Z",
+    "tsUpdated": "2026-11-16T22:42:28.545Z",
+    "sourceSession": "daemon@kernel",
+    "destinationSession": "orch-plan@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "wake-escalation",
+      "prompt-destination:orch-lead@denkeeper",
+      "wake-prompt-refusal",
+      "prompt-episode:orch-lead@denkeeper|87b8468c76cd2e99#c37503d9-8b95-473f-ad60-ddffb1c311d6",
+      "recovery-for:qitem-20261116110008-d35caccc",
+      "recovery-for:qitem-recovery-26071d520bcc9a9b"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 3497",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T22:42:21.245Z",
+    "lastNudgeAttempt": null,
+    "lastNudgeResult": null,
+    "lastNudgeWireResult": null,
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-recovery-cc65234d2a0e8b7e",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 324,
+        "at": "2026-11-17T23:52:36.037Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-recovery-cc65234d2a0e8b7e",
+    "tsCreated": "2026-11-16T22:40:16.707Z",
+    "tsUpdated": "2026-11-17T23:52:36.036Z",
+    "sourceSession": "dev-b1@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "stuck-sweep-finding",
+      "stuck-sweep:undelivered-wake:qitem-20261116223631-75622c12",
+      "recovery-for:qitem-20261116223631-75622c12"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 8b7e",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-17T23:46:31.988Z",
+    "lastNudgeResult": "verified",
+    "lastNudgeWireResult": "verified",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-recovery-26071d520bcc9a9b",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 308,
+        "at": "2026-11-17T23:47:36.209Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-recovery-26071d520bcc9a9b",
+    "tsCreated": "2026-11-16T22:40:16.673Z",
+    "tsUpdated": "2026-11-17T23:47:36.209Z",
+    "sourceSession": "orch-plan@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "stuck-sweep-finding",
+      "stuck-sweep:stalled-after-claim:qitem-20261116110008-d35caccc",
+      "recovery-for:qitem-20261116110008-d35caccc"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 9a9b",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-17T23:46:30.882Z",
+    "lastNudgeResult": "verified",
+    "lastNudgeWireResult": "verified",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116223631-75622c12",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 310,
+        "at": "2026-11-17T23:48:31.940Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116223631-75622c12",
+    "tsCreated": "2026-11-16T22:36:31.772Z",
+    "tsUpdated": "2026-11-17T23:48:31.939Z",
+    "sourceSession": "dev-b1@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261116222438-54228b04ec09716a",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116222438-54228b04ec09716a"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 2c12",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-17T23:46:29.817Z",
+    "lastNudgeResult": "verified",
+    "lastNudgeWireResult": "verified",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116223227-a77bd4ab",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 263,
+        "at": "2026-11-16T22:32:41.706Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116223227-a77bd4ab",
+    "tsCreated": "2026-11-16T22:32:27.581Z",
+    "tsUpdated": "2026-11-16T22:32:41.706Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261116223121-e6bdc211",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116222439-383332f66a46ab73",
+      "qitem-20261116222659-1387b844",
+      "qitem-20261116222714-63ed94ee",
+      "qitem-20261116222918-751b4822",
+      "qitem-20261116222940-067e1c21",
+      "qitem-20261116223114-f874bf15",
+      "qitem-20261116223121-e6bdc211"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of d4ab",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T22:32:35.929Z",
+    "lastNudgeAttempt": "2026-11-16T22:32:28.603Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116223121-e6bdc211",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 260,
+        "at": "2026-11-16T22:32:27.581Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116223121-e6bdc211",
+    "tsCreated": "2026-11-16T22:31:21.958Z",
+    "tsUpdated": "2026-11-16T22:32:27.581Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116223114-f874bf15",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116222439-383332f66a46ab73",
+      "qitem-20261116222659-1387b844",
+      "qitem-20261116222714-63ed94ee",
+      "qitem-20261116222918-751b4822",
+      "qitem-20261116222940-067e1c21",
+      "qitem-20261116223114-f874bf15"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of c211",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T22:31:27.698Z",
+    "lastNudgeAttempt": "2026-11-16T22:31:22.985Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116223114-f874bf15",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 257,
+        "at": "2026-11-16T22:31:21.959Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116223114-f874bf15",
+    "tsCreated": "2026-11-16T22:31:14.409Z",
+    "tsUpdated": "2026-11-16T22:31:21.958Z",
+    "sourceSession": "dev-b2@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261116222940-067e1c21",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116222439-383332f66a46ab73",
+      "qitem-20261116222659-1387b844",
+      "qitem-20261116222714-63ed94ee",
+      "qitem-20261116222918-751b4822",
+      "qitem-20261116222940-067e1c21"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of bf15",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T22:31:15.487Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116222940-067e1c21",
+      "owner": "dev-b2@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 255,
+        "at": "2026-11-16T22:31:14.409Z"
+      },
+      "liveness": {
+        "subject": "dev-b2@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b2@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116222940-067e1c21",
+    "tsCreated": "2026-11-16T22:29:40.746Z",
+    "tsUpdated": "2026-11-16T22:31:14.409Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b2@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116222918-751b4822",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116222439-383332f66a46ab73",
+      "qitem-20261116222659-1387b844",
+      "qitem-20261116222714-63ed94ee",
+      "qitem-20261116222918-751b4822"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 1c21",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T22:29:45.969Z",
+    "lastNudgeAttempt": "2026-11-16T22:29:42.162Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116222918-751b4822",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 252,
+        "at": "2026-11-16T22:29:40.747Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116222918-751b4822",
+    "tsCreated": "2026-11-16T22:29:18.468Z",
+    "tsUpdated": "2026-11-16T22:29:40.746Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "dev-b2@denkeeper",
+    "handedOffFrom": "qitem-20261116222714-63ed94ee",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116222439-383332f66a46ab73",
+      "qitem-20261116222659-1387b844",
+      "qitem-20261116222714-63ed94ee"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 4822",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "dev-b2@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T22:29:19.855Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116222714-63ed94ee",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 250,
+        "at": "2026-11-16T22:29:18.469Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116222714-63ed94ee",
+    "tsCreated": "2026-11-16T22:27:14.813Z",
+    "tsUpdated": "2026-11-16T22:29:18.468Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116222659-1387b844",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116222439-383332f66a46ab73",
+      "qitem-20261116222659-1387b844"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 94ee",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T22:27:24.522Z",
+    "lastNudgeAttempt": "2026-11-16T22:27:15.861Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116222659-1387b844",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 247,
+        "at": "2026-11-16T22:27:14.814Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116222659-1387b844",
+    "tsCreated": "2026-11-16T22:26:59.372Z",
+    "tsUpdated": "2026-11-16T22:27:14.813Z",
+    "sourceSession": "dev-b2@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261116222439-383332f66a46ab73",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116222439-383332f66a46ab73"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of b844",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T22:27:00.368Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116222439-383332f66a46ab73",
+      "owner": "dev-b2@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 245,
+        "at": "2026-11-16T22:26:59.373Z"
+      },
+      "liveness": {
+        "subject": "dev-b2@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b2@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116222439-383332f66a46ab73",
+    "tsCreated": "2026-11-16T22:24:39.733Z",
+    "tsUpdated": "2026-11-16T22:26:59.372Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b2@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t5"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of ab73",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T22:24:47.879Z",
+    "lastNudgeAttempt": "2026-11-16T22:24:41.139Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116222438-54228b04ec09716a",
+      "owner": "dev-b1@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 265,
+        "at": "2026-11-16T22:36:31.773Z"
+      },
+      "liveness": {
+        "subject": "dev-b1@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b1@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116222438-54228b04ec09716a",
+    "tsCreated": "2026-11-16T22:24:38.358Z",
+    "tsUpdated": "2026-11-16T22:36:31.772Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b1@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t4"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 716a",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T22:24:51.478Z",
+    "lastNudgeAttempt": "2026-11-16T22:24:39.637Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116220751-2b4533cd",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 237,
+        "at": "2026-11-16T22:12:10.683Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116220751-2b4533cd",
+    "tsCreated": "2026-11-16T22:07:51.698Z",
+    "tsUpdated": "2026-11-16T22:12:10.682Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261116220541-d72ac5d7",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116114205-7a6c007f1c5a38ea",
+      "qitem-20261116114334-67237471",
+      "qitem-20261116114357-713bc15c",
+      "qitem-20261116114831-2f961db8",
+      "qitem-20261116220541-d72ac5d7"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 33cd",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T22:12:10.493Z",
+    "lastNudgeAttempt": "2026-11-16T22:07:52.731Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116220631-1ad6adb2",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 230,
+        "at": "2026-11-16T22:06:40.318Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116220631-1ad6adb2",
+    "tsCreated": "2026-11-16T22:06:31.571Z",
+    "tsUpdated": "2026-11-16T22:06:40.318Z",
+    "sourceSession": "review-design@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2",
+      "review:design",
+      "verdict:approved"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261116220542-b187936ef6382e42",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116220542-b187936ef6382e42"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of adb2",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T22:06:40.144Z",
+    "lastNudgeAttempt": "2026-11-16T22:06:32.613Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116220542-b187936ef6382e42",
+      "owner": "review-design@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 227,
+        "at": "2026-11-16T22:06:31.572Z"
+      },
+      "liveness": {
+        "subject": "review-design@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-design@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116220542-b187936ef6382e42",
+    "tsCreated": "2026-11-16T22:05:42.107Z",
+    "tsUpdated": "2026-11-16T22:06:31.571Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-design@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2",
+      "review:design"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 2e42",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T22:05:47.668Z",
+    "lastNudgeAttempt": "2026-11-16T22:05:43.303Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116220541-d72ac5d7",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 231,
+        "at": "2026-11-16T22:07:51.698Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116220541-d72ac5d7",
+    "tsCreated": "2026-11-16T22:05:41.332Z",
+    "tsUpdated": "2026-11-16T22:07:51.698Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116114831-2f961db8",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116114205-7a6c007f1c5a38ea",
+      "qitem-20261116114334-67237471",
+      "qitem-20261116114357-713bc15c",
+      "qitem-20261116114831-2f961db8"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of c5d7",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T22:05:52.492Z",
+    "lastNudgeAttempt": "2026-11-16T22:05:42.338Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116115516-14d78372",
+      "owner": "orch-plan@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 211,
+        "at": "2026-11-16T11:57:23.200Z"
+      },
+      "liveness": {
+        "subject": "orch-plan@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-plan@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116115516-14d78372",
+    "tsCreated": "2026-11-16T11:55:16.652Z",
+    "tsUpdated": "2026-11-16T11:57:23.198Z",
+    "sourceSession": "daemon@kernel",
+    "destinationSession": "orch-plan@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "wake-escalation",
+      "prompt-destination:orch-lead@denkeeper",
+      "wake-prompt-refusal",
+      "prompt-episode:orch-lead@denkeeper|024b4bee7e1820ea#d944f399-aedb-4187-b85a-2d418f93659a",
+      "prompt-episode:orch-lead@denkeeper|cfeeb2960314e023#0ce5849e-f269-4e13-b23d-88b495ea972b",
+      "recovery-for:qitem-20261116110008-d35caccc",
+      "recovery-for:qitem-recovery-4ff93a68654bed91",
+      "recovery-for:qitem-recovery-c0f4a3f5497d03ba",
+      "recovery-for:qitem-20261116110141-1395ad19",
+      "recovery-for:qitem-recovery-523f76e6a3070bb5"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 8372",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:56:53.725Z",
+    "lastNudgeAttempt": null,
+    "lastNudgeResult": null,
+    "lastNudgeWireResult": null,
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-recovery-523f76e6a3070bb5",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 217,
+        "at": "2026-11-16T22:05:16.629Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-recovery-523f76e6a3070bb5",
+    "tsCreated": "2026-11-16T11:55:16.197Z",
+    "tsUpdated": "2026-11-16T22:05:16.629Z",
+    "sourceSession": "orch-plan@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "stuck-sweep-finding",
+      "stuck-sweep:stalled-after-claim:qitem-20261116110008-d35caccc",
+      "recovery-for:qitem-20261116110008-d35caccc"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 0bb5",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T22:05:03.107Z",
+    "lastNudgeResult": "verified",
+    "lastNudgeWireResult": "verified",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-recovery-c0f4a3f5497d03ba",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 235,
+        "at": "2026-11-16T22:10:16.623Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-recovery-c0f4a3f5497d03ba",
+    "tsCreated": "2026-11-16T11:50:16.212Z",
+    "tsUpdated": "2026-11-16T22:10:16.622Z",
+    "sourceSession": "dev-b1@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "stuck-sweep-finding",
+      "stuck-sweep:undelivered-wake:qitem-20261116114831-2f961db8",
+      "recovery-for:qitem-20261116114831-2f961db8"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 03ba",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T22:05:04.177Z",
+    "lastNudgeResult": "verified",
+    "lastNudgeWireResult": "verified",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-recovery-4ff93a68654bed91",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 216,
+        "at": "2026-11-16T22:05:16.624Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-recovery-4ff93a68654bed91",
+    "tsCreated": "2026-11-16T11:50:16.189Z",
+    "tsUpdated": "2026-11-16T22:05:16.624Z",
+    "sourceSession": "orch-plan@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "stuck-sweep-finding",
+      "stuck-sweep:stalled-after-claim:qitem-20261116110141-1395ad19",
+      "recovery-for:qitem-20261116110141-1395ad19"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of ed91",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T22:05:02.122Z",
+    "lastNudgeResult": "verified",
+    "lastNudgeWireResult": "verified",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116114831-2f961db8",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 218,
+        "at": "2026-11-16T22:05:41.333Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116114831-2f961db8",
+    "tsCreated": "2026-11-16T11:48:31.440Z",
+    "tsUpdated": "2026-11-16T22:05:41.332Z",
+    "sourceSession": "dev-b1@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261116114357-713bc15c",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116114205-7a6c007f1c5a38ea",
+      "qitem-20261116114334-67237471",
+      "qitem-20261116114357-713bc15c"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 1db8",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T22:05:01.136Z",
+    "lastNudgeResult": "verified",
+    "lastNudgeWireResult": "verified",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116114423-823a0496",
+      "owner": "dev-b1@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 197,
+        "at": "2026-11-16T11:48:35.908Z"
+      },
+      "liveness": {
+        "subject": "dev-b1@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b1@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116114423-823a0496",
+    "tsCreated": "2026-11-16T11:44:23.007Z",
+    "tsUpdated": "2026-11-16T11:48:35.908Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b1@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261116114356-b869b313",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb",
+      "qitem-20261116111815-901de4a1",
+      "qitem-20261116111931-15567298",
+      "qitem-20261116112448-2493ed72",
+      "qitem-20261116112508-b04ad26b",
+      "qitem-20261116112946-579d5cc5",
+      "qitem-20261116113002-6bf0090a",
+      "qitem-20261116113150-8c91f5ae",
+      "qitem-20261116113238-d5d968ba",
+      "qitem-20261116114129-e3cd8571",
+      "qitem-20261116114159-36443d34",
+      "qitem-20261116114356-b869b313"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 0496",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "superseded",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:44:39.517Z",
+    "lastNudgeAttempt": "2026-11-16T11:44:24.051Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116114357-713bc15c",
+      "owner": "dev-b1@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 193,
+        "at": "2026-11-16T11:48:31.440Z"
+      },
+      "liveness": {
+        "subject": "dev-b1@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b1@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116114357-713bc15c",
+    "tsCreated": "2026-11-16T11:43:57.948Z",
+    "tsUpdated": "2026-11-16T11:48:31.440Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b1@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116114334-67237471",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116114205-7a6c007f1c5a38ea",
+      "qitem-20261116114334-67237471"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of c15c",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:44:02.628Z",
+    "lastNudgeAttempt": "2026-11-16T11:43:58.896Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116114356-b869b313",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 189,
+        "at": "2026-11-16T11:44:23.007Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116114356-b869b313",
+    "tsCreated": "2026-11-16T11:43:56.051Z",
+    "tsUpdated": "2026-11-16T11:44:23.007Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2",
+      "review:security",
+      "verdict:approve-with-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "dev-b1@denkeeper",
+    "handedOffFrom": "qitem-20261116114159-36443d34",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb",
+      "qitem-20261116111815-901de4a1",
+      "qitem-20261116111931-15567298",
+      "qitem-20261116112448-2493ed72",
+      "qitem-20261116112508-b04ad26b",
+      "qitem-20261116112946-579d5cc5",
+      "qitem-20261116113002-6bf0090a",
+      "qitem-20261116113150-8c91f5ae",
+      "qitem-20261116113238-d5d968ba",
+      "qitem-20261116114129-e3cd8571",
+      "qitem-20261116114159-36443d34"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of b313",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "dev-b1@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:43:57.141Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116114334-67237471",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 185,
+        "at": "2026-11-16T11:43:57.949Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116114334-67237471",
+    "tsCreated": "2026-11-16T11:43:34.668Z",
+    "tsUpdated": "2026-11-16T11:43:57.948Z",
+    "sourceSession": "review-design@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2",
+      "review:design",
+      "verdict:changes-requested"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "dev-b1@denkeeper",
+    "handedOffFrom": "qitem-20261116114205-7a6c007f1c5a38ea",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116114205-7a6c007f1c5a38ea"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 7471",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "dev-b1@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:43:35.861Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116114220-0ace21be",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 178,
+        "at": "2026-11-16T11:42:38.979Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116114220-0ace21be",
+    "tsCreated": "2026-11-16T11:42:20.565Z",
+    "tsUpdated": "2026-11-16T11:42:38.979Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t3",
+      "review:security",
+      "verdict:approve"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261116114111-4fae4a0b",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116113239-50617c940798858a",
+      "qitem-20261116113428-ef27ced0",
+      "qitem-20261116113728-9d3c64e2",
+      "qitem-20261116113853-640a27f4",
+      "qitem-20261116113910-c37e0e73",
+      "qitem-20261116114056-5f49c5f0",
+      "qitem-20261116114111-4fae4a0b"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 21be",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:42:38.767Z",
+    "lastNudgeAttempt": "2026-11-16T11:42:21.704Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116114205-7a6c007f1c5a38ea",
+      "owner": "review-design@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 179,
+        "at": "2026-11-16T11:43:34.669Z"
+      },
+      "liveness": {
+        "subject": "review-design@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-design@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116114205-7a6c007f1c5a38ea",
+    "tsCreated": "2026-11-16T11:42:05.469Z",
+    "tsUpdated": "2026-11-16T11:43:34.668Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-design@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2",
+      "review:design"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 38ea",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:42:13.460Z",
+    "lastNudgeAttempt": "2026-11-16T11:42:06.858Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116114159-36443d34",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 187,
+        "at": "2026-11-16T11:43:58.968Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116114159-36443d34",
+    "tsCreated": "2026-11-16T11:41:59.630Z",
+    "tsUpdated": "2026-11-16T11:43:56.051Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116114129-e3cd8571",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb",
+      "qitem-20261116111815-901de4a1",
+      "qitem-20261116111931-15567298",
+      "qitem-20261116112448-2493ed72",
+      "qitem-20261116112508-b04ad26b",
+      "qitem-20261116112946-579d5cc5",
+      "qitem-20261116113002-6bf0090a",
+      "qitem-20261116113150-8c91f5ae",
+      "qitem-20261116113238-d5d968ba",
+      "qitem-20261116114129-e3cd8571"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 3d34",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:42:20.796Z",
+    "lastNudgeAttempt": "2026-11-16T11:42:01.136Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116114129-e3cd8571",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 169,
+        "at": "2026-11-16T11:41:59.630Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116114129-e3cd8571",
+    "tsCreated": "2026-11-16T11:41:29.541Z",
+    "tsUpdated": "2026-11-16T11:41:59.630Z",
+    "sourceSession": "dev-b1@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261116113238-d5d968ba",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb",
+      "qitem-20261116111815-901de4a1",
+      "qitem-20261116111931-15567298",
+      "qitem-20261116112448-2493ed72",
+      "qitem-20261116112508-b04ad26b",
+      "qitem-20261116112946-579d5cc5",
+      "qitem-20261116113002-6bf0090a",
+      "qitem-20261116113150-8c91f5ae",
+      "qitem-20261116113238-d5d968ba"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 8571",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:41:30.606Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116114111-4fae4a0b",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 174,
+        "at": "2026-11-16T11:42:20.565Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116114111-4fae4a0b",
+    "tsCreated": "2026-11-16T11:41:11.805Z",
+    "tsUpdated": "2026-11-16T11:42:20.565Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t3",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116114056-5f49c5f0",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116113239-50617c940798858a",
+      "qitem-20261116113428-ef27ced0",
+      "qitem-20261116113728-9d3c64e2",
+      "qitem-20261116113853-640a27f4",
+      "qitem-20261116113910-c37e0e73",
+      "qitem-20261116114056-5f49c5f0"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 4a0b",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:41:19.929Z",
+    "lastNudgeAttempt": "2026-11-16T11:41:13.112Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116114056-5f49c5f0",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 162,
+        "at": "2026-11-16T11:41:11.806Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116114056-5f49c5f0",
+    "tsCreated": "2026-11-16T11:40:56.640Z",
+    "tsUpdated": "2026-11-16T11:41:11.805Z",
+    "sourceSession": "dev-b2@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t3",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261116113910-c37e0e73",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116113239-50617c940798858a",
+      "qitem-20261116113428-ef27ced0",
+      "qitem-20261116113728-9d3c64e2",
+      "qitem-20261116113853-640a27f4",
+      "qitem-20261116113910-c37e0e73"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of c5f0",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:40:57.810Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116113910-c37e0e73",
+      "owner": "dev-b2@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 160,
+        "at": "2026-11-16T11:40:56.642Z"
+      },
+      "liveness": {
+        "subject": "dev-b2@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b2@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116113910-c37e0e73",
+    "tsCreated": "2026-11-16T11:39:10.383Z",
+    "tsUpdated": "2026-11-16T11:40:56.640Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b2@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t3",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116113853-640a27f4",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116113239-50617c940798858a",
+      "qitem-20261116113428-ef27ced0",
+      "qitem-20261116113728-9d3c64e2",
+      "qitem-20261116113853-640a27f4"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 0e73",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:39:15.002Z",
+    "lastNudgeAttempt": "2026-11-16T11:39:11.549Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116113853-640a27f4",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 157,
+        "at": "2026-11-16T11:39:10.383Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116113853-640a27f4",
+    "tsCreated": "2026-11-16T11:38:53.071Z",
+    "tsUpdated": "2026-11-16T11:39:10.383Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t3",
+      "review:security",
+      "verdict:approve-with-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "dev-b2@denkeeper",
+    "handedOffFrom": "qitem-20261116113728-9d3c64e2",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116113239-50617c940798858a",
+      "qitem-20261116113428-ef27ced0",
+      "qitem-20261116113728-9d3c64e2"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 27f4",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "dev-b2@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:38:54.090Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116113728-9d3c64e2",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 155,
+        "at": "2026-11-16T11:38:53.072Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116113728-9d3c64e2",
+    "tsCreated": "2026-11-16T11:37:28.862Z",
+    "tsUpdated": "2026-11-16T11:38:53.071Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t3",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116113428-ef27ced0",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116113239-50617c940798858a",
+      "qitem-20261116113428-ef27ced0"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 64e2",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:37:33.620Z",
+    "lastNudgeAttempt": "2026-11-16T11:37:30.078Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116113428-ef27ced0",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 150,
+        "at": "2026-11-16T11:37:28.862Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116113428-ef27ced0",
+    "tsCreated": "2026-11-16T11:34:28.317Z",
+    "tsUpdated": "2026-11-16T11:37:28.862Z",
+    "sourceSession": "dev-b2@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t3"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261116113239-50617c940798858a",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116113239-50617c940798858a"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of ced0",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:34:29.541Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116113259-52682a15",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 147,
+        "at": "2026-11-16T11:33:22.990Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116113259-52682a15",
+    "tsCreated": "2026-11-16T11:32:59.527Z",
+    "tsUpdated": "2026-11-16T11:33:22.990Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:run-javascript-arg-shapes",
+      "issue:607",
+      "task:t1",
+      "review:security",
+      "verdict:approve"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261116113039-04a0502c",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110510-5cf14cd5ec4a7525",
+      "qitem-20261116111831-c974da95",
+      "qitem-20261116111931-bc8cfcc0",
+      "qitem-20261116112714-8dab1e32",
+      "qitem-20261116112731-b929a308",
+      "qitem-20261116113024-4d3908e2",
+      "qitem-20261116113039-04a0502c"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 2a15",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:33:18.230Z",
+    "lastNudgeAttempt": "2026-11-16T11:33:00.553Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116113239-50617c940798858a",
+      "owner": "dev-b2@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 148,
+        "at": "2026-11-16T11:34:28.317Z"
+      },
+      "liveness": {
+        "subject": "dev-b2@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b2@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116113239-50617c940798858a",
+    "tsCreated": "2026-11-16T11:32:39.987Z",
+    "tsUpdated": "2026-11-16T11:34:28.317Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b2@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t3"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 858a",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:32:45.516Z",
+    "lastNudgeAttempt": "2026-11-16T11:32:41.673Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116113238-d5d968ba",
+      "owner": "dev-b1@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 165,
+        "at": "2026-11-16T11:41:29.542Z"
+      },
+      "liveness": {
+        "subject": "dev-b1@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b1@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116113238-d5d968ba",
+    "tsCreated": "2026-11-16T11:32:38.251Z",
+    "tsUpdated": "2026-11-16T11:41:29.541Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b1@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t2"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116113150-8c91f5ae",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb",
+      "qitem-20261116111815-901de4a1",
+      "qitem-20261116111931-15567298",
+      "qitem-20261116112448-2493ed72",
+      "qitem-20261116112508-b04ad26b",
+      "qitem-20261116112946-579d5cc5",
+      "qitem-20261116113002-6bf0090a",
+      "qitem-20261116113150-8c91f5ae"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 68ba",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:32:46.966Z",
+    "lastNudgeAttempt": "2026-11-16T11:32:39.576Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116113150-8c91f5ae",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 134,
+        "at": "2026-11-16T11:32:38.251Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116113150-8c91f5ae",
+    "tsCreated": "2026-11-16T11:31:50.506Z",
+    "tsUpdated": "2026-11-16T11:32:38.251Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t1",
+      "review:security",
+      "verdict:approve"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "dev-b1@denkeeper",
+    "handedOffFrom": "qitem-20261116113002-6bf0090a",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb",
+      "qitem-20261116111815-901de4a1",
+      "qitem-20261116111931-15567298",
+      "qitem-20261116112448-2493ed72",
+      "qitem-20261116112508-b04ad26b",
+      "qitem-20261116112946-579d5cc5",
+      "qitem-20261116113002-6bf0090a"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of f5ae",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "dev-b1@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:31:51.507Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116113039-04a0502c",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 140,
+        "at": "2026-11-16T11:32:59.527Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116113039-04a0502c",
+    "tsCreated": "2026-11-16T11:30:39.889Z",
+    "tsUpdated": "2026-11-16T11:32:59.527Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:run-javascript-arg-shapes",
+      "issue:607",
+      "task:t1",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116113024-4d3908e2",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110510-5cf14cd5ec4a7525",
+      "qitem-20261116111831-c974da95",
+      "qitem-20261116111931-bc8cfcc0",
+      "qitem-20261116112714-8dab1e32",
+      "qitem-20261116112731-b929a308",
+      "qitem-20261116113024-4d3908e2"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 502c",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:31:50.691Z",
+    "lastNudgeAttempt": "2026-11-16T11:30:40.993Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116113024-4d3908e2",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 126,
+        "at": "2026-11-16T11:30:39.889Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116113024-4d3908e2",
+    "tsCreated": "2026-11-16T11:30:24.671Z",
+    "tsUpdated": "2026-11-16T11:30:39.889Z",
+    "sourceSession": "dev-b2@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:run-javascript-arg-shapes",
+      "issue:607",
+      "task:t1",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261116112731-b929a308",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110510-5cf14cd5ec4a7525",
+      "qitem-20261116111831-c974da95",
+      "qitem-20261116111931-bc8cfcc0",
+      "qitem-20261116112714-8dab1e32",
+      "qitem-20261116112731-b929a308"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 08e2",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:30:25.749Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116113002-6bf0090a",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 129,
+        "at": "2026-11-16T11:31:50.507Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116113002-6bf0090a",
+    "tsCreated": "2026-11-16T11:30:02.042Z",
+    "tsUpdated": "2026-11-16T11:31:50.506Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t1",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116112946-579d5cc5",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb",
+      "qitem-20261116111815-901de4a1",
+      "qitem-20261116111931-15567298",
+      "qitem-20261116112448-2493ed72",
+      "qitem-20261116112508-b04ad26b",
+      "qitem-20261116112946-579d5cc5"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 090a",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:30:08.108Z",
+    "lastNudgeAttempt": "2026-11-16T11:30:03.250Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116112946-579d5cc5",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 118,
+        "at": "2026-11-16T11:30:02.043Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116112946-579d5cc5",
+    "tsCreated": "2026-11-16T11:29:46.271Z",
+    "tsUpdated": "2026-11-16T11:30:02.042Z",
+    "sourceSession": "dev-b1@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t1"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261116112508-b04ad26b",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb",
+      "qitem-20261116111815-901de4a1",
+      "qitem-20261116111931-15567298",
+      "qitem-20261116112448-2493ed72",
+      "qitem-20261116112508-b04ad26b"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 5cc5",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:29:47.474Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116112731-b929a308",
+      "owner": "dev-b2@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 122,
+        "at": "2026-11-16T11:30:24.672Z"
+      },
+      "liveness": {
+        "subject": "dev-b2@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b2@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116112731-b929a308",
+    "tsCreated": "2026-11-16T11:27:31.401Z",
+    "tsUpdated": "2026-11-16T11:30:24.671Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b2@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:run-javascript-arg-shapes",
+      "issue:607",
+      "task:t1",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116112714-8dab1e32",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110510-5cf14cd5ec4a7525",
+      "qitem-20261116111831-c974da95",
+      "qitem-20261116111931-bc8cfcc0",
+      "qitem-20261116112714-8dab1e32"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of a308",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:27:35.449Z",
+    "lastNudgeAttempt": "2026-11-16T11:27:32.506Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116112714-8dab1e32",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 110,
+        "at": "2026-11-16T11:27:31.402Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116112714-8dab1e32",
+    "tsCreated": "2026-11-16T11:27:14.788Z",
+    "tsUpdated": "2026-11-16T11:27:31.401Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:run-javascript-arg-shapes",
+      "issue:607",
+      "task:t1",
+      "review:security",
+      "verdict:approve-with-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "dev-b2@denkeeper",
+    "handedOffFrom": "qitem-20261116111931-bc8cfcc0",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110510-5cf14cd5ec4a7525",
+      "qitem-20261116111831-c974da95",
+      "qitem-20261116111931-bc8cfcc0"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 1e32",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "dev-b2@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:27:15.842Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116112508-b04ad26b",
+      "owner": "dev-b1@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 114,
+        "at": "2026-11-16T11:29:46.272Z"
+      },
+      "liveness": {
+        "subject": "dev-b1@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b1@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116112508-b04ad26b",
+    "tsCreated": "2026-11-16T11:25:08.568Z",
+    "tsUpdated": "2026-11-16T11:29:46.271Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b1@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t1",
+      "review-fix"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116112448-2493ed72",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb",
+      "qitem-20261116111815-901de4a1",
+      "qitem-20261116111931-15567298",
+      "qitem-20261116112448-2493ed72"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of d26b",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:25:13.093Z",
+    "lastNudgeAttempt": "2026-11-16T11:25:09.892Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116112448-2493ed72",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 102,
+        "at": "2026-11-16T11:25:08.568Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116112448-2493ed72",
+    "tsCreated": "2026-11-16T11:24:48.382Z",
+    "tsUpdated": "2026-11-16T11:25:08.568Z",
+    "sourceSession": "review-security@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t1",
+      "review:security",
+      "verdict:changes-requested"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "dev-b1@denkeeper",
+    "handedOffFrom": "qitem-20261116111931-15567298",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb",
+      "qitem-20261116111815-901de4a1",
+      "qitem-20261116111931-15567298"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of ed72",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "dev-b1@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:24:49.577Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116111931-bc8cfcc0",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 106,
+        "at": "2026-11-16T11:27:14.788Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116111931-bc8cfcc0",
+    "tsCreated": "2026-11-16T11:19:31.740Z",
+    "tsUpdated": "2026-11-16T11:27:14.788Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:run-javascript-arg-shapes",
+      "issue:607",
+      "task:t1",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116111831-c974da95",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110510-5cf14cd5ec4a7525",
+      "qitem-20261116111831-c974da95"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of fcc0",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:24:52.808Z",
+    "lastNudgeAttempt": "2026-11-16T11:19:33.482Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116111931-15567298",
+      "owner": "review-security@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 97,
+        "at": "2026-11-16T11:24:48.383Z"
+      },
+      "liveness": {
+        "subject": "review-security@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "review-security@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116111931-15567298",
+    "tsCreated": "2026-11-16T11:19:31.131Z",
+    "tsUpdated": "2026-11-16T11:24:48.382Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "review-security@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t1",
+      "review:security"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": "qitem-20261116111815-901de4a1",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb",
+      "qitem-20261116111815-901de4a1"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of 7298",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:19:39.755Z",
+    "lastNudgeAttempt": "2026-11-16T11:19:32.346Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116111831-c974da95",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 90,
+        "at": "2026-11-16T11:19:31.740Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116111831-c974da95",
+    "tsCreated": "2026-11-16T11:18:31.833Z",
+    "tsUpdated": "2026-11-16T11:19:31.740Z",
+    "sourceSession": "dev-b2@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:run-javascript-arg-shapes",
+      "issue:607",
+      "task:t1"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261116110510-5cf14cd5ec4a7525",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110510-5cf14cd5ec4a7525"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of da95",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:18:48.522Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (handed-off)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116111815-901de4a1",
+      "owner": "orch-lead@denkeeper",
+      "state": "handed-off",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 95,
+        "at": "2026-11-16T11:21:09.731Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116111815-901de4a1",
+    "tsCreated": "2026-11-16T11:18:15.121Z",
+    "tsUpdated": "2026-11-16T11:19:31.131Z",
+    "sourceSession": "dev-b1@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "handed-off",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t1"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "review-security@denkeeper",
+    "handedOffFrom": "qitem-20261116110030-ea889a43205dc7cb",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116110030-ea889a43205dc7cb"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of e4a1",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "review-security@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:18:17.152Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-recovery-f329fc26ee9abc20",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 79,
+        "at": "2026-11-16T11:15:16.153Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-recovery-f329fc26ee9abc20",
+    "tsCreated": "2026-11-16T11:10:16.143Z",
+    "tsUpdated": "2026-11-16T11:15:16.153Z",
+    "sourceSession": "orch-plan@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "stuck-sweep-finding",
+      "stuck-sweep:stalled-after-claim:qitem-20261116110141-1395ad19",
+      "recovery-for:qitem-20261116110141-1395ad19"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of bc20",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:10:20.447Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-recovery-489298fb09952adc",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 78,
+        "at": "2026-11-16T11:15:16.137Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-recovery-489298fb09952adc",
+    "tsCreated": "2026-11-16T11:10:16.114Z",
+    "tsUpdated": "2026-11-16T11:15:16.134Z",
+    "sourceSession": "orch-plan@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "stuck-sweep-finding",
+      "stuck-sweep:stalled-after-claim:qitem-20261116110008-d35caccc",
+      "recovery-for:qitem-20261116110008-d35caccc"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 2adc",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-16T11:10:18.309Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116110510-5cf14cd5ec4a7525",
+      "owner": "dev-b2@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 84,
+        "at": "2026-11-16T11:18:31.834Z"
+      },
+      "liveness": {
+        "subject": "dev-b2@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b2@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116110510-5cf14cd5ec4a7525",
+    "tsCreated": "2026-11-16T11:05:10.061Z",
+    "tsUpdated": "2026-11-16T11:18:31.833Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b2@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:run-javascript-arg-shapes",
+      "issue:607",
+      "task:t1"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 7525",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:05:20.580Z",
+    "lastNudgeAttempt": "2026-11-16T11:05:11.213Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116110141-1395ad19",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 224,
+        "at": "2026-11-16T22:05:53.088Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116110141-1395ad19",
+    "tsCreated": "2026-11-16T11:01:41.221Z",
+    "tsUpdated": "2026-11-16T22:05:53.087Z",
+    "sourceSession": "orch-plan@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:run-javascript-arg-shapes",
+      "issue:607"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261116105713-c606c1109795fd1e",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116105713-c606c1109795fd1e"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of ad19",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:33:18.644Z",
+    "lastNudgeAttempt": "2026-11-16T11:33:00.550Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116110030-ea889a43205dc7cb",
+      "owner": "dev-b1@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 80,
+        "at": "2026-11-16T11:18:15.122Z"
+      },
+      "liveness": {
+        "subject": "dev-b1@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "dev-b1@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116110030-ea889a43205dc7cb",
+    "tsCreated": "2026-11-16T11:00:30.685Z",
+    "tsUpdated": "2026-11-16T11:18:15.121Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "dev-b1@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589",
+      "task:t1"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of c7cb",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:00:36.977Z",
+    "lastNudgeAttempt": "2026-11-16T11:00:31.784Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116110008-d35caccc",
+      "owner": "orch-lead@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 420,
+        "at": "2026-11-18T00:57:57.550Z"
+      },
+      "liveness": {
+        "subject": "orch-lead@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-lead@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116110008-d35caccc",
+    "tsCreated": "2026-11-16T11:00:08.380Z",
+    "tsUpdated": "2026-11-18T00:57:57.548Z",
+    "sourceSession": "orch-plan@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589"
+    ],
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": "qitem-20261116105712-c7578c1468797141",
+    "expiresAt": null,
+    "chainOfRecord": [
+      "qitem-20261116105712-c7578c1468797141"
+    ],
+    "body": "Body text.",
+    "summary": "Summary of accc",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-18T00:21:03.471Z",
+    "lastNudgeAttempt": "2026-11-18T00:19:00.765Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116105713-c606c1109795fd1e",
+      "owner": "orch-plan@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 66,
+        "at": "2026-11-16T11:01:41.221Z"
+      },
+      "liveness": {
+        "subject": "orch-plan@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-plan@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116105713-c606c1109795fd1e",
+    "tsCreated": "2026-11-16T10:57:13.286Z",
+    "tsUpdated": "2026-11-16T11:01:41.221Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "orch-plan@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:run-javascript-arg-shapes",
+      "issue:607"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of fd1e",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T11:00:08.759Z",
+    "lastNudgeAttempt": "2026-11-16T10:57:15.061Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261116105712-c7578c1468797141",
+      "owner": "orch-plan@denkeeper",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 60,
+        "at": "2026-11-16T11:00:08.381Z"
+      },
+      "liveness": {
+        "subject": "orch-plan@denkeeper",
+        "activity": "idle-at-prompt",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "oracle"
+      },
+      "nextBackstop": {
+        "owner": "orch-plan@denkeeper",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261116105712-c7578c1468797141",
+    "tsCreated": "2026-11-16T10:57:12.741Z",
+    "tsUpdated": "2026-11-16T11:00:08.380Z",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "orch-plan@denkeeper",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "goal:web-fetch-ssrf",
+      "issue:589"
+    ],
+    "blockedOn": null,
+    "handedOffTo": "orch-lead@denkeeper",
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Body text.",
+    "summary": "Summary of 7141",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "handed_off_to",
+    "closureTarget": "orch-lead@denkeeper",
+    "closureRequiredAt": null,
+    "claimedAt": "2026-11-16T10:57:21.219Z",
+    "lastNudgeAttempt": "2026-11-16T10:57:13.921Z",
+    "lastNudgeResult": "claimed",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  }
+]

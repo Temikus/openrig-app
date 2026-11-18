@@ -54,6 +54,10 @@ record-fixtures:
       id=$(jq -r --arg n "$rig" '.[] | select(.name == $n) | .rigId' {{ fixtures }}/ps.json)
       curl -sf "{{ daemon }}/api/rigs/$id/graph" | jq "$scrub" > "{{ fixtures }}/graph-$rig.json"
     done
+    # Queue rows carry agents' free text; keep the structure, replace the words.
+    text='map(. + {summary: ("Summary of " + .qitemId[-4:]), body: "Body text.", resolution: (if .resolution then "Resolution text." else null end),
+        humanDetail: null, humanIntent: null, humanAnswers: null, delegatedDecision: null, evidenceRef: null})'
+    curl -sf "{{ daemon }}/api/queue/list?rig=denkeeper&limit=500" | jq "$text" > {{ fixtures }}/queue-denkeeper.json
     echo "Recorded. Review the diff before committing."
 
 # Remove build output

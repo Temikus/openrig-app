@@ -128,8 +128,7 @@ struct RigDetail: View {
                     case .canvas:
                         CanvasView()
                     case .queue:
-                        ContentUnavailableView(
-                            "Queue board", systemImage: "rectangle.split.3x1", description: Text("Coming in M2."))
+                        QueueBoardView()
                     case .terminals:
                         ContentUnavailableView("Terminals", systemImage: "terminal", description: Text("Coming in M3."))
                     }
@@ -163,12 +162,30 @@ struct InspectorPanel: View {
     @Environment(SelectionStore.self) private var selection
 
     var body: some View {
-        if let rig = store.rig, let graph = rig.graph, let seat = rig.seat(selection.seatID) {
-            SeatInspector(seat: seat, graph: graph)
-                .id(seat.id)
-        } else {
-            ContentUnavailableView(
-                "No selection", systemImage: "cursorarrow.click", description: Text("Select a seat."))
+        Group {
+            if let rig = store.rig {
+                content(rig).environment(rig)
+            } else {
+                empty
+            }
         }
+    }
+
+    // The Queue board inspects qitems; the canvas inspects whatever was selected last.
+    @ViewBuilder private func content(_ rig: RigStore) -> some View {
+        let wantsItem = store.viewMode == .queue || selection.inspecting == .qitem
+        if wantsItem, let item = rig.item(selection.qitemID) {
+            QItemInspector(item: item).id(item.id)
+        } else if let graph = rig.graph, let seat = rig.seat(selection.seatID) {
+            SeatInspector(seat: seat, graph: graph).id(seat.id)
+        } else {
+            empty
+        }
+    }
+
+    private var empty: some View {
+        ContentUnavailableView(
+            "No selection", systemImage: "cursorarrow.click",
+            description: Text(store.viewMode == .queue ? "Select a qitem." : "Select a seat."))
     }
 }
