@@ -123,7 +123,8 @@ struct CanvasContent: View {
             WireLayer(routes: routes, selectedQItem: selection.qitemID)
             ForEach(chips, id: \.wire.id) { chip in
                 WireChip(
-                    item: chip.item, kind: chip.wire.kind, isSelected: chip.item.id == selection.qitemID
+                    item: chip.item, kind: chip.wire.kind, label: chip.label,
+                    isSelected: chip.wire.kind != .next && chip.item.id == selection.qitemID
                 ) { selection.select(qitem: chip.item.id) }
                 .position(chip.anchor)
             }
@@ -150,12 +151,19 @@ struct CanvasContent: View {
         .onTapGesture { selection.clear() }
     }
 
-    /// One label per work wire (not past hops), placed clear of the seats.
-    private var chips: [(wire: Wire, item: QItem, anchor: CGPoint)] {
+    /// One label per work wire and next hop (not past hops), placed clear of the seats.
+    private var chips: [(wire: Wire, item: QItem, label: String?, anchor: CGPoint)] {
         let seats = Array(layout.seats.values)
         return routes.wires.compactMap { wire in
-            guard wire.id.hasPrefix("q:"), let item = rig.item(String(wire.id.dropFirst(2))) else { return nil }
-            return (wire, item, chipAnchor(for: wire, avoiding: seats))
+            if wire.id.hasPrefix("q:"), let item = rig.item(String(wire.id.dropFirst(2))) {
+                return (wire, item, nil, chipAnchor(for: wire, avoiding: seats))
+            }
+            if wire.id.hasPrefix("next:"), let item = rig.item(String(wire.id.dropFirst(5))),
+                let hop = rig.nextHop(for: item.id)
+            {
+                return (wire, item, "next: \(hop.nextStepID)", chipAnchor(for: wire, avoiding: seats))
+            }
+            return nil
         }
     }
 

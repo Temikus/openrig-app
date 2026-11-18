@@ -63,3 +63,21 @@ import Testing
         #expect(!layout.seats.values.contains { $0.insetBy(dx: -4, dy: -4).contains(chip) })
     }
 }
+
+@Suite struct NextHopWireTests {
+    let graph = RigGraph(seats: [
+        Seat(id: "lead", logicalId: "lead", sessionName: "lead@r"),
+        Seat(id: "b1", logicalId: "b1", sessionName: "b1@r"),
+    ])
+
+    @Test func nextHopDrawsFromTheCurrentOwner() {
+        let rows = [item("q1", .inProgress, from: "elsewhere@x", to: "lead@r")]
+        let hop = NextHop(qitemID: "q1", stepID: "plan", nextStepID: "build", owner: "b1@r")
+        let next = workWireRequests(rows, graph: graph, chain: nil, next: hop).filter { $0.kind == .next }
+        #expect(next.map(\.id) == ["next:q1"])
+        #expect(next.map { "\($0.source)>\($0.target)" } == ["lead>b1"])
+
+        let same = NextHop(qitemID: "q1", stepID: "plan", nextStepID: "check", owner: "lead@r")
+        #expect(workWireRequests(rows, graph: graph, chain: nil, next: same).allSatisfy { $0.kind != .next })
+    }
+}

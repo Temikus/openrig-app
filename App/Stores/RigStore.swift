@@ -22,6 +22,8 @@ final class RigStore {
     private(set) var layout: CanvasLayout?
     /// Each Claude seat's permission stop, refreshed with the graph.
     private(set) var stops: [Seat.ID: PermissionStop] = [:]
+    /// Active workflow instances bound to this rig; they give a packet's planned next hop.
+    private(set) var workflows: [WorkflowInstance] = []
     let terminals = TerminalStore()
     #if DEBUG
         private let launched = Date.now
@@ -129,11 +131,30 @@ final class RigStore {
                 recompute()
             }
             await refreshStops(fresh)
+            await refreshWorkflows()
         } catch let error as DaemonError {
             self.error = error.userMessage
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    private func refreshWorkflows() async {
+        // Older daemons have no workflow route; then there is simply no next hop.
+        let all = (try? await client.workflows()) ?? []
+        let mine = all.filter { $0.status == "active" && ($0.boundRig == nil || $0.boundRig == rigName) }
+        if mine != workflows {
+            workflows = mine
+            routeCache = [:]
+        }
+    }
+
+    /// Where the qitem goes when its owner closes it normally, if it is a workflow packet.
+    func nextHop(for qitemID: QItem.ID) -> NextHop? {
+        let runtimes = Dictionary(
+            (graph?.seats ?? []).compactMap { seat in seat.sessionName.map { ($0, seat.runtime ?? "") } },
+            uniquingKeysWith: { a, _ in a })
+        return RigDomain.nextHop(for: qitemID, in: workflows, runtimeOf: { runtimes[$0] })
     }
 
     /// Coalesces bursts of events into one fetch.
@@ -152,14 +173,16 @@ final class RigStore {
         recompute()
     }
 
-    /// Spec edges, active work, and past hops of the selected item's chain.
+    /// Spec edges, active work, and the selected item's past hops and planned next hop.
     func routes(selected: QItem.ID?) -> RouteResult {
         let key = selected ?? ""
         if let cached = routeCache[key] { return cached }
         guard let graph, let layout else { return RouteResult() }
         let chain = selected.map { chains.chain(for: $0) }
+        let next = selected.flatMap(nextHop(for:))
         let result = routeCanvas(
-            layout, spec: specWireRequests(for: graph), work: workWireRequests(items, graph: graph, chain: chain))
+            layout, spec: specWireRequests(for: graph),
+            work: workWireRequests(items, graph: graph, chain: chain, next: next))
         routeCache[key] = result
         return result
     }

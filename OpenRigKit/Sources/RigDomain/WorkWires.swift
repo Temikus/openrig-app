@@ -2,9 +2,11 @@ import CoreGraphics
 import RigCanvasLayout
 import RigModel
 
-/// Wires for work in flight: one per active qitem between two seats of this rig,
-/// plus past hops along the selected item's chain. Ids are `q:<qitem>` and `past:<qitem>`.
-public func workWireRequests(_ items: [QItem], graph: RigGraph, chain: Chain?) -> [WireRequest] {
+/// Wires for work in flight: one per active qitem between two seats of this rig, plus past hops along
+/// the selected item's chain and its planned next hop. Ids are `q:<qitem>`, `past:<qitem>` and `next:<qitem>`.
+public func workWireRequests(_ items: [QItem], graph: RigGraph, chain: Chain?, next: NextHop? = nil)
+    -> [WireRequest]
+{
     var seatBySession: [String: Seat.ID] = [:]
     for seat in graph.seats {
         if let name = seat.sessionName { seatBySession[name] = seat.id }
@@ -31,6 +33,12 @@ public func workWireRequests(_ items: [QItem], graph: RigGraph, chain: Chain?) -
             else { continue }
             requests.append(WireRequest(id: "past:\(to.id)", source: source, target: target, kind: .past))
         }
+    }
+
+    if let next, let current = items.first(where: { $0.id == next.qitemID }),
+        let source = seatBySession[current.destination], let target = seatBySession[next.owner], source != target
+    {
+        requests.append(WireRequest(id: "next:\(next.qitemID)", source: source, target: target, kind: .next))
     }
     return requests
 }

@@ -1,0 +1,110 @@
+[
+  {
+    "instanceId": "01M7PRB32F3CNY8KSZ1JRBWAXW",
+    "workflowName": "apptest-hop",
+    "workflowVersion": "1",
+    "createdBySession": "operator-human@kernel",
+    "createdAt": "2026-11-18T07:18:34.831Z",
+    "status": "active",
+    "currentFrontier": [
+      "qitem-20261118071834-b85f85fa"
+    ],
+    "currentStepId": "draft",
+    "hopCount": 0,
+    "fallbackSynthesis": null,
+    "lastContinuationDecision": null,
+    "completedAt": null,
+    "version": 1,
+    "resumeCount": 0,
+    "hopsBaseline": 0,
+    "boundRig": "openrig-apptest",
+    "lifecycleOperationKey": null,
+    "compiledInputDigest": null,
+    "lifecycleBinding": null,
+    "scope": null,
+    "startedSpec": {
+      "sourcePath": "/tmp/apptest-hop.yaml",
+      "spec": {
+        "id": "apptest-hop",
+        "version": "1",
+        "objective": "OpenRig.app test of next-hop data. Do not act on it.",
+        "roles": {
+          "first": {
+            "preferred_targets": [
+              "main-lead@openrig-apptest"
+            ]
+          },
+          "second": {
+            "preferred_targets": [
+              "main-lead@openrig-apptest"
+            ]
+          }
+        },
+        "steps": [
+          {
+            "id": "draft",
+            "actor_role": "first"
+          },
+          {
+            "id": "check",
+            "actor_role": "second"
+          }
+        ],
+        "coordination_terminal_turn_rule": "hot_potato"
+      }
+    },
+    "rootObjective": "OpenRig.app test: next-hop data shape. No action needed.",
+    "deadline": {
+      "state": "healthy",
+      "evidence": null
+    },
+    "frontierPackets": [
+      {
+        "packetId": "qitem-20261118071834-b85f85fa",
+        "stepId": "draft",
+        "ownerSession": "main-lead@openrig-apptest",
+        "queueState": "pending",
+        "blockedOn": null,
+        "waiting": {
+          "obligation": "qitem-20261118071834-b85f85fa",
+          "owner": "main-lead@openrig-apptest",
+          "state": "pending",
+          "actionableSince": "2026-11-18T07:18:34.834Z",
+          "blocker": null,
+          "lastMeaningfulChange": {
+            "id": 428,
+            "at": "2026-11-18T07:18:34.836Z"
+          },
+          "liveness": {
+            "subject": "main-lead@openrig-apptest",
+            "activity": "idle-at-prompt",
+            "needsInput": {
+              "count": 0,
+              "reason": null
+            },
+            "confidence": "oracle"
+          },
+          "nextBackstop": {
+            "owner": "main-lead@openrig-apptest",
+            "mechanism": "queue-stuck-sweep:unclaimed",
+            "dueAt": "2026-11-18T08:18:34.834Z",
+            "intervalSeconds": 300
+          },
+          "deadlineAt": null
+        },
+        "targetedAction": "project",
+        "dependsOn": [],
+        "gate": null,
+        "acceptance": null,
+        "receiptRequired": false,
+        "deadline": {
+          "state": "healthy",
+          "evidence": null
+        }
+      }
+    ],
+    "failureOccurrences": [],
+    "unknowns": [],
+    "boundaryObligations": []
+  }
+]

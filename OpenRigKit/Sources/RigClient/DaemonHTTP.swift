@@ -41,6 +41,11 @@ public struct DaemonHTTP: Sendable {
         try await get("/api/seat/status/\(session)")
     }
 
+    /// Every workflow instance the daemon knows, with the spec each one started from.
+    public func workflows() async throws(DaemonError) -> [WorkflowInstance] {
+        try await get("/api/workflow/list")
+    }
+
     public func qitem(id: String) async throws(DaemonError) -> QItem {
         try await get("/api/queue/\(id)")
     }

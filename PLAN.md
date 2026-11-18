@@ -265,7 +265,7 @@ Pin exact versions in `Package.swift` and commit `Package.resolved`. Current ver
 3. **Internal HTTP API drift.** Mitigated by the version gate, lenient decoding and live contract tests. The alternative is CLI-only reads at a latency cost.
 4. **Pane geometry ownership.** Should the app's focused client resize a seat that Herdr or another terminal is also showing?
 5. **"Always allow in this project…"** Which command writes that rule (`rig seat set-permissions` or `rig policy`) was not traced. Proposed: defer past v1. *Resolved after M6: no rig command; it is the prompt's own option 2.*
-6. **Next-hop wire.** There is no data source. Options are to drop it in v1, derive it from `rig workflow` for workflow-bound items, or ask upstream for a field.
+6. **Next-hop wire.** There is no data source. Options are to drop it in v1, derive it from `rig workflow` for workflow-bound items, or ask upstream for a field. *Resolved after M6: derived from `rig workflow` instances.*
 7. **Short qitem ids.** The design's `q-0409` needs a display rule, for example the last 4 hex characters with the full id on hover.
 8. **Daemon terminal WebSocket.** Enable `ui.enabled`, or ask upstream to decouple it? It would remove the attach client entirely.
 9. **Multi-host (`--host`), Stream, Watchdog, Chatroom and Library sidebar items.** Proposed as navigation stubs in v1.
@@ -299,7 +299,7 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 ### M2
 - **`handedOffTo` is a session, not a qitem id.** Successors are found by indexing rows on `handedOffFrom`. `chainOfRecord` is ancestor ids, oldest first, ending with the direct predecessor.
 - **Needs you (until M5)** = blocked on a ref that isn't a qitem (for example `external:person-decision-pr602`), or a row with `humanQuestions`. Permission prompts join it in M5.
-- **Next-hop wire dropped for v1** (risk 6): no data source. Past hops draw for the selected item's chain.
+- **Next-hop wire dropped for v1** (risk 6): no data source. Past hops draw for the selected item's chain. (Restored after M6 for workflow packets; see below.)
 - **Short ids**: `q-` plus the last four hex characters (risk 7), full id on hover.
 - Queue fixtures replace summaries, bodies and resolutions with placeholder text; the rows are agents' free text.
 - The board's columns size to the width the floating inspector leaves, 220 pt minimum, then scroll sideways.
@@ -349,3 +349,4 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - **DEBUG launch hooks** for screenshots without clicking (a locked screen): `OPENRIG_DEBUG_OPEN=<rig>/<view>/<session>`, `OPENRIG_DEBUG_SIZE=<w>x<h>`, and `OPENRIG_DEBUG_PROMPT` now takes several `;`-separated prompts.
 - **Remember (was "Always allow…").** No rig command writes the rule: it is the prompt's own option 2, which Claude Code words several ways (all seen live). "Yes, and allow access to /tmp and mkdir … commands" wrote `Bash(mkdir -p …)` and `Read(//tmp/**)` to the project's `.claude/settings.local.json`; "Yes, allow reading from … from this project" saved nothing on disk, so it lasts the session. The ⌄ menu item is labelled with the option's own words and picks it by label like Yes and No; a mode switch ("switch to auto mode") never matches.
 - **Restoring a lost seat.** `rig up <rig> --existing` reported `fully_restored` for a seat killed before its first turn, but Claude exited at once ("No conversation found") and the seat sat at a shell (`generation_mismatch`). The inspector only offers the `--plan` preview to copy.
+- **Next-hop wire, for workflow packets.** `GET /api/workflow/list` returns each instance's frontier packets (qitem and step) and the spec it started from. `nextHop(for:in:)` ports the daemon's own rule for a normal close (`resolveNextStep`, `resolveDefaultOwner`): `forbid` stops, `suggested_roles` jump, `require` stops, else declaration order; the owner is the role's first preferred target, or the first matching a pinned harness. A role with no targets is resolved live by the daemon, so no wire. The selected packet gets a dashed amber wire from its owner to the next owner with a "next: <step>" chip, and the inspector a Next row. Verified on a two-seat test rig (a Claude seat and a terminal seat) with a two-step workflow. Non-workflow items still have no next hop.

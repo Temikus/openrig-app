@@ -37,6 +37,9 @@ struct QItemInspector: View {
                     if let created = item.created { row("Created", relative(created)) }
                     if let updated = item.updated { row("Updated", relative(updated)) }
                     if let blocked = item.blockedOn { row("Blocked on", blocked) }
+                    if let hop = rig.nextHop(for: item.id) {
+                        row("Next", "\(hop.nextStepID) · \(rig.displayName(session: hop.owner))")
+                    }
                     if let resolution = item.resolution { row("Resolution", resolution) }
                 }
                 .font(.callout)

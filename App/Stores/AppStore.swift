@@ -169,7 +169,7 @@ final class AppStore {
     }
 
     #if DEBUG
-        /// OPENRIG_DEBUG_OPEN="<rig>[/<canvas|queue|terminals>][/<session>]" opens that view at launch,
+        /// OPENRIG_DEBUG_OPEN="<rig>[/<canvas|queue|terminals>][/<session or qitem id>]" opens that view at launch,
         /// for screenshots when the UI can't be clicked (a locked screen, CI).
         private func openDebugTarget() async {
             // OPENRIG_DEBUG_SIZE="<width>x<height>" resizes the window.
@@ -186,7 +186,11 @@ final class AppStore {
             if parts.count > 1, let mode = ViewMode(rawValue: parts[1]) { viewMode = mode }
             guard parts.count > 2, let store = self.rig else { return }
             await store.refresh()
-            if let seat = store.seat(session: parts[2]) { selection.select(seat: seat, in: store) }
+            if let seat = store.seat(session: parts[2]) {
+                selection.select(seat: seat, in: store)
+            } else if store.item(parts[2]) != nil {
+                selection.select(qitem: parts[2])
+            }
         }
     #endif
 }

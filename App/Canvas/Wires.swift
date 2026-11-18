@@ -180,12 +180,14 @@ extension CGRect {
 struct WireChip: View {
     let item: QItem
     let kind: WireKind
+    /// Replaces the default "q-0412" text, e.g. "next: review".
+    var label: String?
     let isSelected: Bool
     let select: () -> Void
 
     var body: some View {
         Button(action: select) {
-            Text(kind == .needsYou ? "\(shortQItemID(item.id)) · blocked" : shortQItemID(item.id))
+            Text(label ?? (kind == .needsYou ? "\(shortQItemID(item.id)) · blocked" : shortQItemID(item.id)))
                 .font(.caption2.monospaced().weight(.semibold))
                 .foregroundStyle(.black)
                 .padding(.horizontal, 6)
@@ -199,7 +201,7 @@ struct WireChip: View {
         }
         .buttonStyle(.plain)
         .help(item.summary)
-        .accessibilityLabel("\(shortQItemID(item.id)), \(item.summary)")
+        .accessibilityLabel("\(label ?? shortQItemID(item.id)), \(item.summary)")
     }
 }
 
