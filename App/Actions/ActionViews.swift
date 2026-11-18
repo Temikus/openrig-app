@@ -58,44 +58,62 @@ struct CommitButton: View {
 
 struct MessageComposer: View {
     let seat: Seat
-    /// The "rig send · ⌘↩" line; terminal tiles leave it out for space.
-    var showsCaption = true
+    /// Terminal tiles: a bordered field with the send button inside it, no caption, and the field focused on
+    /// appear. The inspector keeps the standard field.
+    var inline = false
+    var onSent: () -> Void = {}
     @Environment(ActionStore.self) private var actions
     @State private var text = ""
+    @FocusState private var fieldFocused: Bool
 
     private var key: String { "send:\(seat.id)" }
     /// No session to type into; `rig send` would fail.
     private var isDown: Bool { SeatPhase(seat).isDown }
+    private var isEmpty: Bool { text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .bottom, spacing: 8) {
-                TextField(
-                    isDown ? "\(seat.displayName) isn't running" : "Message \(seat.displayName)…", text: $text,
-                    axis: .vertical
-                )
-                .lineLimit(1...5)
-                .textFieldStyle(.roundedBorder)
-                .disabled(isDown)
-                Button("Send", systemImage: "arrow.up.circle.fill", action: send)
-                    .labelStyle(.iconOnly)
-                    .font(.title2)
-                    .buttonStyle(.borderless)
-                    .keyboardShortcut(.return, modifiers: .command)
-                    .disabled(
-                        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || seat.sessionName == nil
-                            || isDown
-                    )
-                    .help(action.map(\.displayCommand) ?? "")
-            }
-            HStack {
-                if showsCaption {
-                    Text("rig send · ⌘↩").font(.caption.monospaced()).foregroundStyle(.secondary)
+            if inline {
+                HStack(alignment: .bottom, spacing: 6) {
+                    field.textFieldStyle(.plain).lineLimit(1...3)
+                    sendButton.font(.title3)
                 }
-                Spacer()
+                .padding(.leading, 10)
+                .padding(.trailing, 5)
+                .padding(.vertical, 5)
+                .background(.background, in: .rect(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color(nsColor: .separatorColor)))
+                .onAppear { fieldFocused = true }
                 ActionStatusLine(key: key)
+            } else {
+                HStack(alignment: .bottom, spacing: 8) {
+                    field.textFieldStyle(.roundedBorder).lineLimit(1...5)
+                    sendButton.font(.title2)
+                }
+                HStack {
+                    Text("rig send · ⌘↩").font(.caption.monospaced()).foregroundStyle(.secondary)
+                    Spacer()
+                    ActionStatusLine(key: key)
+                }
             }
         }
+    }
+
+    private var field: some View {
+        TextField(
+            isDown ? "\(seat.displayName) isn't running" : "Message \(seat.displayName)…", text: $text, axis: .vertical
+        )
+        .focused($fieldFocused)
+        .disabled(isDown)
+    }
+
+    private var sendButton: some View {
+        Button("Send", systemImage: "arrow.up.circle.fill", action: send)
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .keyboardShortcut(.return, modifiers: .command)
+            .disabled(isEmpty || seat.sessionName == nil || isDown)
+            .help(action.map(\.displayCommand) ?? "")
     }
 
     private var action: RigAction? {
@@ -105,7 +123,10 @@ struct MessageComposer: View {
     private func send() {
         guard let action else { return }
         Task {
-            if await actions.perform(action, key: key, success: "Sent") { text = "" }
+            if await actions.perform(action, key: key, success: "Sent") {
+                text = ""
+                onSent()
+            }
         }
     }
 }

@@ -7,7 +7,8 @@ import SwiftUI
 /// The grid is fixed to the pane's size and the font is chosen to fit the tile, so text stays sharp.
 struct TerminalSurface: NSViewRepresentable {
     enum Source {
-        case snapshot(PaneSnapshot, lastRows: Int?)
+        /// `transcriptOnly` leaves out Claude Code's input box (see `PaneSnapshot.transcriptEnd`).
+        case snapshot(PaneSnapshot, lastRows: Int?, transcriptOnly: Bool = false)
         case attached(AttachSession)
     }
 
@@ -68,9 +69,9 @@ struct TerminalSurface: NSViewRepresentable {
         coordinator.interactive = interactive
 
         switch source {
-        case .snapshot(let snap, let lastRows):
+        case .snapshot(let snap, let lastRows, let transcriptOnly):
             coordinator.bind(nil)
-            let bytes = snap.ansi(lastRows: lastRows)
+            let bytes = snap.ansi(lastRows: lastRows, transcriptOnly: transcriptOnly)
             if bytes != coordinator.lastFed {
                 view.feed(byteArray: bytes[...])
                 coordinator.lastFed = bytes

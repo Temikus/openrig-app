@@ -32,17 +32,17 @@ struct PermissionControl: View {
                     Text(screen.description.map { "\(screen.title): \($0)" } ?? screen.title)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                } else if !compact {
+                } else {
                     Text("wants to run").font(.caption).foregroundStyle(.secondary)
                 }
-                // Never truncated: the risky part of a command is often at the end.
+                // Never truncated: the risky part of a command is often at the end. A tinted block, not a
+                // bordered one, so it doesn't read as a text field.
                 Text(screen?.command ?? prompt.command)
                     .font(.callout.monospaced())
                     .textSelection(.enabled)
                     .padding(8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.background, in: .rect(cornerRadius: 6))
-                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color(nsColor: .separatorColor)))
+                    .frame(maxWidth: compact ? 640 : .infinity, alignment: .leading)
+                    .background(Color.attention.opacity(0.08), in: .rect(cornerRadius: 6))
             }
 
             if changed {
@@ -66,24 +66,21 @@ struct PermissionControl: View {
                         reason.trimmingCharacters(in: .whitespaces).isEmpty ? "Decline" : "Send instead",
                         action: redirect
                     )
-                    .buttonStyle(.borderedProminent)
-                    .tint(.attention)
+                    .buttonStyle(PillButtonStyle(kind: .danger))
                     .disabled(actions.isRunning(key) || screen?.declineKey == nil)
                     Button("Back") { redirecting = false }
+                        .buttonStyle(PillButtonStyle(kind: .plain))
                 }
-                .buttonBorderShape(.capsule)
-                .controlSize(compact ? .small : .regular)
             } else {
                 HStack(spacing: 6) {
                     Button("Allow once", action: allowOnce)
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(PillButtonStyle(kind: .primary))
                         .disabled(actions.isRunning(key) || actions.offline || screen?.allowOnceKey == nil)
                         .help(
                             screen?.allowOnceKey == nil
                                 ? "Can't read a plain Yes on screen; answer in the terminal" : "")
                     Button("No, redirect…") { redirecting = true }
-                        .buttonStyle(.bordered)
-                        .tint(.attention)
+                        .buttonStyle(PillButtonStyle(kind: .attention))
                         .disabled(actions.isRunning(key))
                     Menu {
                         Button("View terminal") { viewTerminal() }
@@ -93,18 +90,24 @@ struct PermissionControl: View {
                             .disabled(screen?.rememberOption == nil || actions.offline || actions.isRunning(key))
                     } label: {
                         Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .frame(width: 24, height: 24)
+                            .background(.quaternary, in: .circle)
                     }
-                    .menuStyle(.borderlessButton)
+                    .menuStyle(.button)
+                    .buttonStyle(.plain)
                     .menuIndicator(.hidden)
                     .fixedSize()
                     .accessibilityLabel("More answers")
                     if let hint {
                         Spacer(minLength: 8)
-                        Text(hint).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        // When the pane can't be read, say why Allow once is off instead of inviting a click.
+                        Text(screen?.allowOnceKey == nil ? "can't read the prompt · answer in the terminal" : hint)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                 }
-                .buttonBorderShape(.capsule)
-                .controlSize(compact ? .small : .regular)
             }
             ActionStatusLine(key: key)
         }
@@ -362,6 +365,44 @@ struct NeedsYouList: View {
                 .frame(width: 440)
                 .frame(maxHeight: 520)
             }
+        }
+    }
+}
+
+/// The answer buttons' capsule, as in the design: a solid neutral pill for the main answer, tinted ones
+/// for the rest. Neutral, not accent blue, so Allow once doesn't read as the default action.
+struct PillButtonStyle: ButtonStyle {
+    enum Kind { case primary, attention, danger, plain }
+    let kind: Kind
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.callout.weight(.medium))
+            .lineLimit(1)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+            .foregroundStyle(foreground)
+            .background(background, in: .capsule)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.75 : 1) : 0.4)
+            .contentShape(.capsule)
+    }
+
+    private var foreground: Color {
+        switch kind {
+        case .primary: Color(nsColor: .windowBackgroundColor)
+        case .attention: .attention
+        case .danger: .white
+        case .plain: .primary
+        }
+    }
+
+    private var background: Color {
+        switch kind {
+        case .primary: .primary
+        case .attention: Color.attention.opacity(0.14)
+        case .danger: .attention
+        case .plain: Color.primary.opacity(0.08)
         }
     }
 }

@@ -15,6 +15,8 @@ final class TerminalStore {
     private(set) var attachSize: GridSize?
     /// Keys go straight to tmux only in Type mode. It resets on Esc and on focus moves.
     var typing = false
+    /// Seats in display order, for ⌘] and ⌘[. Written by the grid as it lays out; not observed.
+    @ObservationIgnored var order: [Seat.ID] = []
 
     @ObservationIgnored private var attachController: FocusedAttach?
     @ObservationIgnored private var wake: CheckedContinuation<Void, Never>?

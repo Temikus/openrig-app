@@ -51,6 +51,28 @@ import Testing
         #expect(below.contentEnd == 5, "a cursor under the text counts too")
     }
 
+    /// Claude Code's input box (rule, ❯ line, rule, status lines) is the same on every seat; small tiles
+    /// show the transcript above it. Copied from a live pane.
+    @Test func transcriptStopsAtTheInputBox() {
+        let rule = String(repeating: "─", count: 30)
+        let snap = PaneSnapshot(
+            pane: "%1", cols: 40, rows: 8, cursorX: 2, cursorY: 4,
+            lines: [
+                "⏺ Read file", "  \u{1B}[2mdone\u{1B}[0m", "", "\u{1B}[2m\(rule) dev-b1@r ─\u{1B}[0m", "❯ ",
+                "\(rule)──────────", "  ⏵⏵ auto mode on", "                 /rc",
+            ])
+        #expect(snap.transcriptEnd == 2, "blank line above the box is trimmed too")
+        let terminal = HeadlessTerminal(cols: 40, rows: 2)
+        terminal.feed(snap.ansi(lastRows: 2, transcriptOnly: true))
+        #expect(terminal.text(row: 0) == "⏺ Read file")
+        #expect(terminal.text(row: 1) == "  done")
+        #expect(!terminal.cursorVisible, "the cursor belongs to the input box, which isn't shown")
+
+        // No input box: same as the plain tail.
+        let plain = PaneSnapshot(pane: "%1", cols: 10, rows: 3, cursorX: 0, cursorY: 2, lines: ["a", "b", "$ "])
+        #expect(plain.transcriptEnd == plain.contentEnd)
+    }
+
     @Test func tailOfPaneMovesTheCursor() throws {
         let snap = PaneSnapshot(pane: "%1", cols: 10, rows: 4, cursorX: 2, cursorY: 3, lines: ["a", "b", "c", "d"])
         let terminal = HeadlessTerminal(cols: 10, rows: 2)
@@ -76,7 +98,10 @@ final class HeadlessTerminal: TerminalDelegate {
             of: "\\s+$", with: "", options: .regularExpression)
     }
     var cursor: (Int, Int) { (terminal.buffer.x, terminal.buffer.y) }
+    private(set) var cursorVisible = true
     func send(source: Terminal, data: ArraySlice<UInt8>) {}
+    func hideCursor(source: Terminal) { cursorVisible = false }
+    func showCursor(source: Terminal) { cursorVisible = true }
 }
 
 /// Runs against a throwaway tmux server on a private socket, never the user's.

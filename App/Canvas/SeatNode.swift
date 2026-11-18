@@ -29,7 +29,7 @@ enum SeatPhase: Equatable {
         case .working: "working"
         case .needsYou: "needs you"
         case .idle: "idle"
-        case .unknown: "unknown"
+        case .unknown: "no status"
         case .down(.lost): "session lost"
         case .down(.failed): "failed to start"
         case .down: "exited"

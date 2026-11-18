@@ -32,15 +32,30 @@ public struct PaneSnapshot: Sendable, Equatable {
         return min(max(rows, lines.count), max(lastText, cursorY) + 1)
     }
 
+    /// Where the agent's transcript ends: above Claude Code's input box (a rule line, then the `❯` line),
+    /// skipping blank lines. Without an input box, the same as `contentEnd`.
+    public var transcriptEnd: Int {
+        let text = lines.map { strippingEscapes($0).trimmingCharacters(in: .whitespaces) }
+        guard
+            let box = text.indices.last(where: { i in
+                text[i].hasPrefix("───") && i + 1 < text.count && text[i + 1].hasPrefix("❯")
+            })
+        else { return contentEnd }
+        var end = box
+        while end > 0 && text[end - 1].isEmpty { end -= 1 }
+        return end
+    }
+
     /// Bytes that redraw this snapshot on an empty terminal of the same size.
     /// With `lastRows`, only the bottom rows are drawn (small tiles show the tail of the pane).
-    public func ansi(lastRows: Int? = nil) -> [UInt8] {
+    /// `transcriptOnly` ends the tail at `transcriptEnd`, leaving out the agent's input box.
+    public func ansi(lastRows: Int? = nil, transcriptOnly: Bool = false) -> [UInt8] {
         var shown = lines
         // capture-pane drops trailing blank lines; pad so "the bottom" means the pane's bottom.
         if shown.count < rows { shown += Array(repeating: "", count: rows - shown.count) }
         var cursorRow = cursorY
-        if let lastRows, lastRows < shown.count {
-            let end = min(shown.count, contentEnd)
+        if let lastRows, lastRows < shown.count || transcriptOnly {
+            let end = min(shown.count, transcriptOnly ? transcriptEnd : contentEnd)
             let start = max(0, end - lastRows)
             shown = Array(shown[start..<end])
             cursorRow -= start
@@ -48,8 +63,10 @@ public struct PaneSnapshot: Sendable, Equatable {
         var text = "\u{1B}[0m\u{1B}[H\u{1B}[2J"
         // Reset attributes at each line start so a colour never bleeds into the next line.
         text += shown.map { "\u{1B}[0m" + $0 }.joined(separator: "\r\n")
-        if cursorRow >= 0 && cursorRow < shown.count {
-            text += "\u{1B}[\(cursorRow + 1);\(cursorX + 1)H"
+        if transcriptOnly {
+            text += "\u{1B}[?25l"  // the cursor lives in the input box, which isn't shown
+        } else if cursorRow >= 0 && cursorRow < shown.count {
+            text += "\u{1B}[?25h\u{1B}[\(cursorRow + 1);\(cursorX + 1)H"
         }
         return Array(text.utf8)
     }

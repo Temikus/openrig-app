@@ -9,8 +9,10 @@ import SwiftUI
 /// tmux client.
 struct TerminalsView: View {
     @Environment(RigStore.self) private var rig
-    @State private var largeWhileFocused: [Seat.ID]?
-    @State private var escMonitor: Any?
+    /// The order when focus began. Nothing moves while a tile has focus, except that a seat with a new
+    /// prompt still gets a large tile, appended after the others.
+    @State private var frozen: FrozenOrder?
+    @State private var keyMonitor: Any?
 
     private var terminals: TerminalStore { rig.terminals }
 
@@ -42,24 +44,28 @@ struct TerminalsView: View {
                 ProgressView()
             }
         }
-        .onAppear(perform: installEscMonitor)
+        .onAppear(perform: installKeyMonitor)
         .onDisappear {
-            if let escMonitor { NSEvent.removeMonitor(escMonitor) }
-            escMonitor = nil
+            if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+            keyMonitor = nil
             terminals.release()
-            largeWhileFocused = nil
+            frozen = nil
         }
         .onChange(of: terminals.focusedSeatID) { _, focused in
-            // Tiles never regroup or reorder while one has focus.
-            largeWhileFocused = focused == nil ? nil : (largeWhileFocused ?? rig.graph.map(largeByState))
+            guard let graph = rig.graph else { return }
+            if focused == nil {
+                frozen = nil
+            } else if frozen == nil {
+                let large = largeByState(graph)
+                frozen = FrozenOrder(large: large, small: graph.seats.map(\.id).filter { !large.contains($0) })
+            }
         }
     }
 
     private func grid(_ graph: RigGraph, viewport: CGSize) -> some View {
         let width = max(0, viewport.width - 2 * Metrics.padding)
-        let largeIDs = largeSeats(graph)
-        let large = largeIDs.compactMap { id in graph.seats.first { $0.id == id } }
-        let small = graph.seats.filter { !largeIDs.contains($0.id) }
+        let (large, small) = arrangement(graph)
+        terminals.order = large.map(\.id) + small.compactMap { $0.isPlaceholder ? nil : $0.seat.id }
 
         let smallCols = columns(small.count, width: width, min: Metrics.smallMinWidth)
         let smallRows = rows(small.count, cols: smallCols)
@@ -76,19 +82,43 @@ struct TerminalsView: View {
             large.isEmpty ? max(Metrics.smallHeight, share(available, rows: smallRows)) : Metrics.smallHeight
 
         return VStack(alignment: .leading, spacing: Metrics.spacing) {
-            tileRows(large, cols: largeCols, width: width, height: largeHeight, isLarge: true)
+            tileRows(large.map { Slot(seat: $0) }, cols: largeCols, width: width, height: largeHeight, isLarge: true)
             tileRows(small, cols: smallCols, width: width, height: smallHeight, isLarge: false)
         }
+        // A click between tiles releases focus.
+        .background(Color.clear.contentShape(Rectangle()).onTapGesture { terminals.release() })
+    }
+
+    /// Large tiles, then small slots. While focus is held, a seat that moved up leaves a placeholder below.
+    private func arrangement(_ graph: RigGraph) -> (large: [Seat], small: [Slot]) {
+        let seat = { (id: Seat.ID) in graph.seats.first { $0.id == id } }
+        guard let frozen else {
+            let large = largeByState(graph)
+            return (large.compactMap(seat), graph.seats.filter { !large.contains($0.id) }.map { Slot(seat: $0) })
+        }
+        var largeIDs = frozen.large.filter { seat($0) != nil }
+        for prompt in rig.prompts where !largeIDs.contains(prompt.seatID) { largeIDs.append(prompt.seatID) }
+        if let focused = terminals.focusedSeatID, !largeIDs.contains(focused) { largeIDs.append(focused) }
+        var small = frozen.small.compactMap(seat).map { Slot(seat: $0, isPlaceholder: largeIDs.contains($0.id)) }
+        let known = Set(frozen.large + frozen.small)
+        small += graph.seats.filter { !known.contains($0.id) && !largeIDs.contains($0.id) }.map { Slot(seat: $0) }
+        return (largeIDs.compactMap(seat), small)
     }
 
     @ViewBuilder
-    private func tileRows(_ seats: [Seat], cols: Int, width: CGFloat, height: CGFloat, isLarge: Bool) -> some View {
+    private func tileRows(_ slots: [Slot], cols: Int, width: CGFloat, height: CGFloat, isLarge: Bool) -> some View {
         let tileWidth = (width - CGFloat(cols - 1) * Metrics.spacing) / CGFloat(max(cols, 1))
-        ForEach(Array(stride(from: 0, to: seats.count, by: max(cols, 1))), id: \.self) { start in
+        ForEach(Array(stride(from: 0, to: slots.count, by: max(cols, 1))), id: \.self) { start in
             HStack(alignment: .top, spacing: Metrics.spacing) {
-                ForEach(seats[start..<min(start + cols, seats.count)]) { seat in
-                    TerminalTile(seat: seat, large: isLarge)
-                        .frame(width: max(0, tileWidth), height: height)
+                ForEach(slots[start..<min(start + cols, slots.count)], id: \.seat.id) { slot in
+                    Group {
+                        if slot.isPlaceholder {
+                            PlaceholderTile(seat: slot.seat)
+                        } else {
+                            TerminalTile(seat: slot.seat, large: isLarge)
+                        }
+                    }
+                    .frame(width: max(0, tileWidth), height: height)
                 }
             }
         }
@@ -106,12 +136,6 @@ struct TerminalsView: View {
         return (height - CGFloat(rows - 1) * Metrics.spacing) / CGFloat(rows)
     }
 
-    private func largeSeats(_ graph: RigGraph) -> [Seat.ID] {
-        var ids = largeWhileFocused ?? largeByState(graph)
-        if let focused = terminals.focusedSeatID, !ids.contains(focused) { ids.append(focused) }
-        return ids
-    }
-
     /// Prompts first, oldest first (each stalls a turn), then other seats that need you, then working ones.
     private func largeByState(_ graph: RigGraph) -> [Seat.ID] {
         var ids = rig.needsYou.compactMap { entry -> Seat.ID? in
@@ -123,15 +147,64 @@ struct TerminalsView: View {
         return ids
     }
 
-    /// Esc leaves Type mode instead of reaching the agent, so a stray Esc never interrupts a turn.
-    private func installEscMonitor() {
-        guard escMonitor == nil else { return }
+    /// Keys for this view: Esc leaves Type mode (so a stray Esc never interrupts a turn), and a second Esc
+    /// releases focus unless a text field is being edited. ⌘] and ⌘[ move focus in display order; ⌘T
+    /// toggles Type mode on the focused tile. There is no key for Allow once: a stray key must not approve.
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
         let terminals = self.terminals
-        escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard event.keyCode == 53, terminals.typing else { return event }
-            terminals.typing = false
-            return nil
+        let rig = self.rig
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            let command = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
+            switch (event.keyCode, command) {
+            case (53, false):  // Esc
+                if terminals.typing {
+                    terminals.typing = false
+                    return nil
+                }
+                let editing = event.window?.firstResponder is NSText
+                guard terminals.focusedSeatID != nil, !editing else { return event }
+                terminals.release()
+                return nil
+            case (30, true), (33, true):  // ⌘] next, ⌘[ previous
+                let order = terminals.order
+                guard !order.isEmpty else { return event }
+                let current = terminals.focusedSeatID.flatMap { order.firstIndex(of: $0) }
+                let step = event.keyCode == 30 ? 1 : -1
+                let next = current.map { ($0 + step + order.count) % order.count } ?? (step > 0 ? 0 : order.count - 1)
+                if let seat = rig.seat(order[next]) { terminals.focus(seat) }
+                return nil
+            case (17, true):  // ⌘T
+                guard terminals.focusedSeatID != nil else { return event }
+                terminals.typing.toggle()
+                return nil
+            default:
+                return event
+            }
         }
+    }
+}
+
+private struct FrozenOrder: Equatable {
+    var large: [Seat.ID]
+    var small: [Seat.ID]
+}
+
+private struct Slot {
+    var seat: Seat
+    var isPlaceholder = false
+}
+
+/// Holds a small tile's place while its seat is focused in the large row, so nothing below moves.
+private struct PlaceholderTile: View {
+    let seat: Seat
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .strokeBorder(Color(nsColor: .separatorColor), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            .overlay {
+                Text("\(seat.displayName) · above").font(.callout).foregroundStyle(.tertiary)
+            }
     }
 }
 
@@ -163,17 +236,16 @@ struct TerminalTile: View {
                     bodySize = $0
                 }
                 .overlay {
-                    // SwiftTerm's NSView takes clicks for itself; this layer catches them until the tile has focus.
-                    // A real Button, so VoiceOver and the keyboard can focus a tile too.
-                    if !focused {
-                        Button {
-                            terminals.focus(seat)
-                            selection.select(seat: seat, in: rig)
-                        } label: {
+                    // SwiftTerm's NSView takes clicks for itself; this layer catches them until Type mode. The first
+                    // click focuses the tile, a second one starts typing. A real Button, for VoiceOver and keyboard.
+                    if !(focused && terminals.typing) {
+                        Button(action: activate) {
                             Color.clear.contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Focus \(seat.displayName)'s terminal")
+                        .accessibilityLabel(
+                            focused
+                                ? "Type into \(seat.displayName)'s terminal" : "Focus \(seat.displayName)'s terminal")
                     }
                 }
             if let prompt {
@@ -188,8 +260,11 @@ struct TerminalTile: View {
                 .background(Color.attention.opacity(0.08))
                 .background(Color.tileChrome)
             }
-            Divider()
-            footer
+            // A seat with a prompt can't take a message (rig send refuses until it's answered).
+            if prompt == nil || focused {
+                Divider()
+                footer
+            }
         }
         // Fill the frame the grid gives the tile, and clip to it, whatever the terminal's own size.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -202,14 +277,23 @@ struct TerminalTile: View {
                     style: StrokeStyle(lineWidth: attention ? 1.5 : 1, dash: phase.isDown ? [5, 3] : []))
         }
         .overlay {
-            // Focus ring: separate from the attention border and from selection.
+            // Focus ring: separate from the attention border and from selection. Solid in both modes (dashes
+            // mean a down seat); Type mode turns it accent, with "typing" in the header.
             if focused {
                 RoundedRectangle(cornerRadius: 15)
-                    .strokeBorder(
-                        Color.primary, style: StrokeStyle(lineWidth: 2, dash: terminals.typing ? [6, 4] : [])
-                    )
+                    .strokeBorder(terminals.typing ? Color.accentColor : .primary, lineWidth: 2)
                     .padding(-3)
             }
+        }
+        .onChange(of: focused) { composing = false }
+    }
+
+    private func activate() {
+        if focused {
+            terminals.typing = true
+        } else {
+            terminals.focus(seat)
+            selection.select(seat: seat, in: rig)
         }
     }
 
@@ -218,10 +302,12 @@ struct TerminalTile: View {
     private var header: some View {
         HStack(spacing: 8) {
             StatusDot(phase: phase)
-            Button(seat.displayName) { selection.select(seat: seat, in: rig) }
-                .buttonStyle(.plain)
-                .font(.callout.weight(.semibold))
-                .lineLimit(1)
+            Button(seat.displayName) {
+                if !focused { activate() }
+            }
+            .buttonStyle(.plain)
+            .font(.callout.weight(.semibold))
+            .lineLimit(1)
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 Text(stateLine(now: context.date))
                     .font(.caption)
@@ -319,12 +405,13 @@ struct TerminalTile: View {
                         terminals.fitAttach(GridSize(cols: cols, rows: fitRows))
                     }
                 } else {
-                    // The tail of the pane, as many rows as fit; tiles never scroll. A focused tile shows this
-                    // too until Type mode: snapshots refresh every second and on every seat event.
-                    let rows = min(snap.rows, fitRows)
+                    // The tail of the agent's transcript (not Claude Code's input box), as many rows as fit;
+                    // tiles never scroll. A focused tile shows this too until Type mode: snapshots refresh every
+                    // second and on every seat event.
+                    let rows = max(1, min(snap.rows, fitRows, snap.transcriptEnd))
                     TerminalSurface(
-                        source: .snapshot(snap, lastRows: rows), cols: snap.cols, rows: rows, fontSize: font,
-                        interactive: false
+                        source: .snapshot(snap, lastRows: rows, transcriptOnly: true), cols: snap.cols, rows: rows,
+                        fontSize: font, interactive: false
                     )
                     .fixedSize()
                     .allowsHitTesting(false)
@@ -348,11 +435,17 @@ struct TerminalTile: View {
                 focusedBar
             } else if composing {
                 HStack(alignment: .top, spacing: 8) {
-                    MessageComposer(seat: seat, showsCaption: false)
+                    MessageComposer(seat: seat, inline: true) {
+                        // Long enough to read "Sent", then back to one line.
+                        Task {
+                            try? await Task.sleep(for: .seconds(1.5))
+                            composing = false
+                        }
+                    }
                     Button("Close", systemImage: "xmark") { composing = false }
                         .labelStyle(.iconOnly)
                         .buttonStyle(.borderless)
-                        .padding(.top, 5)
+                        .padding(.top, 7)
                 }
             } else {
                 Button {
@@ -377,6 +470,19 @@ struct TerminalTile: View {
         .background(Color.tileChrome)
     }
 
+    /// One half of the Message / Type switch: a small neutral pill when selected, plain text otherwise.
+    private func modeButton(_ title: String, typing: Bool) -> some View {
+        let selected = terminals.typing == typing
+        return Button(title) { terminals.typing = typing }
+            .buttonStyle(.plain)
+            .font(.caption.weight(selected ? .semibold : .regular))
+            .foregroundStyle(selected ? Color.primary : .secondary)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 3)
+            .background(selected ? Color.primary.opacity(0.1) : .clear, in: .capsule)
+            .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
     private var messagePrompt: String {
         if phase.isDown { return "\(seat.displayName) isn't running" }
         if phase == .working { return "Message \(seat.displayName) · delivers after this turn" }
@@ -386,20 +492,17 @@ struct TerminalTile: View {
     private var focusedBar: some View {
         @Bindable var terminals = terminals
         return VStack(alignment: .leading, spacing: 8) {
-            Picker("Input", selection: $terminals.typing) {
-                Text("Message · rig send").tag(false)
-                Text("Type into terminal").tag(true)
+            HStack(spacing: 2) {
+                modeButton("Message · rig send", typing: false)
+                modeButton("Type into terminal", typing: true)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            .help("Message waits for a safe moment; typing sends keys straight to tmux until Esc")
+            .help("Message waits for a safe moment; typing sends keys straight to tmux. ⌘T switches, Esc stops typing")
             if terminals.typing {
                 Label("Keys go straight to tmux · Esc to stop", systemImage: "keyboard")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                MessageComposer(seat: seat, showsCaption: false)
+                MessageComposer(seat: seat, inline: true)
             }
         }
     }
