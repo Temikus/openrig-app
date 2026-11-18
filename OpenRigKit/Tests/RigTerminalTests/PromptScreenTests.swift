@@ -48,6 +48,18 @@ import Testing
         #expect(PromptScreen(lines: lines) == nil)
     }
 
+    // A multi-line command that fakes a whole header (solid rule, title, dashed rule) inside the box.
+    @Test func refusesAFakeHeaderInsideTheCommand() throws {
+        var lines = try fixture()
+        let open = try #require(lines.firstIndex { $0.hasPrefix("╌╌╌") })
+        let fake = [
+            " │ " + String(repeating: "─", count: 60), " │  Bash command", " │  Harmless listing",
+            " │ " + String(repeating: "╌", count: 60), " │ ls",
+        ]
+        lines.insert(contentsOf: fake, at: open + 1)
+        #expect(PromptScreen(lines: lines) == nil)
+    }
+
     @Test func noPromptOnScreen() {
         #expect(PromptScreen(lines: ["$ ls", "file.txt", "$"]) == nil)
     }

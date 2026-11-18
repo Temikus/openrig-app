@@ -32,17 +32,20 @@ public struct PromptScreen: Equatable, Sendable {
         let lines = raw.map { strippingEscapes($0).trimmingTrailingWhitespace() }
         guard let ask = lines.lastIndex(where: { $0.contains("Do you want to proceed?") }) else { return nil }
 
-        // The command sits between exactly two dashed rules, below the header's solid rule.
-        // The command's own output can draw rules too, so any other count is refused: showing part
-        // of a command while "Yes" approves all of it would be worse than sending the user to the pane.
-        let isDashed = { (s: String) in s.trimmingCharacters(in: .whitespaces).hasPrefix("╌╌╌") }
-        let isRule = { (s: String) in s.trimmingCharacters(in: .whitespaces).hasPrefix("───") }
-        let headerRule = lines[..<ask].lastIndex(where: isRule) ?? -1
+        // Claude Code draws its own rules from column 0; everything it shows inside the box is indented
+        // (" " or " │ "). Command text can draw lookalike rules but can't start them at column 0, so only
+        // column-0 rules count, and any other rule-like line in the prompt makes the screen unreadable.
+        // Showing part of a command while "Yes" approves all of it would be worse than no answer.
+        let isDashed = { (s: String) in s.hasPrefix("╌╌╌") }
+        let isRule = { (s: String) in s.hasPrefix("───") }
+        let looksLikeRule = { (s: String) in s.contains("╌") || s.contains("───") || s.contains("━━━") }
+        guard let headerRule = lines[..<ask].lastIndex(where: isRule) else { return nil }
         let dashed = lines.indices.filter { $0 > headerRule && $0 < ask && isDashed(lines[$0]) }
         guard dashed.count == 2 else { return nil }
         let (open, close) = (dashed[0], dashed[1])
+        let others = lines.indices.filter { $0 > headerRule && $0 < ask && $0 != open && $0 != close }
+        guard !others.contains(where: { looksLikeRule(lines[$0]) }) else { return nil }
         let body = lines[(open + 1)..<close]
-        guard !body.contains(where: { $0.contains("╌") || $0.contains("───") }) else { return nil }
         command =
             body
             .map { line in
