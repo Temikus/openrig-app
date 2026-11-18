@@ -14,6 +14,8 @@ enum ViewMode: String, CaseIterable, Identifiable {
         case .terminals: "Terminals"
         }
     }
+    /// "⌘1"…: the menu shortcut that switches to this view.
+    var shortcutHint: String { "⌘\((Self.allCases.firstIndex(of: self) ?? 0) + 1)" }
     var systemImage: String {
         switch self {
         case .canvas: "point.3.connected.trianglepath.dotted"

@@ -38,10 +38,15 @@ struct ContentView: View {
             ToolbarItem(placement: .principal) {
                 Picker("View", selection: $store.viewMode) {
                     ForEach(ViewMode.allCases) { mode in
-                        Label(mode.title, systemImage: mode.systemImage)
-                            .labelStyle(.adaptive(iconOnly: narrow))
-                            .help(mode.title)
-                            .tag(mode)
+                        Label {
+                            // The shortcut, as in the design; dimmed where the control keeps text styling.
+                            Text(mode.title) + Text("  \(mode.shortcutHint)").foregroundStyle(.secondary)
+                        } icon: {
+                            Image(systemName: mode.systemImage)
+                        }
+                        .labelStyle(.adaptive(iconOnly: narrow))
+                        .help("\(mode.title) (\(mode.shortcutHint))")
+                        .tag(mode)
                     }
                 }
                 .pickerStyle(.segmented)
