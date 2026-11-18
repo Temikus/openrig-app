@@ -312,18 +312,10 @@ struct NeedsYouButton: View {
         Button {
             open.toggle()
         } label: {
-            if compact {
-                HStack(spacing: 4) {
-                    bell(entries)
-                    if !entries.isEmpty { Text("\(entries.count)").monospacedDigit() }
-                }
-            } else {
-                Label {
-                    Text(entries.isEmpty ? "Needs you" : "Needs you \(entries.count)")
-                } icon: {
-                    bell(entries)
-                }
-                .labelStyle(.titleAndIcon)
+            HStack(spacing: 6) {
+                bell(entries)
+                if !compact { Text("Needs you") }
+                if !entries.isEmpty { CountBadge(count: entries.count) }
             }
         }
         .accessibilityLabel(entries.isEmpty ? "Needs you" : "Needs you, \(entries.count)")
@@ -337,6 +329,21 @@ struct NeedsYouButton: View {
                     .environment(app)
             }
         }
+    }
+}
+
+/// A count in a coral capsule, as on the design's Needs you button.
+struct CountBadge: View {
+    let count: Int
+
+    var body: some View {
+        Text("\(count)")
+            .font(.caption.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .frame(minWidth: 18, minHeight: 18)
+            .background(Color.attention, in: .capsule)
     }
 }
 
