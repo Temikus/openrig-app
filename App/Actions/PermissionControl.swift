@@ -327,10 +327,11 @@ struct NeedsYouButton: View {
     var body: some View {
         let entries = app.rig?.needsYou ?? []
         let elsewhere = app.elsewhere
-        // FYIs are listed but don't make the button urgent: the red count is what waits on an answer.
-        let urgent =
-            entries.filter { !isFYI($0) }.count + elsewhere.filter { forYou($0, me: app.me) != .update }.count
-        let fyi = entries.count + elsewhere.count - urgent
+        // FYIs are listed but don't make the button urgent: the red count is what waits on an answer. The same sum as
+        // the sidebar's rig badges, other rigs' prompts included.
+        let total = app.waitingEverywhere
+        let urgent = total.urgent
+        let fyi = total.fyis
         let any = urgent + fyi > 0
         Button {
             open.toggle()
@@ -366,10 +367,14 @@ struct NeedsYouButton: View {
         .popover(isPresented: $open, arrowEdge: .bottom) {
             Group {
                 if let rig = app.rig {
-                    NeedsYouList(entries: entries, elsewhere: elsewhere) { open = false }
-                        .environment(rig)
+                    NeedsYouList(entries: entries, elsewhere: elsewhere, attention: app.attentionElsewhere) {
+                        open = false
+                    }
+                    .environment(rig)
                 } else {
-                    NeedsYouList(entries: [], elsewhere: elsewhere) { open = false }
+                    NeedsYouList(entries: [], elsewhere: elsewhere, attention: app.attentionElsewhere) {
+                        open = false
+                    }
                 }
             }
             .environment(app.selection)
@@ -384,6 +389,8 @@ struct CountBadge: View {
     let count: Int
     /// Grey: only FYIs are waiting.
     var quiet = false
+    /// On a selected (accent) row: a white ring keeps the capsule apart from the blue.
+    var onSelection = false
 
     var body: some View {
         Text("\(count)")
@@ -392,7 +399,8 @@ struct CountBadge: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 6)
             .frame(minWidth: 18, minHeight: 18)
-            .background(quiet ? Color.secondary : Color.attention, in: .capsule)
+            .background(quiet ? Color.secondary : Color.attentionFill, in: .capsule)
+            .overlay { if onSelection { Capsule().strokeBorder(.white, lineWidth: 1.5) } }
     }
 }
 
@@ -401,23 +409,20 @@ extension NeedsYouButton {
         Image(systemName: urgent > 0 ? "bell.badge.fill" : "bell")
             .foregroundStyle(urgent > 0 ? Color.red : any ? .primary : .secondary)
     }
-
-    fileprivate func isFYI(_ entry: NeedsYouEntry) -> Bool {
-        guard case .qitem(let item) = entry, let rig = app.rig else { return false }
-        return forYou(item, me: rig.me) == .update
-    }
 }
 
 struct NeedsYouList: View {
     let entries: [NeedsYouEntry]
     /// Rows for the person from rigs other than the selected one.
     var elsewhere: [QItem] = []
+    /// Other rigs' seats needing the person (prompts the app doesn't poll there), by rig.
+    var attention: [(rig: String, count: Int)] = []
     /// Called after a row from another rig opens, which changes the selected rig.
     var opened: () -> Void = {}
 
     var body: some View {
         Group {
-            if entries.isEmpty && elsewhere.isEmpty {
+            if entries.isEmpty && elsewhere.isEmpty && attention.isEmpty {
                 ContentUnavailableView("Nothing needs you", systemImage: "checkmark.circle")
                     .frame(width: 360, height: 180)
             } else {
@@ -425,13 +430,16 @@ struct NeedsYouList: View {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(entries) { NeedsYouRow(entry: $0) }
                         // One group per rig, under its name, in the order their first row needs you.
-                        let rigs = elsewhere.compactMap { rigName(ofSession: $0.source) }
+                        let rigs = (elsewhere.compactMap { rigName(ofSession: $0.source) } + attention.map(\.rig))
                             .reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
                         ForEach(Array(rigs.enumerated()), id: \.element) { index, rig in
                             Label(rig, systemImage: "circle.hexagongrid")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
                                 .padding(.top, entries.isEmpty && index == 0 ? 0 : 6)
+                            if let seats = attention.first(where: { $0.rig == rig })?.count {
+                                AttentionElsewhereRow(rig: rig, seats: seats, opened: opened)
+                            }
                             ForEach(elsewhere.filter { rigName(ofSession: $0.source) == rig }) {
                                 ElsewhereRow(item: $0, opened: opened)
                             }
@@ -443,6 +451,36 @@ struct NeedsYouList: View {
                 .frame(maxHeight: 520)
             }
         }
+    }
+}
+
+/// Another rig's seats needing the person, such as a permission prompt. Opening it shows that rig's canvas.
+struct AttentionElsewhereRow: View {
+    let rig: String
+    let seats: Int
+    let opened: () -> Void
+    @Environment(AppStore.self) private var app
+
+    var body: some View {
+        Button {
+            app.open(rigNamed: rig)
+            opened()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.red)
+                Text(seats == 1 ? "1 seat needs you" : "\(seats) seats need you").fontWeight(.semibold)
+                Text("permission prompt or stopped").foregroundStyle(.secondary)
+                Spacer()
+                Image(systemName: "arrow.up.forward").font(.caption).foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            .font(.callout)
+            .padding(10)
+            .background(Color.red.opacity(0.06), in: .rect(cornerRadius: 10))
+            .contentShape(.rect(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .help("Opens \(rig)'s canvas")
     }
 }
 

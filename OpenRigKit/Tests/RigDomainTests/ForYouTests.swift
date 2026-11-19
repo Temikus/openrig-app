@@ -39,6 +39,20 @@ import Testing
         #expect(forYou(row, me: "sam@external") == .decision)
     }
 
+    @Test func waitingCountsAsksPromptsAndFYIs() {
+        let me = "sam@external"
+        var fyi = item("fyi", .pending, from: "lead@kernel", to: me)
+        fyi.humanIntent = "update"
+        let ask = item("ask", .pending, from: "lead@kernel", to: me)
+        let other = waiting(
+            rows: [fyi, ask, item("theirs", .pending, from: "lead@kernel", to: "kim@external")], me: me, attention: 2)
+        #expect(other == Waiting(asks: 1, prompts: 2, fyis: 1))
+        #expect(other.urgent == 3)
+        #expect(other.summary == "1 ask · 2 prompts · 1 FYI")
+        #expect(waiting([.qitem(ask), .qitem(fyi)], me: me) == Waiting(asks: 1, fyis: 1))
+        #expect(Waiting().isEmpty && Waiting().summary.isEmpty)
+    }
+
     @Test func rowsFromOtherRigs() {
         let me = "sam@external"
         var fyi = item("fyi", .pending, from: "lead@kernel", to: me, updated: 1)

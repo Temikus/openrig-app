@@ -1,3 +1,4 @@
+import RigDomain
 import RigModel
 import SwiftUI
 
@@ -170,23 +171,36 @@ struct RigSidebar: View {
 
 struct RigRow: View {
     let rig: RigSummary
+    @Environment(AppStore.self) private var store
 
     var body: some View {
+        let waiting = store.waiting(in: rig)
         Label {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(rig.name)
-                Text("\(rig.runningCount)/\(rig.nodeCount) running")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(rig.name)
+                    Text("\(rig.runningCount)/\(rig.nodeCount) running")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                Spacer()
+                // Coral for what waits on an answer, as on the toolbar's Needs you; grey when only FYIs wait.
+                let selected = store.selectedRigID == rig.id
+                if waiting.urgent > 0 {
+                    CountBadge(count: waiting.urgent, onSelection: selected)
+                } else if waiting.fyis > 0 {
+                    CountBadge(count: waiting.fyis, quiet: true, onSelection: selected)
+                }
             }
         } icon: {
             Image(systemName: rig.status == .running ? "circle.hexagongrid.fill" : "circle.hexagongrid")
         }
-        .badge(rig.attentionCount)
+        .help(waiting.summary)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "\(rig.name), \(rig.status.rawValue), \(rig.runningCount) of \(rig.nodeCount) seats running")
+            "\(rig.name), \(rig.status.rawValue), \(rig.runningCount) of \(rig.nodeCount) seats running"
+                + (waiting.isEmpty ? "" : ", \(waiting.summary)"))
     }
 }
 

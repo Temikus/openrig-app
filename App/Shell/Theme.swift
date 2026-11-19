@@ -10,6 +10,10 @@ extension Color {
                 : NSColor(srgbRed: 0.78, green: 0.25, blue: 0.20, alpha: 1)
         })
 
+    /// Fill behind white text on a count badge: deep enough for 4.5:1 in both appearances, where `attention`'s soft
+    /// dark-mode coral isn't.
+    static let attentionFill = Color(.sRGB, red: 0.76, green: 0.26, blue: 0.21)
+
     /// Terminal tile body, the same in both appearances: panes are drawn light-on-dark.
     static let terminalBody = Color(white: 0.08)
 

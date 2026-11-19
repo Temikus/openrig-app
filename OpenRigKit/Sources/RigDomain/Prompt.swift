@@ -86,3 +86,55 @@ public func needsYouEntries(
     }
     return promptEntries + down + needsYou(items, me: me).filter { !linked.contains($0.id) }.map(NeedsYouEntry.qitem)
 }
+
+/// What waits on the person in one rig, as its sidebar row and the toolbar count it.
+public struct Waiting: Equatable, Sendable {
+    /// Rows asking the person to decide, or held on them.
+    public var asks = 0
+    /// Seats stopped at a permission prompt or otherwise needing the person.
+    public var prompts = 0
+    public var fyis = 0
+
+    public init(asks: Int = 0, prompts: Int = 0, fyis: Int = 0) {
+        self.asks = asks
+        self.prompts = prompts
+        self.fyis = fyis
+    }
+
+    /// What waits on an answer: the coral count.
+    public var urgent: Int { asks + prompts }
+    public var isEmpty: Bool { urgent + fyis == 0 }
+
+    /// "1 ask · 1 prompt · 1 FYI", leaving out zeros.
+    public var summary: String {
+        [(asks, "ask", "asks"), (prompts, "prompt", "prompts"), (fyis, "FYI", "FYIs")]
+            .filter { $0.0 > 0 }.map { "\($0.0) \($0.0 == 1 ? $0.1 : $0.2)" }.joined(separator: " · ")
+    }
+
+    public static func + (a: Waiting, b: Waiting) -> Waiting {
+        Waiting(asks: a.asks + b.asks, prompts: a.prompts + b.prompts, fyis: a.fyis + b.fyis)
+    }
+}
+
+/// The selected rig, from its Needs-you list: prompts and down seats are prompts, FYI rows are FYIs, the rest asks.
+public func waiting(_ entries: [NeedsYouEntry], me: String) -> Waiting {
+    entries.reduce(into: Waiting()) { w, entry in
+        switch entry {
+        case .prompt, .seat: w.prompts += 1
+        case .qitem(let item): if forYou(item, me: me) == .update { w.fyis += 1 } else { w.asks += 1 }
+        }
+    }
+}
+
+/// Another rig, whose prompts the app doesn't poll: its rows for the person, plus the daemon's `attentionCount`
+/// (seats needing attention, such as a pending permission prompt; a seat that only asks the person a question
+/// isn't in it, so an ask isn't counted twice).
+public func waiting(rows: [QItem], me: String, attention: Int) -> Waiting {
+    rows.reduce(into: Waiting(prompts: attention)) { w, item in
+        switch forYou(item, me: me) {
+        case .update?: w.fyis += 1
+        case .decision?: w.asks += 1
+        case nil: break
+        }
+    }
+}

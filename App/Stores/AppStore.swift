@@ -220,6 +220,30 @@ final class AppStore {
         if rows != rowsForMe { rowsForMe = rows }
     }
 
+    /// What waits on the person in a rig, for its sidebar row. The selected rig counts its Needs-you list; another rig
+    /// counts rows addressed to the person plus the daemon's count of seats needing attention (prompts, which the
+    /// app only polls for the selected rig).
+    func waiting(in summary: RigSummary) -> Waiting {
+        if summary.id == selectedRigID, let rig { return RigDomain.waiting(rig.needsYou, me: me) }
+        let rows = rowsForMe.filter { rigName(ofSession: $0.source) == summary.name }
+        return RigDomain.waiting(rows: rows, me: me, attention: summary.attentionCount)
+    }
+
+    /// Everything waiting on the person, every rig: the toolbar's Needs-you count, equal to the sidebar's sum.
+    var waitingEverywhere: Waiting { rigs.map(waiting(in:)).reduce(Waiting(), +) }
+
+    /// Other rigs with seats needing the person (their prompts aren't polled), for Needs you's per-rig groups.
+    var attentionElsewhere: [(rig: String, count: Int)] {
+        rigs.filter { $0.id != selectedRigID && $0.attentionCount > 0 }.map { ($0.name, $0.attentionCount) }
+    }
+
+    /// Shows a rig's canvas, where its seats needing attention are marked.
+    func open(rigNamed name: String) {
+        guard let target = rigs.first(where: { $0.name == name }) else { return }
+        selectedRigID = target.id
+        viewMode = .canvas
+    }
+
     /// Shows a row from another rig: selects that rig, opens its queue board and the row.
     func open(_ item: QItem) {
         guard let name = rigName(ofSession: item.source), let target = rigs.first(where: { $0.name == name }) else {
