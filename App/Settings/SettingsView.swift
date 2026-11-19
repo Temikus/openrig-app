@@ -2,15 +2,33 @@ import SwiftUI
 
 /// The Settings window (⌘,): one grouped form per tab, as drawn on the Paper page "Settings window".
 struct SettingsView: View {
+    enum Pane: String { case general, connection, notifications, terminals }
+
+    #if DEBUG
+        /// OPENRIG_DEBUG_SETTINGS=<pane> opens Settings on that tab at launch, for screenshots without a click.
+        @State private var pane =
+            ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SETTINGS"].flatMap(Pane.init) ?? .general
+    #else
+        @State private var pane = Pane.general
+    #endif
+
     var body: some View {
-        TabView {
-            Tab("General", systemImage: "gearshape") { GeneralSettings() }
-            Tab("Connection", systemImage: "point.3.connected.trianglepath.dotted") { ConnectionSettings() }
-            Tab("Notifications", systemImage: "bell") { NotificationSettings() }
-            Tab("Terminals", systemImage: "apple.terminal") { TerminalSettings() }
+        TabView(selection: $pane) {
+            Tab("General", systemImage: "gearshape", value: .general) { GeneralSettings() }
+            Tab("Connection", systemImage: "point.3.connected.trianglepath.dotted", value: .connection) {
+                ConnectionSettings()
+            }
+            Tab("Notifications", systemImage: "bell", value: .notifications) { NotificationSettings() }
+            Tab("Terminals", systemImage: "apple.terminal", value: .terminals) { TerminalSettings() }
         }
         .frame(width: 640)
-        .scenePadding(.bottom)
+    }
+}
+
+extension View {
+    /// A Settings tab's form at its natural height, so the window fits each tab instead of scrolling.
+    func settingsForm() -> some View {
+        formStyle(.grouped).scrollDisabled(true).fixedSize(horizontal: false, vertical: true)
     }
 }
 

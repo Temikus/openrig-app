@@ -25,12 +25,14 @@ public enum ToolLocator {
             .map { ToolLocation(url: URL(filePath: $0), chosen: false) }
     }
 
-    /// The tool's version from `--version`: the last word of the first line ("tmux 3.5a" gives "3.5a").
-    /// Nil when it doesn't run or doesn't answer within `timeout`.
-    public static func version(of executable: URL, timeout: Duration = .seconds(2)) async -> String? {
+    /// The tool's version: the first word of its output that starts with a digit or "v<digit>" ("tmux 3.5a" gives
+    /// "3.5a", "0.7.11 (6c8a6963)" gives "0.7.11"). tmux takes `-V`. Nil when it doesn't run or answer in `timeout`.
+    public static func version(
+        of executable: URL, flag: String = "--version", timeout: Duration = .seconds(2)
+    ) async -> String? {
         let process = Process()
         process.executableURL = executable
-        process.arguments = ["--version"]
+        process.arguments = [flag]
         process.environment = ["PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", "NO_COLOR": "1"]
         let out = Pipe()
         process.standardOutput = out
@@ -46,10 +48,8 @@ public enum ToolLocator {
         watchdog.cancel()
         // Output closed, so the child is exiting; poll rather than block a cooperative thread on waitUntilExit.
         while process.isRunning { try? await Task.sleep(for: .milliseconds(10)) }
-        guard process.terminationStatus == 0,
-            let line = String(decoding: data, as: UTF8.self).split(whereSeparator: \.isNewline).first,
-            let word = line.split(separator: " ").last
-        else { return nil }
-        return String(word)
+        guard process.terminationStatus == 0 else { return nil }
+        let words = String(decoding: data, as: UTF8.self).split(whereSeparator: \.isWhitespace)
+        return words.first { $0.wholeMatch(of: /v?\d[\w.\-]*/) != nil }.map(String.init)
     }
 }

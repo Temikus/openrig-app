@@ -45,9 +45,11 @@ import Testing
         #expect(await ToolLocator.version(of: rig) == "0.7.11")
     }
 
-    @Test func versionStripsTheProgramName() async throws {
+    @Test func versionIsTheFirstVersionLikeWord() async throws {
+        let rig = try tool("rig", printing: "0.7.11 (6c8a6963)")
+        #expect(await ToolLocator.version(of: rig) == "0.7.11", "not the commit hash after it")
         let tmux = try tool("tmux", printing: "tmux 3.5a")
-        #expect(await ToolLocator.version(of: tmux) == "3.5a")
+        #expect(await ToolLocator.version(of: tmux, flag: "-V") == "3.5a")
         let node = try tool("node", printing: "v22.11.0")
         #expect(await ToolLocator.version(of: node) == "v22.11.0")
     }

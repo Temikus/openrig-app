@@ -7,14 +7,19 @@ struct TerminalSettings: View {
         @Bindable var settings = store.settings
         Form {
             Section("Text") {
-                Stepper(value: $settings.smallestTileText, in: AppSettings.smallestTileTextRange, step: 0.5) {
-                    LabeledContent {
+                LabeledContent {
+                    HStack(spacing: 6) {
                         Text("\(settings.smallestTileText, format: .number) pt").monospacedDigit()
-                    } label: {
-                        RowLabel(
-                            "Smallest tile text",
-                            "Tiles shrink text to fit the pane. Below this, wide panes clip on the right.")
+                        Stepper(
+                            "Smallest tile text", value: $settings.smallestTileText,
+                            in: AppSettings.smallestTileTextRange, step: 0.5
+                        )
+                        .labelsHidden()
                     }
+                } label: {
+                    RowLabel(
+                        "Smallest tile text",
+                        "Tiles shrink text to fit the pane. Below this, wide panes clip on the right.")
                 }
             }
             Section {
@@ -40,6 +45,6 @@ struct TerminalSettings: View {
                 .foregroundStyle(.secondary)
             }
         }
-        .formStyle(.grouped)
+        .settingsForm()
     }
 }

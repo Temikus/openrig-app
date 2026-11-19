@@ -4,6 +4,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.appearsActive) private var appearsActive
     @State private var showsInspector = true
     @State private var showsQueueTask = false
     @State private var fit = ToolbarFit.full
@@ -39,6 +40,8 @@ struct ContentView: View {
             showsInspector = store.inspectorByMode[new] ?? true
         }
         .onChange(of: store.inspectorRequests) { showsInspector = true }
+        .onChange(of: appearsActive, initial: true) { store.windowInFront = appearsActive }
+        .onDisappear { store.windowInFront = false }
     }
 
     @ToolbarContentBuilder private var detailToolbar: some ToolbarContent {

@@ -18,6 +18,8 @@ struct TerminalSurface: NSViewRepresentable {
     let fontSize: CGFloat
     /// Keys and mouse reach tmux only when true (Type mode).
     let interactive: Bool
+    /// Settings › Terminals › Use Option as Meta.
+    var optionAsMeta = true
 
     static func font(_ size: CGFloat) -> NSFont { .monospacedSystemFont(ofSize: size, weight: .regular) }
 
@@ -52,7 +54,7 @@ struct TerminalSurface: NSViewRepresentable {
         view.terminalDelegate = context.coordinator
         view.nativeBackgroundColor = NSColor(white: 0.08, alpha: 1)
         view.nativeForegroundColor = NSColor(white: 0.88, alpha: 1)
-        view.optionAsMetaKey = true
+        view.optionAsMetaKey = optionAsMeta
         context.coordinator.view = view
         return view
     }
@@ -66,6 +68,7 @@ struct TerminalSurface: NSViewRepresentable {
             coordinator.lastFed = []
         }
         view.allowMouseReporting = interactive
+        view.optionAsMetaKey = optionAsMeta
         coordinator.interactive = interactive
 
         switch source {

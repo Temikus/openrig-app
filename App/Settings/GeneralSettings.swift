@@ -44,7 +44,7 @@ struct GeneralSettings: View {
                 .pickerStyle(.segmented)
             }
         }
-        .formStyle(.grouped)
+        .settingsForm()
         .onChange(of: settings.appearance) { NSApp.appearance = settings.appearance.nsAppearance }
         .confirmationDialog(
             "Act as \(pendingActAs ?? "") instead?", isPresented: pendingBinding, presenting: pendingActAs

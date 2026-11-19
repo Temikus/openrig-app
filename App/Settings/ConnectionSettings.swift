@@ -36,7 +36,7 @@ struct ConnectionSettings: View {
                 .foregroundStyle(.secondary)
             }
         }
-        .formStyle(.grouped)
+        .settingsForm()
         .onAppear {
             custom = store.settings.customAddress != nil
             customText = store.settings.customAddress?.absoluteString ?? ""
@@ -249,7 +249,9 @@ private struct ToolRow: View {
         }
         .task(id: location?.url) {
             version = nil
-            if let url = location?.url { version = await ToolLocator.version(of: url) }
+            if let url = location?.url {
+                version = await ToolLocator.version(of: url, flag: tool == .tmux ? "-V" : "--version")
+            }
         }
     }
 

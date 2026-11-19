@@ -53,7 +53,7 @@ struct NotificationSettings: View {
                 .onChange(of: settings.promptSound) { NSSound(named: settings.promptSound)?.play() }
             }
         }
-        .formStyle(.grouped)
+        .settingsForm()
         .task { await refreshPermission() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             Task { await refreshPermission() }

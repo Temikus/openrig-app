@@ -41,5 +41,14 @@ struct OpenRigApp: App {
             SettingsView()
                 .environment(store)
         }
+
+        MenuBarExtra(isInserted: Bindable(store.settings).menuBarItem) {
+            MenuBarNeedsYou()
+                .environment(store)
+        } label: {
+            let urgent = store.waitingEverywhere.urgent
+            Label(urgent > 0 ? "\(urgent)" : "OpenRig", systemImage: urgent > 0 ? "bell.badge.fill" : "bell")
+        }
+        .menuBarExtraStyle(.window)
     }
 }

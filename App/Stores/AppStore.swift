@@ -91,6 +91,9 @@ final class AppStore {
     private var client: DaemonHTTP
     private var rigsRefresh: Task<Void, Never>?
     @ObservationIgnored private var loops: [Task<Void, Never>] = []
+    @ObservationIgnored private var banners: Banners?
+    /// The main window is open and frontmost; set by ContentView. Banners can wait while it is.
+    var windowInFront = false
 
     init(settings: AppSettings = AppSettings()) {
         self.settings = settings
@@ -110,7 +113,65 @@ final class AppStore {
     /// the Dock badge keep working with the window closed.
     func start() {
         guard loops.isEmpty else { return }
+        banners = Banners(store: self)
         loops = [Task { await runPolling() }, Task { await runEvents() }]
+        // NSApp exists once the run loop has started.
+        Task { NSApp.appearance = settings.appearance.nsAppearance }
+    }
+
+    /// After each poll: the Dock badge and any new banners.
+    private func afterPoll() async {
+        let urgent = waitingEverywhere.urgent
+        let label = settings.dockBadge && urgent > 0 ? "\(urgent)" : nil
+        if NSApp.dockTile.badgeLabel != label { NSApp.dockTile.badgeLabel = label }
+        #if DEBUG
+            // OPENRIG_DEBUG_BADGE=<file> records each poll's Dock badge, to check it with the window closed.
+            if let path = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_BADGE"] {
+                try? "\(Date.now.formatted(.iso8601)) \(NSApp.dockTile.badgeLabel ?? "none")\n"
+                    .appendLine(to: path)
+            }
+        #endif
+        await banners?.check()
+    }
+
+    /// Opens the app where a banner points.
+    func show(_ target: NoticeTarget) {
+        showMainWindow()
+        switch target {
+        case .seat(let rigName, let session):
+            open(rigNamed: rigName)
+            Task {
+                guard let store = rig else { return }
+                await store.refresh()
+                guard let seat = store.seat(session: session) else { return }
+                inspectorByMode[.canvas] = true
+                selection.select(seat: seat, in: store)
+                inspectorRequests += 1
+            }
+        case .qitem(let id):
+            if rig?.item(id) != nil {
+                inspectorByMode[.queue] = true
+                viewMode = .queue
+                selection.select(qitem: id)
+                inspectorRequests += 1
+            } else if let row = rowsForMe.first(where: { $0.id == id }) {
+                open(row)
+            }
+        case .rig(let name):
+            open(rigNamed: name)
+        case .app:
+            break
+        }
+    }
+
+    /// Brings the main window forward, reopening it if it was closed: opening the running app's bundle sends the
+    /// reopen event, which makes SwiftUI create a window.
+    func showMainWindow() {
+        NSApp.activate()
+        if !windowInFront, !NSApp.windows.contains(where: { $0.isVisible && $0.canBecomeMain && $0.frame.width >= 800 })
+        {
+            NSWorkspace.shared.open(Bundle.main.bundleURL)
+        }
     }
 
     /// Re-reads Settings › Connection: address, token and tool picks. The next poll uses them.
@@ -162,6 +223,7 @@ final class AppStore {
                 await rig?.refresh()
             }
             tick += 1
+            await afterPoll()
             try? await Task.sleep(for: .seconds(5))
         }
     }
@@ -357,6 +419,9 @@ final class AppStore {
                     window.setFrame(NSRect(x: 0, y: 0, width: w, height: h), display: true)
                 }
             }
+            if ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SETTINGS"] != nil {
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            }
             guard let spec = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_OPEN"] else { return }
             let parts = spec.split(separator: "/").map(String.init)
             guard let rig = rigs.first(where: { $0.name == parts.first }) else { return }
@@ -387,3 +452,17 @@ extension DaemonError {
         }
     }
 }
+
+#if DEBUG
+    extension String {
+        fileprivate func appendLine(to path: String) throws {
+            if let handle = FileHandle(forWritingAtPath: path) {
+                defer { try? handle.close() }
+                try handle.seekToEnd()
+                try handle.write(contentsOf: Data(utf8))
+            } else {
+                try write(toFile: path, atomically: true, encoding: .utf8)
+            }
+        }
+    }
+#endif

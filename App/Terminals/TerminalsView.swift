@@ -9,6 +9,7 @@ import SwiftUI
 /// tmux client.
 struct TerminalsView: View {
     @Environment(RigStore.self) private var rig
+    @Environment(AppStore.self) private var app
     /// The order when focus began. Nothing moves while a tile has focus, except that a seat with a new
     /// prompt still gets a large tile, appended after the others.
     @State private var frozen: FrozenOrder?
@@ -195,7 +196,7 @@ struct TerminalsView: View {
             let context = TerminalKeyContext(
                 inMainWindow: event.window != nil && event.window === NSApp.mainWindow,
                 focused: terminals.focusedSeatID != nil, typing: terminals.typing,
-                editingText: event.window?.firstResponder is NSText)
+                editingText: event.window?.firstResponder is NSText, escGoesToPane: app.settings.escGoesToPane)
             switch terminalKeyAction(key, context) {
             case .passThrough:
                 return event
@@ -248,6 +249,7 @@ struct TerminalTile: View {
     let large: Bool
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
+    @Environment(AppStore.self) private var app
     @State private var bodySize = CGSize(width: 400, height: 200)
     @State private var composing = false
 
@@ -329,6 +331,10 @@ struct TerminalTile: View {
         } else {
             terminals.focus(seat)
             selection.select(seat: seat, in: rig)
+            // Settings › Terminals › Start typing on focus, except on a prompt: Enter there would answer it.
+            if app.settings.typeOnFocus, !rig.prompts.contains(where: { $0.seatID == seat.id }) {
+                terminals.typing = true
+            }
         }
     }
 
@@ -423,8 +429,10 @@ struct TerminalTile: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let snap = terminals.snapshot(seat) {
             let inner = CGSize(width: bodySize.width - 24, height: bodySize.height - 12)
-            // Readable first: a pane wider than the tile at 8.5 pt is clipped on the right.
-            let font = TerminalSurface.fittingFontSize(cols: snap.cols, width: inner.width, range: 8.5...13)
+            // Readable first: a pane wider than the tile at the smallest size (Settings › Terminals) is clipped on
+            // the right.
+            let floor = CGFloat(app.settings.smallestTileText)
+            let font = TerminalSurface.fittingFontSize(cols: snap.cols, width: inner.width, range: floor...13)
             let fitRows = max(2, Int(inner.height / TerminalSurface.lineHeight(font)))
             Group {
                 if focused, terminals.typing, let attach = terminals.attach, let size = terminals.attachSize {
@@ -432,7 +440,7 @@ struct TerminalTile: View {
                     // outside its clip, SwiftTerm's view of an attached client draws nothing.)
                     TerminalSurface(
                         source: .attached(attach), cols: size.cols, rows: size.rows, fontSize: font,
-                        interactive: true
+                        interactive: true, optionAsMeta: app.settings.optionAsMeta
                     )
                     .fixedSize()
                     .onChange(of: fitRows, initial: true) {
