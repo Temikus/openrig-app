@@ -27,6 +27,22 @@ struct WireStyle {
         kind == .observes ? WireStyle(color: .secondary.opacity(0.75), width: 1.5, dash: [7, 5]) : of(kind)
     }
 
+    /// With Differentiate Without Color, needs-you wires get a dash-dot no other kind uses: otherwise they differ
+    /// from in-flight ones by hue alone.
+    func differentiated(_ kind: WireKind, _ on: Bool) -> WireStyle {
+        guard on || Self.debugDifferentiate, kind == .needsYou else { return self }
+        var style = self
+        style.dash = [12, 4, 2, 4]
+        return style
+    }
+
+    #if DEBUG
+        /// OPENRIG_DEBUG_DIFFERENTIATE=1 acts as if Differentiate Without Color were on.
+        static let debugDifferentiate = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_DIFFERENTIATE"] == "1"
+    #else
+        static let debugDifferentiate = false
+    #endif
+
     var strokeStyle: StrokeStyle {
         StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round, dash: dash)
     }
@@ -38,6 +54,7 @@ struct WireLayer: View {
     /// Hovered and selected seats: their wires draw at full strength.
     var focus: Set<String> = []
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
 
     var body: some View {
         let sharp = Set(routes.junctions)
@@ -76,8 +93,10 @@ struct WireLayer: View {
     }
 
     private func style(_ wire: Wire) -> WireStyle {
-        contrast == .increased || focus.contains(wire.source) || focus.contains(wire.target)
+        let style: WireStyle =
+            contrast == .increased || focus.contains(wire.source) || focus.contains(wire.target)
             ? .focused(wire.kind) : .of(wire.kind)
+        return style.differentiated(wire.kind, differentiate)
     }
 
     /// The most prominent wire through a junction (drawn last of those on it).
@@ -95,6 +114,7 @@ struct WireLayer: View {
 /// Floating legend and zoom controls.
 struct LegendBar: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
     @Binding var zoom: CGFloat
     let fit: () -> Void
 
@@ -130,7 +150,7 @@ struct LegendBar: View {
                 ForEach(entries, id: \.0) { kind, label in
                     HStack(spacing: 5) {
                         // Full strength: a resting "observes" swatch would vanish on the glass bar.
-                        LegendSwatch(style: .focused(kind))
+                        LegendSwatch(style: WireStyle.focused(kind).differentiated(kind, differentiate))
                         Text(label)
                     }
                 }
