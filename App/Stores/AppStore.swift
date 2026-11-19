@@ -51,6 +51,9 @@ final class AppStore {
     /// Whether each view shows the inspector, remembered across switches. Terminals starts without it, since
     /// its tiles carry each seat's state.
     var inspectorByMode: [ViewMode: Bool] = [.terminals: false]
+    /// Set by ⌘F; the queue board focuses its search field and clears it. A flag, not an event, because the board may
+    /// only appear after the switch to it.
+    var wantsSearch = false
     /// Bumped to show the inspector in the current view, e.g. so a row opened from another rig shows its answer panel.
     private(set) var inspectorRequests = 0
     /// Those sent from other rigs than the selected one, which its queue doesn't list.

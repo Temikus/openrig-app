@@ -6,9 +6,11 @@ import SwiftUI
 struct QueueBoardView: View {
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
+    @Environment(AppStore.self) private var app
     @State private var filter = BoardFilter()
     /// The board's width; four columns share it.
     @State private var visibleWidth: CGFloat = 1000
+    @FocusState private var searching: Bool
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
@@ -17,9 +19,27 @@ struct QueueBoardView: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Scrolls rather than squeezes: fixed-size controls here would otherwise set the detail
                 // column's minimum width, which the split view can't satisfy beside the inspector.
+                // The search stays in view at the trailing edge; when narrow, only the filters scroll under it. An
+                // overlay, so its width never feeds the detail column's size, which would squeeze the sidebar.
                 ScrollView(.horizontal) { filterRow(now: now) }
                     .scrollIndicators(.never)
                     .scrollBounceBehavior(.basedOnSize)
+                    // Fades out at the trailing edge, the cue that more filters scroll in from under the search.
+                    .mask {
+                        HStack(spacing: 0) {
+                            Rectangle()
+                            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                                .frame(width: 24)
+                        }
+                    }
+                    .padding(.trailing, BoardSearchField.width + 28)
+                    .overlay(alignment: .bottomTrailing) {
+                        BoardSearchField(text: $filter.search, focused: $searching)
+                            .padding(.trailing, 16)
+                    }
+                    // No preferred width of its own: the split view sizes the detail column toward its content's ideal
+                    // width when the window resizes, and a wide filter row would squeeze the sidebar for it.
+                    .frame(minWidth: 0, idealWidth: 0, maxWidth: .infinity)
                 // Below 720 pt the strip folds into the toolbar's Needs-you popover.
                 let asks = rig.needsYou
                 if !asks.isEmpty && visibleWidth >= 720 {
@@ -34,13 +54,14 @@ struct QueueBoardView: View {
                 }
                 ScrollView(.horizontal) {
                     HStack(alignment: .top, spacing: 14) {
-                        BoardColumn(title: "Pending", items: columns.pending, now: now)
-                        BoardColumn(title: "In progress", items: columns.inProgress, now: now)
-                        BoardColumn(title: "Blocked", items: columns.blocked, now: now)
+                        BoardColumn(title: "Pending", items: columns.pending, now: now, emptyHint: noMatches)
+                        BoardColumn(title: "In progress", items: columns.inProgress, now: now, emptyHint: noMatches)
+                        BoardColumn(title: "Blocked", items: columns.blocked, now: now, emptyHint: noMatches)
                         BoardColumn(
                             title: "Done", items: columns.closed, now: now,
                             secondTitle: "Handed off", secondItems: columns.handedOff,
-                            emptyHint: filter.scope == .active ? "Switch to Today to see closed work." : nil)
+                            emptyHint: noMatches
+                                ?? (filter.scope == .active ? "Switch to Today to see closed work." : nil))
                     }
                     .padding(16)
                 }
@@ -55,7 +76,20 @@ struct QueueBoardView: View {
                 .environment(\.boardColumnWidth, max(220, (visibleWidth - 32 - 3 * 14) / 4 - 20))
             }
         }
-        .searchable(text: $filter.search, placement: .toolbar, prompt: "Search queue")
+        // In the filter row, beside the other filters: a toolbar search lands over the inspector, away from the board.
+        // ⌘F is the View menu's Search Queue, which switches here first.
+        .onChange(of: app.wantsSearch, initial: true) { _, wants in
+            guard wants else { return }
+            app.wantsSearch = false
+            // After this update, so a board that has only just appeared can take focus.
+            Task { @MainActor in searching = true }
+        }
+    }
+
+    /// While a search is active, an empty column says so, rather than looking like an empty queue.
+    private var noMatches: String? {
+        let query = filter.search.trimmingCharacters(in: .whitespaces)
+        return query.isEmpty ? nil : "No matches for “\(query)”."
     }
 
     private func filterRow(now: Date) -> some View {
@@ -88,8 +122,46 @@ struct QueueBoardView: View {
                     .font(.callout)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.leading, 16)
         .padding(.top, 12)
+    }
+}
+
+/// The board's search, in its filter row. ⌘F focuses it.
+struct BoardSearchField: View {
+    static let width: CGFloat = 200
+    @Binding var text: String
+    var focused: FocusState<Bool>.Binding
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
+            TextField("Search queue", text: $text)
+                .textFieldStyle(.plain)
+                .focused(focused)
+                // Escape clears; on an empty field it leaves it, as macOS search fields do.
+                .onExitCommand {
+                    if text.isEmpty { focused.wrappedValue = false } else { text = "" }
+                }
+            if !text.isEmpty {
+                Button("Clear search", systemImage: "xmark.circle.fill") { text = "" }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("⌘F").font(.caption.monospaced()).foregroundStyle(.tertiary).accessibilityHidden(true)
+            }
+        }
+        .font(.callout)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .frame(width: Self.width)
+        .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .strokeBorder(focused.wrappedValue ? Color.accentColor : .clear, lineWidth: 2)
+        }
+        .help("Search this rig's queue (⌘F)")
     }
 }
 

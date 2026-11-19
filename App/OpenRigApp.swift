@@ -22,6 +22,13 @@ struct OpenRigApp: App {
                 Divider()
                 Button("Refresh") { Task { await store.refreshNow() } }
                     .keyboardShortcut("r")
+                Button("Search Queue") {
+                    store.viewMode = .queue
+                    store.wantsSearch = true
+                }
+                .keyboardShortcut("f")
+                // With no rig there's no board to focus, and the request would linger for a later visit.
+                .disabled(store.rig == nil)
                 Divider()
             }
         }
