@@ -440,15 +440,19 @@ struct TerminalTile: View {
                     // A shorter client shows only the pane's top rows (`ignore-size`), which hid Claude Code's input
                     // box; a taller view than its clip draws nothing in SwiftTerm. Below the smallest tile text if
                     // need be: seeing what you type matters more here.
-                    let pane = GridSize(cols: snap.cols, rows: snap.rows + snap.statusRows)
+                    let paneRows = snap.rows + snap.statusRows
                     let typeFont = TerminalSurface.fittingFontSize(
-                        cols: pane.cols, rows: pane.rows, width: inner.width, height: inner.height, range: 6...13)
+                        cols: snap.cols, rows: paneRows, width: inner.width, height: inner.height, range: 6...13)
+                    // A pane too tall even at 6 pt (kernel panes are 120 rows) gets as many rows as fit, so the view
+                    // never outgrows its clip; that case still crops the bottom.
+                    let fitting = max(2, Int(inner.height / TerminalSurface.lineHeight(typeFont)))
+                    let target = GridSize(cols: snap.cols, rows: min(paneRows, fitting))
                     TerminalSurface(
                         source: .attached(attach), cols: size.cols, rows: size.rows, fontSize: typeFont,
                         interactive: true, optionAsMeta: app.settings.optionAsMeta
                     )
                     .fixedSize()
-                    .onChange(of: pane, initial: true) { terminals.fitAttach(pane) }
+                    .onChange(of: target, initial: true) { terminals.fitAttach(target) }
                 } else {
                     // The tail of the agent's transcript (not Claude Code's input box), as many rows as fit;
                     // tiles never scroll. A focused tile shows this too until Type mode: snapshots refresh every
