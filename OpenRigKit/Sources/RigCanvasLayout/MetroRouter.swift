@@ -27,6 +27,8 @@ public struct Wire: Sendable, Equatable, Identifiable {
     public var source: String
     public var target: String
     public var kind: WireKind
+    /// Wires of one kind joined by a shared source or target; they share trunks, lanes and junctions.
+    public var bundle: String
     /// Orthogonal polyline from the source's out port to the target's in port, corners not rounded.
     public var points: [CGPoint]
 
@@ -67,9 +69,48 @@ public func cornerRadius(previous: CGFloat, next: CGFloat, max r: CGFloat = 10) 
     min(r, previous / 2, next / 2)
 }
 
+/// Bundles requests: the same kind sharing a source (a fan-out) or a target (a fan-in), transitively, when every source
+/// in the group reaches every target. Drawn as one line where they overlap, so two builders watching the same
+/// reviewers read as one watch line, not two.
+/// Keyed by request id; each bundle is named by its smallest id.
+func bundles(_ requests: [WireRequest]) -> [String: String] {
+    var parent: [String: String] = [:]
+    for r in requests { parent[r.id] = r.id }
+    func find(_ x: String) -> String {
+        var x = x
+        while let up = parent[x], up != x { x = up }
+        return x
+    }
+    var first: [String: String] = [:]
+    for r in requests {
+        for end in ["s>\(r.kind.rawValue)>\(r.source)", "t>\(r.kind.rawValue)>\(r.target)"] {
+            guard let other = first[end] else {
+                first[end] = r.id
+                continue
+            }
+            let (a, b) = (find(other), find(r.id))
+            if a != b { parent[max(a, b)] = min(a, b) }
+        }
+    }
+    var out: [String: String] = parent.keys.reduce(into: [:]) { $0[$1] = find($1) }
+    // A shared trunk implies every source reaches every target. Where that's false (a→p, b→p, b→q would suggest
+    // a→q), fall back to one bundle per source and kind, the plain fan-out.
+    for members in Dictionary(grouping: requests, by: { out[$0.id]! }).values {
+        let pairs = Set(members.map { "\($0.source)>\($0.target)" })
+        let sources = Set(members.map(\.source)), targets = Set(members.map(\.target))
+        guard pairs.count != sources.count * targets.count else { continue }
+        let bySource = Dictionary(grouping: members, by: \.source)
+        for group in bySource.values {
+            let name = group.map(\.id).min()!
+            for r in group { out[r.id] = name }
+        }
+    }
+    return out
+}
+
 /// Routes wires on a sparse orthogonal grid built from channel lines, ports and seat gaps.
-/// Each wire is a Dijkstra search costing length plus a penalty per bend. Wires from one source
-/// share segments (trunks); different sources on the same line get separate lanes.
+/// Each wire is a Dijkstra search costing length plus a penalty per bend. Wires of one bundle
+/// share segments (trunks); different bundles on the same line get separate lanes.
 public func route(_ layout: CanvasLayout, _ requests: [WireRequest], options o: RouterOptions = RouterOptions())
     -> RouteResult
 {
@@ -90,12 +131,14 @@ public func route(_ layout: CanvasLayout, _ requests: [WireRequest], options o: 
             return a.id < b.id
         }
 
-    var usedBySource: [String: Set<Int>] = [:]
+    let bundleOf = bundles(ordered)
+    var usedByBundle: [String: Set<Int>] = [:]
     var routed: [String: Wire] = [:]
     for request in ordered {
         let start = layout.outPort(request.source)
         let end = layout.inPort(request.target)
-        var used = usedBySource[request.source, default: []]
+        let bundle = bundleOf[request.id] ?? request.id
+        var used = usedByBundle[bundle, default: []]
         let points: [CGPoint]
         if let path = grid.shortestPath(
             from: CGPoint(x: start.x + o.stub, y: start.y),
@@ -113,14 +156,15 @@ public func route(_ layout: CanvasLayout, _ requests: [WireRequest], options o: 
             let midX = (start.x + end.x) / 2
             points = [start, CGPoint(x: midX, y: start.y), CGPoint(x: midX, y: end.y), end]
         }
-        usedBySource[request.source] = used
+        usedByBundle[bundle] = used
         routed[request.id] = Wire(
-            id: request.id, source: request.source, target: request.target, kind: request.kind,
+            id: request.id, source: request.source, target: request.target, kind: request.kind, bundle: bundle,
             points: simplify(points))
     }
 
     var wires = ordered.compactMap { routed[$0.id] }
     assignLanes(&wires, spacing: o.laneSpacing)
+    staggerInPorts(&wires, spacing: o.laneSpacing)
     let junctions = thinned(findJunctions(wires), within: o.laneSpacing)
     let byID = Dictionary(uniqueKeysWithValues: wires.map { ($0.id, $0) })
     var seen = Set<String>()
@@ -305,53 +349,80 @@ private struct LineKey: Hashable {
 
 /// Moves interior segments that share a line with another source's segment onto parallel lanes.
 /// First and last segments stay put so wires still meet their ports.
+/// Spreads different bundles that share a line into lanes `spacing` apart, centred on the line. Bundles that
+/// overlap are ordered to cross each other's turns as little as possible: a bundle whose runs leave toward the
+/// low side (left or up) goes on that side.
 func assignLanes(_ wires: inout [Wire], spacing: CGFloat) {
+    /// Where a neighbouring segment leaves the piece's line, and toward which side (-1 low, +1 high).
+    struct Turn {
+        var at: CGFloat
+        var side: CGFloat
+    }
     struct Piece {
         var wire: Int
         var segment: Int
         var lo: CGFloat
         var hi: CGFloat
+        var turns: [Turn]
     }
     var groups: [LineKey: [Piece]] = [:]
     for (wi, w) in wires.enumerated() where w.points.count >= 4 {
         for k in 1..<(w.points.count - 2) {
-            let a = w.points[k]
-            let b = w.points[k + 1]
+            let (before, a, b, after) = (w.points[k - 1], w.points[k], w.points[k + 1], w.points[k + 2])
             let vertical = a.x == b.x
             let key = LineKey(vertical: vertical, at: vertical ? a.x : a.y)
             let (lo, hi) = vertical ? (min(a.y, b.y), max(a.y, b.y)) : (min(a.x, b.x), max(a.x, b.x))
-            groups[key, default: []].append(Piece(wire: wi, segment: k, lo: lo, hi: hi))
+            let turns =
+                vertical
+                ? [Turn(at: a.y, side: sign(before.x - a.x)), Turn(at: b.y, side: sign(after.x - b.x))]
+                : [Turn(at: a.x, side: sign(before.y - a.y)), Turn(at: b.x, side: sign(after.y - b.y))]
+            groups[key, default: []].append(Piece(wire: wi, segment: k, lo: lo, hi: hi, turns: turns))
         }
     }
 
-    func offset(_ lane: Int) -> CGFloat {
-        lane == 0 ? 0 : (lane % 2 == 1 ? 1 : -1) * spacing * CGFloat((lane + 1) / 2)
+    func overlaps(_ a: [Piece], _ b: [Piece]) -> Bool {
+        a.contains { p in b.contains { q in max(p.lo, q.lo) < min(p.hi, q.hi) } }
+    }
+    /// Crossings when `low` sits on the low side of `high`: turns of one that reach across the other's span.
+    func crossings(low: [Piece], high: [Piece]) -> Int {
+        func inside(_ at: CGFloat, _ pieces: [Piece]) -> Bool { pieces.contains { $0.lo < at && at < $0.hi } }
+        let fromHigh = high.flatMap(\.turns).filter { $0.side < 0 && inside($0.at, low) }.count
+        let fromLow = low.flatMap(\.turns).filter { $0.side > 0 && inside($0.at, high) }.count
+        return fromHigh + fromLow
+    }
+    func permutations(_ items: [String]) -> [[String]] {
+        guard items.count > 1 else { return [items] }
+        return items.indices.flatMap { i in
+            permutations(Array(items[..<i] + items[(i + 1)...])).map { [items[i]] + $0 }
+        }
     }
 
     var shifts: [(wire: Int, segment: Int, vertical: Bool, by: CGFloat)] = []
     for key in groups.keys.sorted(by: { ($0.vertical ? 1 : 0, $0.at) < ($1.vertical ? 1 : 0, $1.at) }) {
-        let pieces = groups[key]!
-        let bySource = Dictionary(grouping: pieces, by: { wires[$0.wire].source })
-        guard bySource.count > 1 else { continue }
-        let sources = bySource.keys.sorted { a, b in
-            let la = bySource[a]!.map(\.lo).min()!
-            let lb = bySource[b]!.map(\.lo).min()!
-            return la == lb ? a < b : la < lb
-        }
-        var lanes: [(lane: Int, pieces: [Piece])] = []
-        for source in sources {
-            let mine = bySource[source]!
-            var lane = 0
-            while lanes.contains(where: { other in
-                other.lane == lane
-                    && other.pieces.contains { p in mine.contains { q in max(p.lo, q.lo) < min(p.hi, q.hi) } }
-            }) {
-                lane += 1
+        let byBundle = Dictionary(grouping: groups[key]!, by: { wires[$0.wire].bundle })
+        guard byBundle.count > 1 else { continue }
+        // Clusters of bundles that overlap along the line, directly or through another bundle.
+        var clusters: [[String]] = []
+        for bundle in byBundle.keys.sorted() {
+            let touching = clusters.indices.filter { i in
+                clusters[i].contains { overlaps(byBundle[$0]!, byBundle[bundle]!) }
             }
-            lanes.append((lane, mine))
-            guard lane != 0 else { continue }
-            for piece in mine {
-                shifts.append((piece.wire, piece.segment, key.vertical, offset(lane)))
+            let merged = touching.flatMap { clusters[$0] } + [bundle]
+            clusters = clusters.indices.filter { !touching.contains($0) }.map { clusters[$0] } + [merged.sorted()]
+        }
+        for cluster in clusters where cluster.count > 1 {
+            // Few bundles meet on one line; past six, keep name order rather than try every order.
+            let candidates = cluster.count <= 6 ? permutations(cluster) : [cluster]
+            let order = candidates.min { a, b in
+                func cost(_ o: [String]) -> Int {
+                    o.indices.flatMap { i in o.indices.filter { $0 > i }.map { (i, $0) } }
+                        .reduce(0) { $0 + crossings(low: byBundle[o[$1.0]]!, high: byBundle[o[$1.1]]!) }
+                }
+                return cost(a) < cost(b)
+            }!
+            for (i, bundle) in order.enumerated() {
+                let by = (CGFloat(i) - CGFloat(order.count - 1) / 2) * spacing
+                for piece in byBundle[bundle]! { shifts.append((piece.wire, piece.segment, key.vertical, by)) }
             }
         }
     }
@@ -363,6 +434,38 @@ func assignLanes(_ wires: inout [Wire], spacing: CGFloat) {
     for i in wires.indices { wires[i].points = simplify(wires[i].points) }
 }
 
+/// Where several bundles reach one seat, each enters `spacing` below the previous, so none hides under another's
+/// final run. The most prominent kind keeps the port itself.
+func staggerInPorts(_ wires: inout [Wire], spacing: CGFloat) {
+    let prominence: [WireKind] = [.needsYou, .inFlight, .next, .delegates, .past, .related, .observes]
+    let byTarget = Dictionary(grouping: wires.indices, by: { wires[$0].target })
+    for target in byTarget.keys.sorted() {
+        let indices = byTarget[target]!
+        let slots = Set(indices.map { wires[$0].bundle }).sorted { a, b in
+            func rank(_ bundle: String) -> Int {
+                indices.filter { wires[$0].bundle == bundle }
+                    .map { prominence.firstIndex(of: wires[$0].kind) ?? prominence.count }.min()!
+            }
+            return (rank(a), a) < (rank(b), b)
+        }
+        guard slots.count > 1 else { continue }
+        for i in indices {
+            let slot = slots.firstIndex(of: wires[i].bundle)!
+            let n = wires[i].points.count
+            // Moves the final run down along the vertical before it. A straight wire has none to stretch, and one that
+            // climbs into the port by no more than the shift would reverse or fold that vertical, so both stay put.
+            let shift = CGFloat(slot) * spacing
+            guard slot > 0, n >= 3, wires[i].points[n - 3].x == wires[i].points[n - 2].x,
+                wires[i].points[n - 3].y - wires[i].points[n - 2].y < -0.5
+                    || wires[i].points[n - 3].y - wires[i].points[n - 2].y > shift
+            else { continue }
+            wires[i].points[n - 1].y += shift
+            wires[i].points[n - 2].y += shift
+            wires[i].points = simplify(wires[i].points)
+        }
+    }
+}
+
 func sign(_ v: CGFloat) -> CGFloat { v > 0 ? 1 : (v < 0 ? -1 : 0) }
 
 private struct PointKey: Hashable, Comparable {
@@ -371,7 +474,7 @@ private struct PointKey: Hashable, Comparable {
     static func < (l: PointKey, r: PointKey) -> Bool { (l.y, l.x) < (r.y, r.x) }
 }
 
-/// Points where a wire leaves a path it shared with another wire from the same source.
+/// Points where a wire leaves a path it shared with another wire of its bundle.
 func findJunctions(_ wires: [Wire]) -> [CGPoint] {
     func onSegment(_ p: CGPoint, _ a: CGPoint, _ b: CGPoint) -> Bool {
         (a.x == b.x && p.x == a.x && min(a.y, b.y) <= p.y && p.y <= max(a.y, b.y))
@@ -384,8 +487,8 @@ func findJunctions(_ wires: [Wire]) -> [CGPoint] {
     }
 
     var found = Set<PointKey>()
-    let bySource = Dictionary(grouping: wires, by: \.source)
-    for group in bySource.values where group.count > 1 {
+    let byBundle = Dictionary(grouping: wires, by: \.bundle)
+    for group in byBundle.values where group.count > 1 {
         for w in group {
             for k in 1..<max(w.points.count - 1, 1) {
                 let v = w.points[k]
@@ -420,8 +523,9 @@ public func thinned(_ points: [CGPoint], within gap: CGFloat) -> [CGPoint] {
     return kept
 }
 
-/// The polyline as a path with rounded corners (quadratic curves through each corner point).
-public func roundedPath(_ points: [CGPoint], radius: CGFloat = 10) -> CGPath {
+/// The polyline as a path with rounded corners (quadratic curves through each corner point). Corners at `sharp` points
+/// stay square: a branch leaving a trunk at a junction turns at the dot, rather than curving away from it.
+public func roundedPath(_ points: [CGPoint], radius: CGFloat = 10, sharp: Set<CGPoint> = []) -> CGPath {
     let path = CGMutablePath()
     guard let first = points.first else { return path }
     path.move(to: first)
@@ -429,7 +533,7 @@ public func roundedPath(_ points: [CGPoint], radius: CGFloat = 10) -> CGPath {
         let (a, b, c) = (points[i - 1], points[i], points[i + 1])
         let l1 = abs(b.x - a.x) + abs(b.y - a.y)
         let l2 = abs(c.x - b.x) + abs(c.y - b.y)
-        let r = cornerRadius(previous: l1, next: l2, max: radius)
+        let r = sharp.contains(b) ? 0 : cornerRadius(previous: l1, next: l2, max: radius)
         let u = CGPoint(x: sign(b.x - a.x), y: sign(b.y - a.y))
         let v = CGPoint(x: sign(c.x - b.x), y: sign(c.y - b.y))
         path.addLine(to: CGPoint(x: b.x - u.x * r, y: b.y - u.y * r))

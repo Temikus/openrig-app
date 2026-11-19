@@ -150,7 +150,7 @@ A pure function, `route(layout, requests) -> [Wire]`.
 1. **Channels.** Build vertical channels in each gap between pod columns and at the outer margins, horizontal channels above, below and between pod rows, and a gutter inside each pod.
 2. **Channel graph.** Vertices are channel intersections plus a stub vertex per port. Edges are channel segments that cross no inflated node rectangle.
 3. **Path.** Run Dijkstra per request with cost equal to length plus a bend penalty of about 40 pt. Break ties deterministically.
-4. **Bundling.** Requests from the same source port share a trunk: route in order of target y and discount segments already used by that source. This reproduces the fan-out at x=574 in the design prototype's routing script.
+4. **Bundling.** Requests in one bundle (same kind, sharing a source or a target) share a trunk: route in order of target y and discount segments already used by that bundle. This reproduces the fan-out at x=574 in the design prototype's routing script.
 5. **Lanes.** Within a channel, segments from different sources get lane offsets by greedy interval colouring at 8 pt spacing, ordered to minimise crossings.
 6. **Classes.** Each wire is one of needs-you, in-flight, next, past, delegates or observes.
    - Work wires reuse the spec edge's geometry for the same seat pair and draw above it.
@@ -161,8 +161,10 @@ A pure function, `route(layout, requests) -> [Wire]`.
 ### Router tests, written first
 - Every segment is axis-aligned.
 - No segment enters a node rectangle other than its endpoints.
-- Same-source trunks coincide.
-- Different-source parallel segments are at least one lane apart.
+- Trunks within a bundle coincide. A bundle is wires of one kind joined by a shared source (fan-out) or target (fan-in), so two builders watching the same reviewers draw as one watch line. A group bundles only if every source reaches every target; otherwise one trunk would suggest links that don't exist, and each source keeps its own fan-out.
+- Bundles into one seat never share a final run: the most prominent kind keeps the port and each other bundle enters a lane below it (`staggerInPorts`).
+- Branches turn square at junctions, so the dot sits on the corner; other corners stay rounded.
+- Different-bundle parallel segments are at least one lane apart, centred on the line and ordered to cross each other's turns least (`assignLanes`).
 - Output is deterministic.
 - A golden fixture for the denkeeper topology checks topology (bend counts and channel order) against the prototype's polylines.
 

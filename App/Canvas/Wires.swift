@@ -40,13 +40,14 @@ struct WireLayer: View {
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
+        let sharp = Set(routes.junctions)
         Canvas { context, _ in
             // Spec edges first so work wires (M2) draw on top.
             let order: [WireKind] = [.related, .observes, .delegates, .past, .next, .inFlight, .needsYou]
             for kind in order {
                 for wire in routes.wires where wire.kind == kind {
                     let style = style(wire)
-                    let path = Path(roundedPath(wire.points))
+                    let path = Path(roundedPath(wire.points, sharp: sharp))
                     if let selectedQItem, wire.id == "q:\(selectedQItem)" {
                         // Selection ring: a wider halo under the wire.
                         context.stroke(

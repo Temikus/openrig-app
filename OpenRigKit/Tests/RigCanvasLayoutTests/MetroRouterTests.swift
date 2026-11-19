@@ -22,7 +22,9 @@ import Testing
     @Test func wiresRunFromOutPortToInPort() {
         for w in result.wires {
             #expect(w.points.first == layout.outPort(w.source), "\(w.id)")
-            #expect(w.points.last == layout.inPort(w.target), "\(w.id)")
+            // A second bundle into the same seat enters a lane below the port (staggerInPorts).
+            let port = layout.inPort(w.target), end = w.points.last!
+            #expect(end.x == port.x && [0, 8, 16].contains(end.y - port.y), "\(w.id) ends at \(end), port \(port)")
         }
     }
 
@@ -73,8 +75,67 @@ import Testing
         }
     }
 
-    @Test func differentSourceParallelSegmentsAreALaneApart() {
-        let interior = result.wires.flatMap { w in w.segments.dropFirst().dropLast().map { (w.source, $0.0, $0.1) } }
+    @Test func sameKindFanInIsOneBundle() {
+        let ids = bundles(Denkeeper.requests)
+        #expect(Set(Denkeeper.observes.map { ids["o:\($0.0)>\($0.1)"] }).count == 1, "both builders' watch lines")
+        #expect(Set(Denkeeper.delegates.map { ids["d:\($0.0)>\($0.1)"] }).count == 1)
+        #expect(ids["o:b1>frontend"] != ids["d:lead>frontend"], "kinds never bundle")
+    }
+
+    @Test func bundlesOnlyWhenEverySourceReachesEveryTarget() {
+        // a→p, b→p, b→q: one trunk would suggest a→q, so each source keeps its own fan-out.
+        let chain = [("a", "p"), ("b", "p"), ("b", "q")].map {
+            WireRequest(id: "\($0.0)>\($0.1)", source: $0.0, target: $0.1, kind: .observes)
+        }
+        let ids = bundles(chain)
+        #expect(ids["a>p"] != ids["b>p"])
+        #expect(ids["b>p"] == ids["b>q"])
+    }
+
+    @Test func bundlesIntoOneSeatEnterOnTheirOwnRuns() {
+        for (target, wires) in Dictionary(grouping: result.wires, by: \.target) {
+            let byBundle = Dictionary(grouping: wires, by: \.bundle).mapValues { Set($0.map { $0.points.last!.y }) }
+            let ys = byBundle.values.flatMap(\.self)
+            #expect(Set(ys).count == ys.count, "\(target): bundles share a final run \(byBundle)")
+        }
+    }
+
+    @Test func staggerNeverReversesAShortClimbIntoThePort() {
+        // Two bundles into "t". The watch wire climbs 4 pt into the port: an 8 pt shift would turn it back on itself.
+        let port = CGPoint(x: 100, y: 50)
+        var wires = [
+            Wire(
+                id: "d", source: "a", target: "t", kind: .delegates, bundle: "d",
+                points: [CGPoint(x: 0, y: 0), CGPoint(x: 80, y: 0), CGPoint(x: 80, y: 50), port]),
+            Wire(
+                id: "o", source: "b", target: "t", kind: .observes, bundle: "o",
+                points: [CGPoint(x: 0, y: 54), CGPoint(x: 70, y: 54), CGPoint(x: 70, y: 50), port]),
+            Wire(
+                id: "o2", source: "c", target: "t", kind: .observes, bundle: "o",
+                points: [CGPoint(x: 0, y: 0), CGPoint(x: 70, y: 0), CGPoint(x: 70, y: 50), port]),
+        ]
+        let short = wires[1].points
+        staggerInPorts(&wires, spacing: 8)
+        #expect(wires[0].points.last == port, "the spec wire keeps the port")
+        #expect(wires[1].points == short, "a 4 pt climb isn't stretched past itself")
+        #expect(wires[2].points.last == CGPoint(x: 100, y: 58), "a descent lengthens and enters below")
+    }
+
+    @Test func watchLinesShareOneLaneOnTheBuildersSide() throws {
+        // In the channel between builders and reviewers, every vertical run of each kind.
+        let dev = layout.pods["dev"]!, review = layout.pods["review"]!
+        func channelXs(_ kind: WireKind) -> Set<CGFloat> {
+            Set(
+                result.wires.filter { $0.kind == kind }.flatMap(\.segments)
+                    .filter { $0.0.x == $0.1.x && $0.0.x > dev.maxX && $0.0.x < review.minX }.map(\.0.x))
+        }
+        let watch = channelXs(.observes), spec = channelXs(.delegates)
+        #expect(watch.count == 1, "one watch trunk, not one per builder: \(watch)")
+        #expect(watch.max()! < spec.min()!, "watch lane builder-side of the spec lane: \(watch) vs \(spec)")
+    }
+
+    @Test func differentBundleParallelSegmentsAreALaneApart() {
+        let interior = result.wires.flatMap { w in w.segments.dropFirst().dropLast().map { (w.bundle, $0.0, $0.1) } }
         for (i, s) in interior.enumerated() {
             for t in interior[(i + 1)...] where s.0 != t.0 {
                 if s.1.x == s.2.x && t.1.x == t.2.x, overlap(s.1.y, s.2.y, t.1.y, t.2.y) {
