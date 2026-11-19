@@ -14,8 +14,24 @@
             try? await Task.sleep(for: .seconds(6))
             guard let window = NSApp.windows.first(where: { $0.isVisible && $0.title != "" && !($0 is NSPanel) })
             else { return }
-            var out = ""
+            // Menu items read their focused scene values from the key window.
+            NSApp.activate()
+            window.makeKeyAndOrderFront(nil)
+            try? await Task.sleep(for: .seconds(1))
+            var out = "key window: \(NSApp.keyWindow?.title ?? "none")\n"
             dump(window, depth: 0, into: &out)
+            out += "\n# Menus\n"
+            for top in NSApp.mainMenu?.items ?? [] {
+                guard let menu = top.submenu else { continue }
+                menu.update()
+                out += "\(top.title): "
+                out += menu.items.map { item in
+                    item.isSeparatorItem
+                        ? "|"
+                        : "\(item.title)\(item.keyEquivalent.isEmpty ? "" : " ⌘" + item.keyEquivalent)\(item.isEnabled ? "" : " (off)")"
+                }.joined(separator: ", ")
+                out += "\n"
+            }
             out += "\n# Views that take Tab\n"
             keyViews(window.contentView, into: &out)
             out += "\n# Tab stops\n"

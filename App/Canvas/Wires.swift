@@ -111,6 +111,19 @@ struct LegendBar: View {
         }
     }
 
+    /// A 24-point target around a caption-sized glyph.
+    private func zoomButton(
+        _ title: String, systemImage: String, help: String, _ action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .help(help)
+    }
+
     private func bar(showsLegend: Bool) -> some View {
         HStack(spacing: 14) {
             if showsLegend {
@@ -124,15 +137,12 @@ struct LegendBar: View {
                 Divider().frame(height: 16)
             }
             HStack(spacing: 8) {
-                Button("Zoom out", systemImage: "minus") { zoom = clampZoom(zoom - 0.1) }
-                    .keyboardShortcut("-")
+                // The shortcuts live on View › Zoom In, Zoom Out and Zoom to Fit.
+                zoomButton("Zoom out", systemImage: "minus", help: "Zoom out (⌘-)") { zoom = clampZoom(zoom - 0.1) }
                 Text("\(Int((zoom * 100).rounded()))%").monospacedDigit().frame(minWidth: 38)
-                Button("Zoom in", systemImage: "plus") { zoom = clampZoom(zoom + 0.1) }
-                    .keyboardShortcut("=")
-                Button("Fit", systemImage: "arrow.up.left.and.arrow.down.right") { fit() }
-                    .keyboardShortcut("0")
+                zoomButton("Zoom in", systemImage: "plus", help: "Zoom in (⌘=)") { zoom = clampZoom(zoom + 0.1) }
+                zoomButton("Fit", systemImage: "arrow.up.left.and.arrow.down.right", help: "Zoom to fit (⌘0)", fit)
             }
-            .labelStyle(.iconOnly)
             .buttonStyle(.borderless)
         }
         .fixedSize()

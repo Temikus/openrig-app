@@ -48,6 +48,15 @@ struct CanvasView: View {
                 if resized, !userZoomed { fit(layout) }
             }
             .defaultScrollAnchor(.center)
+            .focusedSceneValue(
+                \.canvasZoom,
+                CanvasZoomActions(
+                    zoomIn: { setZoom(zoom + 0.1) }, zoomOut: { setZoom(zoom - 0.1) },
+                    fit: {
+                        userZoomed = false
+                        fit(layout)
+                    })
+            )
             .onChange(of: layout.bounds.size) { if !userZoomed { fit(layout) } }
             .gesture(
                 MagnifyGesture()
@@ -62,12 +71,7 @@ struct CanvasView: View {
             // Overlays, not a ZStack: floating controls must not set the column's minimum width.
             .overlay(alignment: .bottom) {
                 LegendBar(
-                    zoom: Binding(
-                        get: { zoom },
-                        set: {
-                            zoom = $0
-                            userZoomed = true
-                        }),
+                    zoom: Binding(get: { zoom }, set: setZoom),
                     fit: {
                         userZoomed = false
                         fit(layout)
@@ -93,6 +97,11 @@ struct CanvasView: View {
         } else {
             ProgressView()
         }
+    }
+
+    private func setZoom(_ value: CGFloat) {
+        zoom = clampZoom(value)
+        userZoomed = true
     }
 
     private func fit(_ layout: CanvasLayout) {

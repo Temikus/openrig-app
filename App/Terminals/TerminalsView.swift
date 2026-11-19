@@ -85,6 +85,7 @@ struct TerminalsView: View {
                 ProgressView()
             }
         }
+        .focusedSceneValue(\.terminalActions, terminals.tmux == nil ? nil : menuActions)
         .onAppear(perform: installKeyMonitor)
         .onDisappear {
             if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
@@ -320,14 +321,30 @@ struct TerminalsView: View {
             case .toggleTyping:
                 terminals.typing.toggle()
             case .moveFocus(let step):
-                let order = terminals.order
-                guard !order.isEmpty else { return event }
-                let current = terminals.focusedSeatID.flatMap { order.firstIndex(of: $0) }
-                let next = current.map { ($0 + step + order.count) % order.count } ?? (step > 0 ? 0 : order.count - 1)
-                if let seat = rig.seat(order[next]) { terminals.focus(seat) }
+                guard !terminals.order.isEmpty else { return event }
+                Self.moveFocus(step, terminals: terminals, rig: rig)
             }
             return nil
         }
+    }
+
+    /// ⌘] and ⌘[: the next or previous tile in display order, wrapping.
+    private static func moveFocus(_ step: Int, terminals: TerminalStore, rig: RigStore) {
+        let order = terminals.order
+        guard !order.isEmpty else { return }
+        let current = terminals.focusedSeatID.flatMap { order.firstIndex(of: $0) }
+        let next = current.map { ($0 + step + order.count) % order.count } ?? (step > 0 ? 0 : order.count - 1)
+        if let seat = rig.seat(order[next]) { terminals.focus(seat) }
+    }
+
+    private var menuActions: TerminalActions {
+        let terminals = self.terminals
+        let rig = self.rig
+        return TerminalActions(
+            next: { Self.moveFocus(1, terminals: terminals, rig: rig) },
+            previous: { Self.moveFocus(-1, terminals: terminals, rig: rig) },
+            toggleTyping: terminals.focusedSeatID == nil ? nil : { terminals.typing.toggle() },
+            typing: terminals.typing)
     }
 
 }

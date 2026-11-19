@@ -7,6 +7,8 @@ struct ContentView: View {
     @Environment(\.appearsActive) private var appearsActive
     @State private var showsInspector = true
     @State private var showsQueueTask = false
+    /// Bumped by Rig › Needs You… to open the toolbar button's list.
+    @State private var needsYouRequests = 0
     @State private var fit = ToolbarFit.full
     private var narrow: Bool { fit != .full }
 
@@ -40,6 +42,12 @@ struct ContentView: View {
             showsInspector = store.inspectorByMode[new] ?? true
         }
         .onChange(of: store.inspectorRequests) { showsInspector = true }
+        .focusedSceneValue(
+            \.windowActions,
+            WindowActions(
+                queueTask: store.rig == nil || !store.isUp ? nil : { showsQueueTask = true },
+                needsYou: { needsYouRequests += 1 })
+        )
         .onChange(of: appearsActive, initial: true) { store.windowInFront = appearsActive }
         .onDisappear { store.windowInFront = false }
     }
@@ -70,7 +78,7 @@ struct ContentView: View {
         // If tight and still short, the picker overflows first: ⌘1–3 still switch views, and Needs you stays in sight.
         .keptVisible(fit != .tight)
         ToolbarItem(placement: .primaryAction) {
-            NeedsYouButton(compact: narrow).id(narrow)
+            NeedsYouButton(compact: narrow, requests: needsYouRequests).id(narrow)
         }
         .keptVisible()
         ToolbarItem(placement: .primaryAction) {
@@ -79,7 +87,6 @@ struct ContentView: View {
                 .help("Queue task (⌘N)")
                 .buttonStyle(.glassProminent)
                 .disabled(store.rig == nil || !store.isUp)
-                .keyboardShortcut("n")
                 // Outside the popover, so a width change while the form is open keeps the draft.
                 .id(narrow)
                 .popover(isPresented: $showsQueueTask, arrowEdge: .bottom) {
@@ -97,6 +104,7 @@ struct ContentView: View {
 
     private var inspectorToggle: some View {
         Button("Inspector", systemImage: "sidebar.right") { showsInspector.toggle() }
+            .help(showsInspector ? "Hide Inspector (⌃⌘I)" : "Show Inspector (⌃⌘I)")
     }
 }
 

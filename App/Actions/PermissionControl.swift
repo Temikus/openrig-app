@@ -321,6 +321,8 @@ struct NeedsYouButton: View {
         @MainActor private static var debugOpened = false
     #endif
     var compact = false
+    /// Rig › Needs You… bumps this to open the list.
+    var requests = 0
     @Environment(AppStore.self) private var app
     @State private var open = false
 
@@ -347,7 +349,8 @@ struct NeedsYouButton: View {
             }
         }
         .accessibilityLabel(any ? "Needs you, \(urgent) waiting, \(fyi) FYI" : "Needs you")
-        .help(any ? "\(urgent) waiting on you · \(fyi) FYI" : "Nothing needs you")
+        .help(any ? "\(urgent) waiting on you · \(fyi) FYI (⌘J)" : "Nothing needs you (⌘J)")
+        .onChange(of: requests) { open = true }
         #if DEBUG
             // OPENRIG_DEBUG_NEEDS_YOU=1 opens the list once launch has settled, for screenshots without a click;
             // =open then opens the first row from another rig, as clicking it would.
