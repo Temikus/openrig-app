@@ -14,6 +14,14 @@ extension Color {
     /// dark-mode coral isn't.
     static let attentionFill = Color(.sRGB, red: 0.76, green: 0.26, blue: 0.21)
 
+    /// "Approved": system green is too light for text on white, so light mode gets a deeper one.
+    static let approved = Color(
+        nsColor: NSColor(name: "approved") { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                ? .systemGreen
+                : NSColor(srgbRed: 0.09, green: 0.48, blue: 0.20, alpha: 1)
+        })
+
     /// Terminal tile body, the same in both appearances: panes are drawn light-on-dark.
     static let terminalBody = Color(white: 0.08)
 

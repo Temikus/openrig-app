@@ -7,7 +7,15 @@ struct QueueBoardView: View {
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
     @Environment(AppStore.self) private var app
-    @State private var filter = BoardFilter()
+    @State private var filter = BoardFilter(scope: Self.initialScope)
+
+    /// Active, or OPENRIG_DEBUG_SCOPE=today in debug builds for screenshots of closed work.
+    private static var initialScope: BoardFilter.Scope {
+        #if DEBUG
+            if ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SCOPE"] == "today" { return .today }
+        #endif
+        return .active
+    }
     /// The board's width; four columns share it.
     @State private var visibleWidth: CGFloat = 1000
     @FocusState private var searching: Bool
@@ -229,14 +237,24 @@ struct QItemCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(shortQItemID(item.id)).font(.caption.monospaced()).foregroundStyle(.secondary)
-                    Spacer()
-                    StatusTag(status: status, overdue: isOverdue(item, now: now), forYou: forYou)
+                    // A finished row's outcome sits by the id: a narrow or scrolled Done column cuts off the trailing edge.
+                    if let ended = RigDomain.outcome(item) {
+                        StatusTag(status: status, outcome: ended)
+                        Spacer()
+                    } else {
+                        Spacer()
+                        StatusTag(status: status, overdue: isOverdue(item, now: now), forYou: forYou)
+                    }
                 }
                 Text(item.summary.isEmpty ? "No summary" : item.summary)
                     .font(.callout.weight(.medium))
                     .lineLimit(3)
                     .multilineTextAlignment(.leading)
                 HStack(spacing: 4) {
+                    if !status.isActive, let updated = item.updated {
+                        Text(closedAt(updated))
+                        Text("·")
+                    }
                     Text(rig.displayName(session: item.source))
                     Image(systemName: "arrow.right").imageScale(.small)
                     Text(rig.displayName(session: item.destination))
@@ -295,20 +313,48 @@ struct QItemCard: View {
 }
 
 /// State as a word with a colour. Amber is work in flight, red needs you.
+/// When a row finished: the time today, the date and time before that.
+func closedAt(_ date: Date) -> String {
+    Calendar.current.isDateInToday(date)
+        ? date.formatted(date: .omitted, time: .shortened)
+        : date.formatted(date: .abbreviated, time: .shortened)
+}
+
 struct StatusTag: View {
     let status: WorkStatus
     var overdue = false
     /// Set for a live row addressed to the person, which reads as theirs rather than as pending work.
     var forYou: ForYou?
+    /// A finished row's outcome, from the row (its resolution tells an approval from a plain close).
+    var outcome: Outcome?
 
     var body: some View {
         HStack(spacing: 6) {
             if overdue {
                 Text("overdue").foregroundStyle(.orange)
             }
-            Text(label).foregroundStyle(color)
+            if let ended {
+                // A finished row's outcome in one word, as a tinted capsule so it reads apart from live states.
+                Text(ended.label)
+                    .foregroundStyle(endedColor(ended))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 1)
+                    .background(endedColor(ended).opacity(0.14), in: .capsule)
+            } else {
+                Text(label).foregroundStyle(color)
+            }
         }
         .font(.caption.weight(.semibold))
+    }
+
+    private var ended: Outcome? { outcome }
+
+    private func endedColor(_ o: Outcome) -> Color {
+        switch o {
+        case .approved: .approved
+        case .denied: .attention
+        default: .secondary
+        }
     }
 
     private var label: String {

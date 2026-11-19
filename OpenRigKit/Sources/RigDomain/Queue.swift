@@ -80,6 +80,47 @@ public func needsYou(_ items: [QItem], me: String = Human.session) -> [QItem] {
     return waiting.sorted(by: oldestFirst) + updates.sorted(by: oldestFirst)
 }
 
+/// How a finished row ended, as one plain word, instead of the daemon's closure reason (`no-follow-on`).
+public enum Outcome: Equatable, Sendable {
+    case approved, denied, done, canceled
+    case replaced(by: String?)
+    case escalated(to: String?)
+    case handedOff(to: String?)
+
+    public var label: String {
+        switch self {
+        case .approved: "Approved"
+        case .denied: "Denied"
+        case .done: "Done"
+        case .canceled: "Canceled"
+        case .replaced: "Replaced"
+        case .escalated: "Escalated"
+        case .handedOff: "Handed off"
+        }
+    }
+}
+
+/// nil while the row is open. An approval is a `no-follow-on` close whose resolution starts "Approved", as the app's
+/// answer and the TUI's approve both write it.
+public func outcome(_ item: QItem) -> Outcome? {
+    switch workStatus(item) {
+    case .handedOff(let to): return .handedOff(to: to)
+    case .closed(let reason):
+        switch reason {
+        case "denied": return .denied
+        case "canceled": return .canceled
+        case "superseded": return .replaced(by: item.closureTarget)
+        case "escalation": return .escalated(to: item.closureTarget)
+        default:
+            let resolution = (item.resolution ?? "").lowercased()
+            if resolution.hasPrefix("approved") { return .approved }
+            if resolution.hasPrefix("denied") { return .denied }
+            return .done
+        }
+    default: return nil
+    }
+}
+
 /// The rig a seat's session belongs to: "orch-lead@denkeeper" → "denkeeper".
 public func rigName(ofSession session: String) -> String? {
     guard let at = session.lastIndex(of: "@") else { return nil }

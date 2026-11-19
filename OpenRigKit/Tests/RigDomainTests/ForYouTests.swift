@@ -69,4 +69,25 @@ import Testing
         #expect(rigName(ofSession: "human@host") == "host")
         #expect(rigName(ofSession: "nobody") == nil)
     }
+
+    @Test func outcomesInPlainWords() {
+        func closed(_ reason: String?, _ resolution: String? = nil, state: QItemState = .done, target: String? = nil)
+            -> Outcome?
+        {
+            var row = item("q", state, closureReason: reason, closureTarget: target)
+            row.resolution = resolution
+            return outcome(row)
+        }
+        #expect(closed("no-follow-on", "Approved · told orch-lead: go") == .approved)
+        #expect(closed("no-follow-on", "approved") == .approved, "the TUI's approve")
+        #expect(closed("denied", "Denied · told orch-lead") == .denied)
+        #expect(closed("no-follow-on", "LGTM, two nits") == .done)
+        #expect(closed(nil) == .done)
+        #expect(closed(nil, state: .canceled) == .canceled)
+        #expect(closed("superseded", target: "qitem-2") == .replaced(by: "qitem-2"))
+        #expect(closed("escalation", target: "lead@r") == .escalated(to: "lead@r"))
+        #expect(closed("handed_off_to", target: "b@r") == .handedOff(to: "b@r"))
+        #expect(outcome(item("open", .pending)) == nil)
+        #expect(Outcome.done.label == "Done" && Outcome.replaced(by: nil).label == "Replaced")
+    }
 }

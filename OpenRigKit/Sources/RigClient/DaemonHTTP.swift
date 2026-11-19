@@ -58,6 +58,17 @@ public struct DaemonHTTP: Sendable {
         try await get("/api/gateway/participants")
     }
 
+    /// Who closed a row: the actor of its last transition into a finished state. The row itself doesn't say.
+    public func closedBy(qitem id: String) async throws(DaemonError) -> String? {
+        struct Transition: Decodable {
+            var actorSession: String?
+            var state: String?
+        }
+        let transitions: [Transition] = try await get("/api/queue/\(id)/transitions")
+        let finished: Set<String?> = ["done", "canceled", "handed-off"]
+        return transitions.last { finished.contains($0.state) }?.actorSession
+    }
+
     public func qitem(id: String) async throws(DaemonError) -> QItem {
         try await get("/api/queue/\(id)")
     }

@@ -6,6 +6,19 @@ struct QItemInspector: View {
     let item: QItem
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
+    /// Who finished a closed row, from its transitions: the row itself doesn't say.
+    @State private var closedBy: String?
+
+    /// "Approved by you · 11:42".
+    private func endedLine(_ ended: Outcome) -> String {
+        var parts = [ended.label]
+        if let closedBy {
+            let who = rig.displayName(session: closedBy)
+            parts[0] += " by \(who == "You" ? "you" : who)"
+        }
+        if let updated = item.updated { parts.append(closedAt(updated)) }
+        return parts.joined(separator: " · ")
+    }
 
     var body: some View {
         // Redraws every 30 s so "Created 3 minutes ago" stays true.
@@ -21,12 +34,21 @@ struct QItemInspector: View {
                         Spacer()
                         StatusTag(
                             status: workStatus(item), overdue: isOverdue(item, now: .now),
-                            forYou: forYou(item, me: rig.me))
+                            forYou: forYou(item, me: rig.me), outcome: outcome(item))
                     }
                     Text(item.summary.isEmpty ? "No summary" : item.summary)
                         .font(.title3.weight(.semibold))
                         .textSelection(.enabled)
                     Text(item.id).font(.caption.monospaced()).foregroundStyle(.tertiary).textSelection(.enabled)
+                    if let ended = outcome(item) {
+                        Text(endedLine(ended)).font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+                // Keyed on the outcome too: answering the selected row closes it without changing its id.
+                .task(id: "\(item.id) \(outcome(item)?.label ?? "open")") {
+                    closedBy = nil
+                    guard outcome(item) != nil else { return }
+                    closedBy = try? await rig.client.closedBy(qitem: item.id)
                 }
 
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
@@ -118,7 +140,7 @@ struct ChainOfRecordView: View {
                             case .loaded(let item):
                                 Text(rig.displayName(session: item.destination)).font(.callout)
                                 Spacer()
-                                StatusTag(status: workStatus(item))
+                                StatusTag(status: workStatus(item), outcome: outcome(item))
                             case .missing:
                                 Text("not loaded").font(.callout).foregroundStyle(.tertiary)
                                 Spacer()
