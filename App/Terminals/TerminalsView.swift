@@ -12,6 +12,11 @@ struct TerminalsView: View {
     @Environment(AppStore.self) private var app
     @Environment(SelectionStore.self) private var selection
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Where the grid was scrolled before Type mode, to put it back afterwards.
+    @State private var scroll = ScrollPosition(edge: .top)
+    @State private var gridOffset: CGFloat = 0
+    @State private var offsetBeforeTyping: CGFloat = 0
     /// The order when focus began. Nothing moves while a tile has focus, except that a seat with a new
     /// prompt still gets a large tile, appended after the others.
     @State private var frozen: FrozenOrder?
@@ -41,13 +46,37 @@ struct TerminalsView: View {
                 // GeometryReader takes the space offered and nothing inside can grow it. The grid is sized
                 // from it, so measuring the content instead would feed back into the window size.
                 GeometryReader { geo in
-                    ScrollViewReader { proxy in
-                        ScrollView { grid(graph, viewport: geo.size).padding(Metrics.padding).id("grid") }
-                            // Type mode lays the typing tile out first; bring it into view from wherever the grid was.
-                            .onChange(of: terminals.typing) {
-                                if terminals.typing { proxy.scrollTo("grid", anchor: .top) }
+                    ScrollView { grid(graph, viewport: geo.size).padding(Metrics.padding) }
+                        .scrollPosition($scroll)
+                        #if DEBUG
+                            // OPENRIG_DEBUG_SCROLL=<points> scrolls the grid down once, as a person would, to check
+                            // that leaving Type mode puts it back.
+                            .task {
+                                guard
+                                    let y = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SCROLL"].flatMap(
+                                        Double.init)
+                                else { return }
+                                try? await Task.sleep(for: .seconds(4))
+                                scroll.scrollTo(y: y)
                             }
-                    }
+                        #endif
+                        // In scrollTo(y:)'s terms: contentOffset counts the toolbar's inset, scrollTo doesn't.
+                        .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y + $0.contentInsets.top }) {
+                            _, y in
+                            if !terminals.typing { gridOffset = y }
+                        }
+                        // Type mode puts the typing tile first, so show the top; leaving it, go back to where
+                        // the grid was. The grid lays out again first, hence the deferred scroll.
+                        .onChange(of: terminals.typing) { _, typing in
+                            // Saved here: by the time typing ends, the tracker has already seen the reset to the top.
+                            if typing {
+                                offsetBeforeTyping = gridOffset
+                                scroll.scrollTo(edge: .top)
+                            } else {
+                                let offset = offsetBeforeTyping
+                                Task { @MainActor in scroll.scrollTo(y: offset) }
+                            }
+                        }
                 }
                 .task(id: rig.rigID) {
                     await terminals.run { rig.graph?.seats.compactMap(\.tmuxPane) ?? [] }
@@ -106,17 +135,27 @@ struct TerminalsView: View {
         return VStack(alignment: .leading, spacing: Metrics.spacing) {
             if let typingSeat {
                 seatStrip(graph.seats.filter { $0.id != typingSeat.id })
+                    .transition(.opacity)
                 TerminalTile(seat: typingSeat, large: true)
                     .frame(
                         width: width,
                         height: typingHeight(
-                            typingSeat, width: width, available: available - Metrics.stripHeight - Metrics.spacing))
+                            typingSeat, width: width, available: available - Metrics.stripHeight - Metrics.spacing)
+                    )
+                    .transition(.opacity)
             } else {
-                tileRows(
-                    large.map { Slot(seat: $0) }, cols: largeCols, width: width, height: largeHeight, isLarge: true)
-                tileRows(small, cols: smallCols, width: width, height: smallHeight, isLarge: false)
+                Group {
+                    tileRows(
+                        large.map { Slot(seat: $0) }, cols: largeCols, width: width, height: largeHeight,
+                        isLarge: true)
+                    tileRows(small, cols: smallCols, width: width, height: smallHeight, isLarge: false)
+                }
+                .transition(.opacity)
             }
         }
+        // A crossfade, not a resize: tiles host live terminals, and a frame animated step by step would refit
+        // the tmux client on every step.
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: terminals.typing)
         // A click between tiles releases focus.
         .background(Color.clear.contentShape(Rectangle()).onTapGesture { terminals.release() })
     }
@@ -342,6 +381,16 @@ struct TerminalTile: View {
             screen
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .bottomLeading)
                 .clipped()
+                .overlay(alignment: .trailing) {
+                    if clipsRight {
+                        LinearGradient(
+                            colors: [Color.terminalBody.opacity(0), .terminalBody], startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: 28)
+                        .allowsHitTesting(false)
+                    }
+                }
                 .onGeometryChange(for: CGSize.self) {
                     $0.size
                 } action: {
@@ -499,6 +548,16 @@ struct TerminalTile: View {
 
     // MARK: Screen
 
+    /// Whether the pane is wider than the tile at the smallest tile text, so its right edge is cut off. Type mode
+    /// uses the same width-fit size whenever the whole pane doesn't fit, so this holds there too.
+    private var clipsRight: Bool {
+        guard !phase.isDown, let snap = terminals.snapshot(seat), bodySize.width > 0 else { return false }
+        let width = bodySize.width - 24
+        let font = TerminalSurface.fittingFontSize(
+            cols: snap.cols, width: width, scale: displayScale, range: CGFloat(app.settings.smallestTileText)...13)
+        return CGFloat(snap.cols) * TerminalSurface.advance(font, scale: displayScale) > width + 0.5
+    }
+
     @ViewBuilder private var screen: some View {
         if phase.isDown {
             // A dead pane's last snapshot would look live; say what happened instead.
@@ -648,6 +707,10 @@ struct TerminalTile: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                    Button("Done") { terminals.typing = false }
+                        .controlSize(.small)
+                        .padding(.leading, 8)
+                        .help("Stop typing and show every tile")
                 }
             }
             .padding(.leading, -9)
