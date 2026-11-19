@@ -10,6 +10,8 @@ import SwiftUI
 struct TerminalsView: View {
     @Environment(RigStore.self) private var rig
     @Environment(AppStore.self) private var app
+    @Environment(SelectionStore.self) private var selection
+    @Environment(\.displayScale) private var displayScale
     /// The order when focus began. Nothing moves while a tile has focus, except that a seat with a new
     /// prompt still gets a large tile, appended after the others.
     @State private var frozen: FrozenOrder?
@@ -18,8 +20,11 @@ struct TerminalsView: View {
     private var terminals: TerminalStore { rig.terminals }
 
     private enum Metrics {
-        static let spacing: CGFloat = 10
-        static let padding: CGFloat = 14
+        static let spacing: CGFloat = 8
+        static let padding: CGFloat = 16
+        /// A tile's header, footer and body padding around the terminal while typing; sizes the typing tile.
+        static let typingChrome: CGFloat = 96
+        static let stripHeight: CGFloat = 28
         static let largeMinWidth: CGFloat = 460
         static let largeMinHeight: CGFloat = 260
         static let smallMinWidth: CGFloat = 230
@@ -36,7 +41,13 @@ struct TerminalsView: View {
                 // GeometryReader takes the space offered and nothing inside can grow it. The grid is sized
                 // from it, so measuring the content instead would feed back into the window size.
                 GeometryReader { geo in
-                    ScrollView { grid(graph, viewport: geo.size).padding(Metrics.padding) }
+                    ScrollViewReader { proxy in
+                        ScrollView { grid(graph, viewport: geo.size).padding(Metrics.padding).id("grid") }
+                            // Type mode lays the typing tile out first; bring it into view from wherever the grid was.
+                            .onChange(of: terminals.typing) {
+                                if terminals.typing { proxy.scrollTo("grid", anchor: .top) }
+                            }
+                    }
                 }
                 .task(id: rig.rigID) {
                     await terminals.run { rig.graph?.seats.compactMap(\.tmuxPane) ?? [] }
@@ -51,6 +62,9 @@ struct TerminalsView: View {
             keyMonitor = nil
             terminals.release()
             frozen = nil
+        }
+        .onChange(of: rig.prompts.map(\.seatID)) { _, seats in
+            if let focused = terminals.focusedSeatID, seats.contains(focused) { terminals.pauseForPrompt(on: focused) }
         }
         .onChange(of: terminals.focusedSeatID) { _, focused in
             guard let graph = rig.graph else { return }
@@ -85,9 +99,23 @@ struct TerminalsView: View {
         let smallHeight =
             large.isEmpty ? max(Metrics.smallHeight, share(available, rows: smallRows)) : Metrics.smallHeight
 
+        // Type mode: a strip of the other seats (so a new prompt elsewhere stays in sight), then the typing tile, as
+        // tall as its pane needs at a readable size. Esc or ⌘T brings the grid back as it was.
+        let typingSeat = terminals.typing ? graph.seats.first { $0.id == terminals.focusedSeatID } : nil
+
         return VStack(alignment: .leading, spacing: Metrics.spacing) {
-            tileRows(large.map { Slot(seat: $0) }, cols: largeCols, width: width, height: largeHeight, isLarge: true)
-            tileRows(small, cols: smallCols, width: width, height: smallHeight, isLarge: false)
+            if let typingSeat {
+                seatStrip(graph.seats.filter { $0.id != typingSeat.id })
+                TerminalTile(seat: typingSeat, large: true)
+                    .frame(
+                        width: width,
+                        height: typingHeight(
+                            typingSeat, width: width, available: available - Metrics.stripHeight - Metrics.spacing))
+            } else {
+                tileRows(
+                    large.map { Slot(seat: $0) }, cols: largeCols, width: width, height: largeHeight, isLarge: true)
+                tileRows(small, cols: smallCols, width: width, height: smallHeight, isLarge: false)
+            }
         }
         // A click between tiles releases focus.
         .background(Color.clear.contentShape(Rectangle()).onTapGesture { terminals.release() })
@@ -128,6 +156,52 @@ struct TerminalsView: View {
         let known = Set(frozen.large + frozen.small)
         small += graph.seats.filter { !known.contains($0.id) && !largeIDs.contains($0.id) }.map { Slot(seat: $0) }
         return (largeIDs.compactMap(seat), small, frozen.filler)
+    }
+
+    /// The typing tile's height: its whole pane at the width-fit size when that fits, else everything available.
+    private func typingHeight(_ seat: Seat, width: CGFloat, available: CGFloat) -> CGFloat {
+        let room = max(Metrics.largeMinHeight, available)
+        guard let snap = terminals.snapshot(seat) else { return room }
+        let font = TerminalSurface.fittingFontSize(
+            cols: snap.cols, width: width - 24, scale: displayScale,
+            range: CGFloat(app.settings.smallestTileText)...13)
+        let needed = CGFloat(snap.rows + snap.statusRows) * TerminalSurface.lineHeight(font) + Metrics.typingChrome
+        return min(room, max(Metrics.largeMinHeight, needed))
+    }
+
+    /// The other seats while typing: a status dot and name each, coral when one needs you. Clicking one leaves Type
+    /// mode and focuses that seat, where its answer bar is.
+    private func seatStrip(_ seats: [Seat]) -> some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 6) {
+                ForEach(seats) { seat in
+                    let prompted = rig.prompts.contains { $0.seatID == seat.id }
+                    let phase = prompted ? SeatPhase.needsYou : SeatPhase(seat)
+                    Button {
+                        terminals.focus(seat)
+                        selection.select(seat: seat, in: rig)
+                    } label: {
+                        HStack(spacing: 6) {
+                            StatusDot(phase: phase)
+                            Text(seat.displayName).lineLimit(1)
+                            if prompted { Text("needs you").foregroundStyle(Color.attention) }
+                        }
+                        .font(.caption)
+                        .padding(.horizontal, 10)
+                        .frame(height: Metrics.stripHeight - 4)
+                        .background(
+                            prompted ? Color.attention.opacity(0.14) : Color.primary.opacity(0.06), in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                    .help(
+                        prompted
+                            ? "\(seat.displayName) is asking for permission: open its tile"
+                            : "Focus \(seat.displayName)")
+                }
+            }
+        }
+        .scrollIndicators(.never)
+        .frame(height: Metrics.stripHeight)
     }
 
     private func mostRecentlyActive(_ seats: [Seat]) -> Seat.ID? {
@@ -236,7 +310,7 @@ private struct PlaceholderTile: View {
     let seat: Seat
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 12)
+        RoundedRectangle(cornerRadius: 10)
             .strokeBorder(Color(nsColor: .separatorColor), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
             .overlay {
                 Text("\(seat.displayName) · focused").font(.callout).foregroundStyle(.tertiary)
@@ -250,7 +324,8 @@ struct TerminalTile: View {
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
     @Environment(AppStore.self) private var app
-    @State private var bodySize = CGSize(width: 400, height: 200)
+    @State private var bodySize = CGSize.zero
+    @Environment(\.displayScale) private var displayScale
     @State private var composing = false
 
     private var terminals: TerminalStore { rig.terminals }
@@ -306,9 +381,9 @@ struct TerminalTile: View {
         // Fill the frame the grid gives the tile, and clip to it, whatever the terminal's own size.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.terminalBody)
-        .clipShape(.rect(cornerRadius: 12))
+        .clipShape(.rect(cornerRadius: 10))
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(
                     attention ? Color.attention : phase.isDown ? phase.color : Color(nsColor: .separatorColor),
                     style: StrokeStyle(lineWidth: attention ? 1.5 : 1, dash: phase.isDown ? [5, 3] : []))
@@ -317,7 +392,7 @@ struct TerminalTile: View {
             // Focus ring: separate from the attention border and from selection. Solid in both modes (dashes
             // mean a down seat); Type mode turns it accent, with "typing" in the header.
             if focused {
-                RoundedRectangle(cornerRadius: 15)
+                RoundedRectangle(cornerRadius: 13)
                     .strokeBorder(terminals.typing ? Color.accentColor : .primary, lineWidth: 2)
                     .padding(-3)
             }
@@ -358,7 +433,11 @@ struct TerminalTile: View {
             .layoutPriority(-1)
             Spacer(minLength: 6)
             if focused && terminals.typing {
-                Label("typing", systemImage: "keyboard").font(.caption).foregroundStyle(.secondary)
+                Label(
+                    terminals.panned > 0 ? "typing · \(terminals.panned) rows above" : "typing",
+                    systemImage: "keyboard"
+                )
+                .font(.caption).foregroundStyle(.secondary)
             }
             workChip
         }
@@ -432,27 +511,44 @@ struct TerminalTile: View {
             // Readable first: a pane wider than the tile at the smallest size (Settings › Terminals) is clipped on
             // the right.
             let floor = CGFloat(app.settings.smallestTileText)
-            let font = TerminalSurface.fittingFontSize(cols: snap.cols, width: inner.width, range: floor...13)
+            let font = TerminalSurface.fittingFontSize(
+                cols: snap.cols, width: inner.width, scale: displayScale, range: floor...13)
             let fitRows = max(2, Int(inner.height / TerminalSurface.lineHeight(font)))
             Group {
                 if focused, terminals.typing, let attach = terminals.attach, let size = terminals.attachSize {
-                    // Type mode: the live client at the whole pane's size, with the font shrunk until all of it fits.
-                    // A shorter client shows only the pane's top rows (`ignore-size`), which hid Claude Code's input
-                    // box; a taller view than its clip draws nothing in SwiftTerm. Below the smallest tile text if
-                    // need be: seeing what you type matters more here.
+                    // Type mode: the live client. The whole pane when it fits at the smallest tile text or larger;
+                    // otherwise the width-fit size and the rows that fit, panned to where the person types (tmux
+                    // shows the top of a taller pane, and Claude Code hides the cursor tmux would follow). The view
+                    // never outgrows its clip: SwiftTerm draws nothing then.
                     let paneRows = snap.rows + snap.statusRows
-                    let typeFont = TerminalSurface.fittingFontSize(
-                        cols: snap.cols, rows: paneRows, width: inner.width, height: inner.height, range: 6...13)
-                    // A pane too tall even at 6 pt (kernel panes are 120 rows) gets as many rows as fit, so the view
-                    // never outgrows its clip; that case still crops the bottom.
-                    let fitting = max(2, Int(inner.height / TerminalSurface.lineHeight(typeFont)))
-                    let target = GridSize(cols: snap.cols, rows: min(paneRows, fitting))
+                    let floor = CGFloat(app.settings.smallestTileText)
+                    let whole = TerminalSurface.fittingFontSize(
+                        cols: snap.cols, rows: paneRows, width: inner.width, height: inner.height, scale: displayScale,
+                        range: floor...13)
+                    let fitsWhole = TerminalSurface.fits(
+                        cols: snap.cols, rows: paneRows, size: whole, width: inner.width, height: inner.height,
+                        scale: displayScale)
+                    let typeFont =
+                        fitsWhole
+                        ? whole
+                        : TerminalSurface.fittingFontSize(
+                            cols: snap.cols, width: inner.width, scale: displayScale, range: floor...13)
+                    let shown = fitsWhole ? paneRows : max(2, Int(inner.height / TerminalSurface.lineHeight(typeFont)))
+                    let target = GridSize(cols: snap.cols, rows: shown)
+                    let offset = snap.panOffset(clientRows: shown - snap.statusRows)
                     TerminalSurface(
                         source: .attached(attach), cols: size.cols, rows: size.rows, fontSize: typeFont,
-                        interactive: true, optionAsMeta: app.settings.optionAsMeta
+                        interactive: true, optionAsMeta: app.settings.optionAsMeta, onRepaint: { terminals.repaint() }
                     )
                     .fixedSize()
-                    .onChange(of: target, initial: true) { terminals.fitAttach(target) }
+                    .onChange(of: target, initial: true) { if inner.width > 0 { terminals.fitAttach(target) } }
+                    .onChange(of: offset, initial: true) { terminals.pan(offset) }
+                    // The daemon reports prompts every few seconds; the pane shows one within a second. Either way
+                    // typing stops before Enter could answer it.
+                    .onChange(of: PromptScreen(lines: snap.lines) != nil) { _, prompted in
+                        // Only as a prompt appears: ⌘T after that is a deliberate choice to answer in the pane.
+                        if prompted { terminals.pauseForPrompt(on: seat.id) }
+                    }
                 } else {
                     // The tail of the agent's transcript (not Claude Code's input box), as many rows as fit;
                     // tiles never scroll. A focused tile shows this too until Type mode: snapshots refresh every
@@ -541,20 +637,30 @@ struct TerminalTile: View {
 
     private var focusedBar: some View {
         @Bindable var terminals = terminals
+        let stop = app.settings.escGoesToPane ? "⌘T to stop · Esc goes to the pane" : "Esc or ⌘T to stop"
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 2) {
                 modeButton("Message · rig send", typing: false)
                 modeButton("Type into terminal", typing: true)
-            }
-            .help("Message waits for a safe moment; typing sends keys straight to tmux. ⌘T switches, Esc stops typing")
-            if terminals.typing {
-                HStack {
-                    Label("Keys go straight to tmux · Esc to stop", systemImage: "keyboard")
+                if terminals.typing {
+                    Spacer(minLength: 12)
+                    Label("Keys go to \(seat.displayName) · \(stop)", systemImage: "keyboard")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
+                        .lineLimit(1)
                 }
-            } else {
+            }
+            .padding(.leading, -9)
+            .help("Message waits for a safe moment; typing sends keys straight to the pane. ⌘T switches")
+            if terminals.pausedForPrompt == seat.id {
+                Label(
+                    "Typing paused: \(seat.displayName) is asking for permission. Answer it, then ⌘T to type again.",
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.caption)
+                .foregroundStyle(Color.attention)
+            }
+            if !terminals.typing {
                 MessageComposer(seat: seat, inline: true)
             }
         }

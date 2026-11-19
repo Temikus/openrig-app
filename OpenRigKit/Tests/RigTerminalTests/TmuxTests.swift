@@ -198,3 +198,26 @@ final class Received: @unchecked Sendable {
     func append(_ slice: ArraySlice<UInt8>) { lock.withLock { data.append(contentsOf: slice) } }
     var bytes: [UInt8] { lock.withLock { data } }
 }
+
+@Suite struct PanOffsetTests {
+    func snap(rows: Int, cursorY: Int) -> PaneSnapshot {
+        PaneSnapshot(pane: "%1", cols: 80, rows: rows, cursorX: 0, cursorY: cursorY, lines: [])
+    }
+
+    @Test func aClientAsTallAsThePaneIsntPanned() {
+        #expect(snap(rows: 25, cursorY: 20).panOffset(clientRows: 25) == 0)
+        #expect(snap(rows: 25, cursorY: 20).panOffset(clientRows: 30) == 0)
+    }
+
+    /// Claude Code hides its cursor on the input line near the bottom; tmux then shows the top, so pan down.
+    @Test func aCursorNearTheBottomShowsTheBottom() {
+        #expect(snap(rows: 25, cursorY: 20).panOffset(clientRows: 10) == 15)
+        #expect(snap(rows: 120, cursorY: 119).panOffset(clientRows: 78) == 42)
+    }
+
+    /// A full-screen app with its cursor near the top keeps it in view, one row from the top edge.
+    @Test func aCursorHigherUpStaysInView() {
+        #expect(snap(rows: 40, cursorY: 3).panOffset(clientRows: 10) == 2)
+        #expect(snap(rows: 40, cursorY: 0).panOffset(clientRows: 10) == 0)
+    }
+}

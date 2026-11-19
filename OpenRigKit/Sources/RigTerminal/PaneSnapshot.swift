@@ -25,6 +25,15 @@ public struct PaneSnapshot: Sendable, Equatable {
         self.capturedAt = capturedAt
     }
 
+    /// How far to pan a client `clientRows` tall so it shows where the person types. tmux follows only a visible
+    /// cursor, and Claude Code hides its own, so a short client would show the pane's top: show the bottom when the
+    /// cursor is in it, else put the cursor one row from the top.
+    public func panOffset(clientRows: Int) -> Int {
+        let hidden = rows - clientRows
+        guard hidden > 0 else { return 0 }
+        return min(hidden, max(0, cursorY - 1))
+    }
+
     /// One past the last row with text or the cursor, whichever is lower: where "the tail" of the pane ends,
     /// so a pane with blank rows at the bottom still shows its prompt.
     public var contentEnd: Int {

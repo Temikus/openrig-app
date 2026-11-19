@@ -90,6 +90,20 @@ public struct Tmux: Sendable {
         _ = try? await run(["refresh-client", "-t", String(tty)])
     }
 
+    /// The tty of the client started as process `pid` (one of this app's attach clients).
+    public func clientTTY(pid: Int32) async -> String? {
+        guard let output = try? await run(["list-clients", "-F", "#{client_pid} #{client_tty}"]) else { return nil }
+        return output.split(separator: "\n").first { $0.hasPrefix("\(pid) ") }?.split(separator: " ").last
+            .map(String.init)
+    }
+
+    /// Pans a client shorter than its pane down by `rows` (see `PaneSnapshot.panOffset`). `-c` first returns it to
+    /// following the cursor, which for a hidden cursor is the top, so repeated calls don't add up.
+    public func pan(tty: String, down rows: Int) async {
+        _ = try? await run(["refresh-client", "-t", tty, "-c"])
+        if rows > 0 { _ = try? await run(["refresh-client", "-t", tty, "-D", String(rows)]) }
+    }
+
     /// Arguments that attach a client to one seat's session. `ignore-size` keeps this client from
     /// resizing a pane other terminals are showing (PLAN.md risk 4); the view scales to the pane instead.
     public func attachArgs(session: String) -> [String] {
