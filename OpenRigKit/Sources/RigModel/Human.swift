@@ -10,9 +10,11 @@ public enum Human {
         gateway?.defaultAddress ?? session
     }
 
-    /// The unnamed person: the daemon accepts `human@kernel` for `human@host`.
+    /// The unnamed person's addresses: the daemon accepts `human@kernel` for `human@host`, and older rows use either.
+    public static let unnamed = [session, "human@kernel"]
+
     public static func isYou(_ session: String) -> Bool {
-        session == Self.session || session == "human@kernel"
+        unnamed.contains(session)
     }
 
     /// The daemon's human addresses: `human@host`, `human@kernel`, and `human-<name>@` either.

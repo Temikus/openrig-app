@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Observation
 import RigClient
+import RigDomain
 import RigModel
 
 enum ViewMode: String, CaseIterable, Identifiable {
@@ -45,6 +46,20 @@ final class AppStore {
     let actions = ActionStore()
     /// Who the app acts as; see `Human.address(in:)`.
     private(set) var me = Human.session
+    /// Open rows addressed to the person on every rig, refreshed with the rig list.
+    private var rowsForMe: [QItem] = []
+    /// Whether each view shows the inspector, remembered across switches. Terminals starts without it, since
+    /// its tiles carry each seat's state.
+    var inspectorByMode: [ViewMode: Bool] = [.terminals: false]
+    /// Bumped to show the inspector in the current view, e.g. so a row opened from another rig shows its answer panel.
+    private(set) var inspectorRequests = 0
+    /// Those sent from other rigs than the selected one, which its queue doesn't list.
+    var elsewhere: [QItem] {
+        let known = Set(rigs.map(\.name))
+        return forYouElsewhere(rowsForMe, me: me, excluding: rig?.rigName).filter {
+            rigName(ofSession: $0.source).map(known.contains) ?? false
+        }
+    }
     var viewMode: ViewMode = .canvas
 
     var selectedRigID: RigSummary.ID? {
@@ -126,7 +141,8 @@ final class AppStore {
 
     private func handle(_ event: DaemonEvent) {
         if let rigId = event.rigId, rigId != selectedRigID {
-            if event.type.hasPrefix("rig.") { scheduleRigsRefresh() }
+            // Another rig's queue may have a new row for the person.
+            if event.type.hasPrefix("rig.") || event.type.hasPrefix("queue.") { scheduleRigsRefresh() }
             return
         }
         switch event.type.split(separator: ".").first ?? "" {
@@ -138,6 +154,8 @@ final class AppStore {
         default:
             // seat.*, agent.*, node.* and queue.* change what the graph shows.
             rig?.scheduleRefresh()
+            // A row answered here may also be listed for the person; refresh so it doesn't come back elsewhere.
+            if event.type.hasPrefix("queue.") { scheduleRigsRefresh() }
             if event.type == "seat.activity_changed" { rig?.terminals.poke() }
         }
     }
@@ -172,6 +190,7 @@ final class AppStore {
     private func refreshRigs() async {
         guard let rigs = try? await client.rigs() else { return }
         await refreshIdentity()
+        await refreshRowsForMe()
         self.rigs = rigs.filter { !$0.isArchived }
         if selectedRigID == nil || !self.rigs.contains(where: { $0.id == selectedRigID }) {
             selectedRigID = self.rigs.first?.id
@@ -179,6 +198,40 @@ final class AppStore {
                 await openDebugTarget()
             #endif
         }
+    }
+
+    private func refreshRowsForMe() async {
+        // The registered person, plus the unnamed one that older replies still address.
+        let addresses = ([me] + Human.unnamed).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+        let client = client
+        let found = await withTaskGroup(of: [QItem]?.self) { group in
+            for address in addresses { group.addTask { try? await client.openRows(to: address) } }
+            var all: [[QItem]?] = []
+            for await rows in group { all.append(rows) }
+            return all
+        }
+        // Keep what we had if any request failed, rather than flashing rows away.
+        guard !found.contains(where: { $0 == nil }) else { return }
+        var rows: [QItem] = []
+        for row in found.compactMap(\.self).joined() where !rows.contains(where: { $0.id == row.id }) {
+            rows.append(row)
+        }
+        rows.sort { $0.id < $1.id }
+        if rows != rowsForMe { rowsForMe = rows }
+    }
+
+    /// Shows a row from another rig: selects that rig, opens its queue board and the row.
+    func open(_ item: QItem) {
+        guard let name = rigName(ofSession: item.source), let target = rigs.first(where: { $0.name == name }) else {
+            return
+        }
+        // Before the switch, which restores the queue's remembered inspector state.
+        inspectorByMode[.queue] = true
+        selectedRigID = target.id
+        viewMode = .queue
+        selection.select(qitem: item.id)
+        // Already on the queue board: the switch restores nothing.
+        inspectorRequests += 1
     }
 
     /// Registering a person (`rig gateway human add … --default`) takes effect without a relaunch.

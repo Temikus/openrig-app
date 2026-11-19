@@ -316,20 +316,27 @@ struct NeedsYouRow: View {
 
 /// Toolbar button with a count; opens the Needs-you list anchored to it.
 struct NeedsYouButton: View {
+    #if DEBUG
+        /// The toolbar rebuilds this button (e.g. on a rig switch); the debug hook runs once per launch.
+        @MainActor private static var debugOpened = false
+    #endif
     var compact = false
     @Environment(AppStore.self) private var app
     @State private var open = false
 
     var body: some View {
         let entries = app.rig?.needsYou ?? []
+        let elsewhere = app.elsewhere
         // FYIs are listed but don't make the button urgent: the red count is what waits on an answer.
-        let urgent = entries.filter { !isFYI($0) }.count
-        let fyi = entries.count - urgent
+        let urgent =
+            entries.filter { !isFYI($0) }.count + elsewhere.filter { forYou($0, me: app.me) != .update }.count
+        let fyi = entries.count + elsewhere.count - urgent
+        let any = urgent + fyi > 0
         Button {
             open.toggle()
         } label: {
             HStack(spacing: 6) {
-                bell(urgent: urgent, any: !entries.isEmpty)
+                bell(urgent: urgent, any: any)
                 if !compact { Text("Needs you") }
                 if urgent > 0 {
                     CountBadge(count: urgent)
@@ -338,16 +345,36 @@ struct NeedsYouButton: View {
                 }
             }
         }
-        .accessibilityLabel(entries.isEmpty ? "Needs you" : "Needs you, \(urgent) waiting, \(fyi) FYI")
-        .help(entries.isEmpty ? "Nothing needs you" : "\(urgent) waiting on you · \(fyi) FYI")
-        .popover(isPresented: $open, arrowEdge: .bottom) {
-            if let rig = app.rig {
-                NeedsYouList(entries: entries)
-                    .environment(rig)
-                    .environment(app.selection)
-                    .environment(app.actions)
-                    .environment(app)
+        .accessibilityLabel(any ? "Needs you, \(urgent) waiting, \(fyi) FYI" : "Needs you")
+        .help(any ? "\(urgent) waiting on you · \(fyi) FYI" : "Nothing needs you")
+        #if DEBUG
+            // OPENRIG_DEBUG_NEEDS_YOU=1 opens the list once launch has settled, for screenshots without a click;
+            // =open then opens the first row from another rig, as clicking it would.
+            .task {
+                let mode = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_NEEDS_YOU"]
+                guard mode == "1" || mode == "open", !Self.debugOpened else { return }
+                try? await Task.sleep(for: .seconds(6))
+                guard !Task.isCancelled else { return }
+                Self.debugOpened = true
+                open = true
+                guard mode == "open", let first = app.elsewhere.first else { return }
+                try? await Task.sleep(for: .seconds(2))
+                app.open(first)
+                open = false
             }
+        #endif
+        .popover(isPresented: $open, arrowEdge: .bottom) {
+            Group {
+                if let rig = app.rig {
+                    NeedsYouList(entries: entries, elsewhere: elsewhere) { open = false }
+                        .environment(rig)
+                } else {
+                    NeedsYouList(entries: [], elsewhere: elsewhere) { open = false }
+                }
+            }
+            .environment(app.selection)
+            .environment(app.actions)
+            .environment(app)
         }
     }
 }
@@ -383,16 +410,32 @@ extension NeedsYouButton {
 
 struct NeedsYouList: View {
     let entries: [NeedsYouEntry]
+    /// Rows for the person from rigs other than the selected one.
+    var elsewhere: [QItem] = []
+    /// Called after a row from another rig opens, which changes the selected rig.
+    var opened: () -> Void = {}
 
     var body: some View {
         Group {
-            if entries.isEmpty {
+            if entries.isEmpty && elsewhere.isEmpty {
                 ContentUnavailableView("Nothing needs you", systemImage: "checkmark.circle")
                     .frame(width: 360, height: 180)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(entries) { NeedsYouRow(entry: $0) }
+                        // One group per rig, under its name, in the order their first row needs you.
+                        let rigs = elsewhere.compactMap { rigName(ofSession: $0.source) }
+                            .reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+                        ForEach(Array(rigs.enumerated()), id: \.element) { index, rig in
+                            Label(rig, systemImage: "circle.hexagongrid")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.top, entries.isEmpty && index == 0 ? 0 : 6)
+                            ForEach(elsewhere.filter { rigName(ofSession: $0.source) == rig }) {
+                                ElsewhereRow(item: $0, opened: opened)
+                            }
+                        }
                     }
                     .padding(12)
                 }
@@ -400,6 +443,40 @@ struct NeedsYouList: View {
                 .frame(maxHeight: 520)
             }
         }
+    }
+}
+
+/// A row for the person from another rig. Opening it switches to that rig's queue board, where it can be answered.
+struct ElsewhereRow: View {
+    let item: QItem
+    let opened: () -> Void
+    @Environment(AppStore.self) private var app
+
+    var body: some View {
+        let fyi = forYou(item, me: app.me) == .update
+        Button {
+            app.open(item)
+            opened()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: fyi ? "envelope" : "person.fill.questionmark")
+                    .foregroundStyle(fyi ? Color.secondary : .red)
+                Text(shortQItemID(item.id)).font(.caption.monospaced())
+                Text(item.source.split(separator: "@").first.map(String.init) ?? item.source).fontWeight(.semibold)
+                Text(item.summary).lineLimit(2)
+                Spacer()
+                Text(fyi ? "FYI" : "Asks you").foregroundStyle(fyi ? Color.secondary : .red)
+                // Opens elsewhere, unlike this rig's rows, which answer in place.
+                Image(systemName: "arrow.up.forward").font(.caption).foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            .font(.callout)
+            .padding(10)
+            .background((fyi ? Color.secondary : .red).opacity(0.06), in: .rect(cornerRadius: 10))
+            .contentShape(.rect(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .help("Opens \(shortQItemID(item.id)) on \(rigName(ofSession: item.source) ?? "its rig")")
     }
 }
 

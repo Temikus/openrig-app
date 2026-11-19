@@ -38,4 +38,21 @@ import Testing
         row.asksHuman = true
         #expect(forYou(row, me: "sam@external") == .decision)
     }
+
+    @Test func rowsFromOtherRigs() {
+        let me = "sam@external"
+        var fyi = item("fyi", .pending, from: "lead@kernel", to: me, updated: 1)
+        fyi.humanIntent = "update"
+        let ask = item("ask", .pending, from: "orch-lead@denkeeper", to: me, updated: 2)
+        let here = item("here", .pending, from: "dev@apptest", to: me)
+        let legacy = item("legacy", .pending, from: "dev@kernel", to: "human@host", updated: 3)
+        let notMine = item("theirs", .pending, from: "dev@kernel", to: "kim@external")
+        let closed = item("closed", .done, from: "dev@kernel", to: me)
+        let rows = [fyi, ask, here, legacy, notMine, closed]
+        #expect(forYouElsewhere(rows, me: me, excluding: "apptest").map(\.id) == ["ask", "legacy", "fyi"])
+        #expect(forYouElsewhere(rows, me: me, excluding: nil).map(\.id) == ["here", "ask", "legacy", "fyi"])
+        #expect(rigName(ofSession: "orch-lead@denkeeper") == "denkeeper")
+        #expect(rigName(ofSession: "human@host") == "host")
+        #expect(rigName(ofSession: "nobody") == nil)
+    }
 }

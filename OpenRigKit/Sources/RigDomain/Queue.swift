@@ -80,6 +80,23 @@ public func needsYou(_ items: [QItem], me: String = Human.session) -> [QItem] {
     return waiting.sorted(by: oldestFirst) + updates.sorted(by: oldestFirst)
 }
 
+/// The rig a seat's session belongs to: "orch-lead@denkeeper" → "denkeeper".
+public func rigName(ofSession session: String) -> String? {
+    guard let at = session.lastIndex(of: "@") else { return nil }
+    let name = session[session.index(after: at)...]
+    return name.isEmpty ? nil : String(name)
+}
+
+/// Rows addressed to the person by seats on rigs other than `rig`, in Needs-you order. A rig's queue only
+/// lists its own seats' rows, so these would otherwise wait unseen until that rig is selected.
+public func forYouElsewhere(_ items: [QItem], me: String, excluding rig: String?) -> [QItem] {
+    needsYou(
+        items.filter { item in
+            guard forYou(item, me: me) != nil, let from = rigName(ofSession: item.source) else { return false }
+            return from != rig
+        }, me: me)
+}
+
 // MARK: - Chain of record
 
 public struct Chain: Equatable, Sendable {

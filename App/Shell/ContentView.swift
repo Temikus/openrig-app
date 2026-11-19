@@ -4,8 +4,6 @@ import SwiftUI
 struct ContentView: View {
     @Environment(AppStore.self) private var store
     @State private var showsInspector = true
-    /// Remembered per view: Terminals starts without the inspector, since its tiles carry each seat's state.
-    @State private var inspectorByMode: [ViewMode: Bool] = [.terminals: false]
     @State private var showsQueueTask = false
     @State private var fit = ToolbarFit.full
     private var narrow: Bool { fit != .full }
@@ -36,9 +34,10 @@ struct ContentView: View {
         .environment(store.selection)
         .environment(store.actions)
         .onChange(of: store.viewMode, initial: true) { old, new in
-            if old != new { inspectorByMode[old] = showsInspector }
-            showsInspector = inspectorByMode[new] ?? true
+            if old != new { store.inspectorByMode[old] = showsInspector }
+            showsInspector = store.inspectorByMode[new] ?? true
         }
+        .onChange(of: store.inspectorRequests) { showsInspector = true }
     }
 
     @ToolbarContentBuilder private var detailToolbar: some ToolbarContent {

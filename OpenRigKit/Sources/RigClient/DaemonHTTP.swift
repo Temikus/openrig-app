@@ -37,6 +37,13 @@ public struct DaemonHTTP: Sendable {
         try await get("/api/queue/list", query: ["rig": rigName, "limit": String(limit)])
     }
 
+    /// Open rows addressed to `destination`, across every rig. (`attention=1` would leave out FYIs.)
+    public func openRows(to destination: String, limit: Int = 200) async throws(DaemonError) -> [QItem] {
+        try await get(
+            "/api/queue/list",
+            query: ["destinationSession": destination, "state": "pending,in-progress,blocked", "limit": String(limit)])
+    }
+
     public func seatStatus(session: String) async throws(DaemonError) -> SeatStatusReport {
         try await get("/api/seat/status/\(session)")
     }
