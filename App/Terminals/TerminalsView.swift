@@ -21,6 +21,10 @@ struct TerminalsView: View {
     /// prompt still gets a large tile, appended after the others.
     @State private var frozen: FrozenOrder?
     @State private var keyMonitor: Any?
+    /// The pointer or VoiceOver is on a tile: freeze the order as focus does, so it doesn't move under them.
+    @State private var pointerInGrid = false
+    @AccessibilityFocusState private var voiceOverTile: Seat.ID?
+    private var holdsOrder: Bool { pointerInGrid || voiceOverTile != nil }
 
     private var terminals: TerminalStore { rig.terminals }
 
@@ -96,9 +100,9 @@ struct TerminalsView: View {
         .onChange(of: rig.prompts.map(\.seatID)) { _, seats in
             if let focused = terminals.focusedSeatID, seats.contains(focused) { terminals.pauseForPrompt(on: focused) }
         }
-        .onChange(of: terminals.focusedSeatID) { _, focused in
+        .onChange(of: terminals.focusedSeatID != nil || holdsOrder) { _, hold in
             guard let graph = rig.graph else { return }
-            if focused == nil {
+            if !hold {
                 frozen = nil
             } else if frozen == nil {
                 // Freeze what is on screen, filler included.
@@ -137,7 +141,7 @@ struct TerminalsView: View {
             if let typingSeat {
                 seatStrip(graph.seats.filter { $0.id != typingSeat.id })
                     .transition(.opacity)
-                TerminalTile(seat: typingSeat, large: true)
+                TerminalTile(seat: typingSeat, large: true, voiceOverTile: $voiceOverTile)
                     .frame(
                         width: width,
                         height: typingHeight(
@@ -157,6 +161,7 @@ struct TerminalsView: View {
         // A crossfade, not a resize: tiles host live terminals, and a frame animated step by step would refit
         // the tmux client on every step.
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: terminals.typing)
+        .onHover { pointerInGrid = $0 }
         // A click between tiles releases focus.
         .background(Color.clear.contentShape(Rectangle()).onTapGesture { terminals.release() })
     }
@@ -258,7 +263,7 @@ struct TerminalsView: View {
                         if slot.isPlaceholder {
                             PlaceholderTile(seat: slot.seat)
                         } else {
-                            TerminalTile(seat: slot.seat, large: isLarge)
+                            TerminalTile(seat: slot.seat, large: isLarge, voiceOverTile: $voiceOverTile)
                         }
                     }
                     .frame(width: max(0, tileWidth), height: height)
@@ -377,6 +382,7 @@ private struct PlaceholderTile: View {
 struct TerminalTile: View {
     let seat: Seat
     let large: Bool
+    var voiceOverTile: AccessibilityFocusState<Seat.ID?>.Binding
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
     @Environment(AppStore.self) private var app
@@ -426,6 +432,7 @@ struct TerminalTile: View {
                                 ? "Type into \(seat.displayName)'s terminal" : "Focus \(seat.displayName)'s terminal"
                         )
                         .accessibilityValue(terminals.snapshot(seat)?.text(lastRows: 12, transcriptOnly: true) ?? "")
+                        .accessibilityFocused(voiceOverTile, equals: seat.id)
                     }
                 }
             if let prompt {
