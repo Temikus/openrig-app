@@ -116,6 +116,21 @@ final class AppStore {
         Task { await loadToken() }
         // NSApp exists once the run loop has started.
         Task { NSApp.appearance = settings.appearance.nsAppearance }
+        #if DEBUG
+            // OPENRIG_DEBUG_SHOW="<seconds>|<rig>|<session>" does what clicking a seat's banner does, then logs the
+            // selection (OPENRIG_DEBUG_BANNERS), to check the click path without a click.
+            let parts = (ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SHOW"] ?? "").split(separator: "|")
+            if parts.count == 3, let delay = Double(parts[0]) {
+                Task {
+                    try? await Task.sleep(for: .seconds(delay))
+                    show(.seat(rig: String(parts[1]), session: String(parts[2])))
+                    for _ in 0..<4 {
+                        try? await Task.sleep(for: .seconds(2))
+                        Banners.debugLog("after show: seat \(selection.seatID ?? "nil"), rig \(rig?.rigName ?? "nil")")
+                    }
+                }
+            }
+        #endif
     }
 
     /// After each poll: the Dock badge and any new banners.
@@ -142,7 +157,11 @@ final class AppStore {
             Task {
                 guard let store = rig else { return }
                 await store.refresh()
-                guard let seat = store.seat(session: session) else { return }
+                guard let seat = store.seat(session: session) else {
+                    Banners.debugLog("show: no seat \(session) in \(store.rigName)")
+                    return
+                }
+                Banners.debugLog("show: selected \(session)")
                 inspectorByMode[.canvas] = true
                 selection.select(seat: seat, in: store)
                 inspectorRequests += 1

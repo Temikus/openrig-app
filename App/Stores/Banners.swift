@@ -117,6 +117,7 @@ final class Banners: NSObject, UNUserNotificationCenterDelegate {
     ) async {
         let info = response.notification.request.content.userInfo
         let target = Self.decode(info)
+        Self.debugLog("clicked: \(target)")
         await MainActor.run { store?.show(target) }
     }
 
