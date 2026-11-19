@@ -63,8 +63,10 @@ public enum NeedsYouEntry: Identifiable, Equatable, Sendable {
 }
 
 /// Live permission prompts first, oldest first (each stalls a turn), then seats that went down,
-/// then held rows waiting on a person. A held row already shown as a prompt's linked work isn't listed again.
-public func needsYouEntries(prompts: [PromptInstance], seats: [Seat], items: [QItem]) -> [NeedsYouEntry] {
+/// then rows waiting on the person (see `needsYou`). A held row already shown as a prompt's linked work isn't listed again.
+public func needsYouEntries(
+    prompts: [PromptInstance], seats: [Seat], items: [QItem], me: String = Human.session
+) -> [NeedsYouEntry] {
     let ordered = prompts.enumerated().sorted { a, b in
         switch (a.element.observedAt, b.element.observedAt) {
         case (let x?, let y?) where x != y: x < y
@@ -82,5 +84,5 @@ public func needsYouEntries(prompts: [PromptInstance], seats: [Seat], items: [QI
         let p = presence(seat)
         return p.needsYou ? .seat(seat, p) : nil
     }
-    return promptEntries + down + needsYou(items).filter { !linked.contains($0.id) }.map(NeedsYouEntry.qitem)
+    return promptEntries + down + needsYou(items, me: me).filter { !linked.contains($0.id) }.map(NeedsYouEntry.qitem)
 }

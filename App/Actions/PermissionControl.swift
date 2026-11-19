@@ -267,11 +267,20 @@ struct NeedsYouRow: View {
                     selection.select(qitem: item.id)
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "person.fill.questionmark").foregroundStyle(.red)
+                        let kind = forYou(item, me: rig.me)
+                        Image(systemName: kind == .update ? "envelope" : "person.fill.questionmark")
+                            .foregroundStyle(kind == .update ? Color.secondary : .red)
                         Text(shortQItemID(item.id)).font(.caption.monospaced())
+                        if kind != nil {
+                            Text(rig.displayName(session: item.source)).fontWeight(.semibold)
+                        }
                         Text(item.summary).lineLimit(2)
                         Spacer()
-                        Text(rig.displayName(session: item.destination)).foregroundStyle(.secondary)
+                        switch kind {
+                        case .decision?: Text("Asks you").foregroundStyle(.red)
+                        case .update?: Text("FYI").foregroundStyle(.secondary)
+                        case nil: Text(rig.displayName(session: item.destination)).foregroundStyle(.secondary)
+                        }
                     }
                     .font(.callout)
                     .contentShape(Rectangle())
@@ -283,13 +292,17 @@ struct NeedsYouRow: View {
         .background(tint.opacity(0.06), in: .rect(cornerRadius: 10))
         .overlay {
             if isSelected {
-                RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary, lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: 10).strokeBorder(Color.accentColor, lineWidth: 2)
             }
         }
     }
 
     private var tint: Color {
-        if case .seat = entry { .orange } else { .red }
+        switch entry {
+        case .seat: .orange
+        case .qitem(let item) where forYou(item, me: rig.me) == .update: .secondary
+        default: .red
+        }
     }
 
     private var isSelected: Bool {
@@ -309,17 +322,24 @@ struct NeedsYouButton: View {
 
     var body: some View {
         let entries = app.rig?.needsYou ?? []
+        // FYIs are listed but don't make the button urgent: the red count is what waits on an answer.
+        let urgent = entries.filter { !isFYI($0) }.count
+        let fyi = entries.count - urgent
         Button {
             open.toggle()
         } label: {
             HStack(spacing: 6) {
-                bell(entries)
+                bell(urgent: urgent, any: !entries.isEmpty)
                 if !compact { Text("Needs you") }
-                if !entries.isEmpty { CountBadge(count: entries.count) }
+                if urgent > 0 {
+                    CountBadge(count: urgent)
+                } else if fyi > 0 {
+                    CountBadge(count: fyi, quiet: true)
+                }
             }
         }
-        .accessibilityLabel(entries.isEmpty ? "Needs you" : "Needs you, \(entries.count)")
-        .help(entries.isEmpty ? "Nothing needs you" : "\(entries.count) waiting on you")
+        .accessibilityLabel(entries.isEmpty ? "Needs you" : "Needs you, \(urgent) waiting, \(fyi) FYI")
+        .help(entries.isEmpty ? "Nothing needs you" : "\(urgent) waiting on you · \(fyi) FYI")
         .popover(isPresented: $open, arrowEdge: .bottom) {
             if let rig = app.rig {
                 NeedsYouList(entries: entries)
@@ -335,6 +355,8 @@ struct NeedsYouButton: View {
 /// A count in a coral capsule, as on the design's Needs you button.
 struct CountBadge: View {
     let count: Int
+    /// Grey: only FYIs are waiting.
+    var quiet = false
 
     var body: some View {
         Text("\(count)")
@@ -343,14 +365,19 @@ struct CountBadge: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 6)
             .frame(minWidth: 18, minHeight: 18)
-            .background(Color.attention, in: .capsule)
+            .background(quiet ? Color.secondary : Color.attention, in: .capsule)
     }
 }
 
 extension NeedsYouButton {
-    fileprivate func bell(_ entries: [NeedsYouEntry]) -> some View {
-        Image(systemName: entries.isEmpty ? "bell" : "bell.badge.fill")
-            .foregroundStyle(entries.isEmpty ? Color.secondary : .red)
+    fileprivate func bell(urgent: Int, any: Bool) -> some View {
+        Image(systemName: urgent > 0 ? "bell.badge.fill" : "bell")
+            .foregroundStyle(urgent > 0 ? Color.red : any ? .primary : .secondary)
+    }
+
+    fileprivate func isFYI(_ entry: NeedsYouEntry) -> Bool {
+        guard case .qitem(let item) = entry, let rig = app.rig else { return false }
+        return forYou(item, me: rig.me) == .update
     }
 }
 

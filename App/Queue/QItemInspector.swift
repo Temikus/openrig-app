@@ -19,7 +19,9 @@ struct QItemInspector: View {
                     HStack {
                         Text(shortQItemID(item.id)).font(.callout.monospaced()).foregroundStyle(.secondary)
                         Spacer()
-                        StatusTag(status: workStatus(item), overdue: isOverdue(item, now: .now))
+                        StatusTag(
+                            status: workStatus(item), overdue: isOverdue(item, now: .now),
+                            forYou: forYou(item, me: rig.me))
                     }
                     Text(item.summary.isEmpty ? "No summary" : item.summary)
                         .font(.title3.weight(.semibold))
@@ -44,6 +46,11 @@ struct QItemInspector: View {
                 }
                 .font(.callout)
 
+                if let kind = forYou(item, me: rig.me) {
+                    ForYouPanel(item: item, kind: kind)
+                } else {
+                    ActionStatusLine(key: ForYouPanel.key(item))
+                }
                 if workStatus(item).isActive {
                     QItemActions(item: item)
                 }

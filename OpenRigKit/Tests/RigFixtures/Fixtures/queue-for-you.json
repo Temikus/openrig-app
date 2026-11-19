@@ -1,0 +1,221 @@
+[
+  {
+    "pickup": {
+      "state": "parked"
+    },
+    "waiting": {
+      "obligation": "qitem-recovery-5e376758bad6b703",
+      "owner": "main-lead@openrig-apptest",
+      "state": "blocked",
+      "actionableSince": null,
+      "blocker": {
+        "ref": "human@host",
+        "owner": null,
+        "state": null
+      },
+      "lastMeaningfulChange": {
+        "id": 451,
+        "at": "2026-11-18T23:40:52.449Z"
+      },
+      "liveness": {
+        "subject": "human@host",
+        "activity": "unknown",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "unknown"
+      },
+      "nextBackstop": {
+        "owner": "main-lead@openrig-apptest",
+        "mechanism": "watchdog:01M7RGHQB02J8FRGRMXFE39DQ2",
+        "intervalSeconds": 3600,
+        "dueAt": "2026-11-19T00:40:52.448Z"
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-recovery-5e376758bad6b703",
+    "tsCreated": "2026-11-18T23:35:14.744Z",
+    "tsUpdated": "2026-11-18T23:40:52.449Z",
+    "sourceSession": "main-lead@openrig-apptest",
+    "destinationSession": "main-lead@openrig-apptest",
+    "state": "blocked",
+    "priority": "routine",
+    "tier": null,
+    "tags": [
+      "stuck-sweep-finding",
+      "stuck-sweep:undelivered-wake:qitem-20261118233320-298730cd764780d6",
+      "recovery-for:qitem-20261118233320-298730cd764780d6"
+    ],
+    "blockedOn": "human@host",
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "STUCK SWEEP FINDING (undelivered-wake)\nrow: qitem-20261118233320-298730cd764780d6\ndestination: human@host (source main-lead@openrig-apptest, state pending)\nage: 2 min\nlast transition: created at 2026-11-18T23:33:20.784Z\nwhy: wake failed (unroutable: 'human@host' has no terminal transport on this daemon and names no registered human — no transport can hold this address (checked: tmux bindings + the human registry). Fix the address, or register the human with `rig gateway human add`.) and nothing retried it; human@host has no wake route on this daemon (no terminal, not a person). If it's a hosted member, it sees this work only when it next checks, so ask it to; otherwise fix the address. This finding goes to main-lead@openrig-apptest, the row's creator\nResolve the underlying row; the sweep closes this finding itself once the row is no longer stuck.",
+    "summary": "Stuck sweep: undelivered-wake on qitem-20261118233320-298730cd764780d6 (2 min)",
+    "evidenceRef": "rig queue show qitem-20261118233320-298730cd764780d6",
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": null,
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-18T23:35:15.890Z",
+    "lastNudgeResult": "delivered-ack-pending",
+    "lastNudgeWireResult": "delivered-ack-pending",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "unclaimed"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118233320-298730cd764780d6",
+      "owner": "human@host",
+      "state": "pending",
+      "actionableSince": "2026-11-18T23:33:20.779Z",
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 445,
+        "at": "2026-11-18T23:33:20.784Z"
+      },
+      "liveness": {
+        "subject": "human@host",
+        "activity": "unknown",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "unknown"
+      },
+      "nextBackstop": {
+        "owner": "main-lead@openrig-apptest",
+        "mechanism": "queue-recovery:delegated",
+        "dueAt": null,
+        "intervalSeconds": null,
+        "recovery": {
+          "qitemId": "qitem-recovery-5e376758bad6b703",
+          "state": "blocked"
+        },
+        "note": "Current recovery disposition owns the continuation; inspect that row. New source evidence is evaluated afresh."
+      },
+      "deadlineAt": null,
+      "laterBackstop": {
+        "owner": "human@host",
+        "mechanism": "queue-stuck-sweep:unclaimed",
+        "dueAt": "2026-11-19T00:33:20.779Z",
+        "intervalSeconds": 300,
+        "note": "Conditional safety net; current delivery/recovery ownership is evaluated first."
+      }
+    },
+    "qitemId": "qitem-20261118233320-298730cd764780d6",
+    "tsCreated": "2026-11-18T23:33:20.779Z",
+    "tsUpdated": "2026-11-18T23:33:20.779Z",
+    "sourceSession": "main-lead@openrig-apptest",
+    "destinationSession": "human@host",
+    "state": "pending",
+    "priority": "routine",
+    "tier": null,
+    "tags": null,
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Hello! Test message received.",
+    "summary": "Hello from main-lead",
+    "evidenceRef": "/tmp/x/hello-reply.md",
+    "humanIntent": "update",
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": null,
+    "closureTarget": null,
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-18T23:33:20.816Z",
+    "lastNudgeResult": "unroutable: 'human@host' has no terminal transport on this daemon and names no registered human — no transport can hold this address (checked: tmux bindings + the human registry). Fix the address, or register the human with `rig gateway human add`.",
+    "lastNudgeWireResult": "unroutable: 'human@host' has no terminal transport on this daemon and names no registered human — no transport can hold this address (checked: tmux bindings + the human registry). Fix the address, or register the human with `rig gateway human add`.",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  },
+  {
+    "pickup": {
+      "state": "terminal",
+      "evidence": "closed (done)"
+    },
+    "waiting": {
+      "obligation": "qitem-20261118235134-c11e0b935996c6c7",
+      "owner": "sam@external",
+      "state": "done",
+      "actionableSince": null,
+      "blocker": null,
+      "lastMeaningfulChange": {
+        "id": 455,
+        "at": "2026-11-18T23:55:15.902Z"
+      },
+      "liveness": {
+        "subject": "sam@external",
+        "activity": "unknown",
+        "needsInput": {
+          "count": 0,
+          "reason": null
+        },
+        "confidence": "unknown"
+      },
+      "nextBackstop": {
+        "owner": "sam@external",
+        "mechanism": "none (terminal obligation)",
+        "dueAt": null,
+        "intervalSeconds": null
+      },
+      "deadlineAt": null
+    },
+    "qitemId": "qitem-20261118235134-c11e0b935996c6c7",
+    "tsCreated": "2026-11-18T23:51:34.132Z",
+    "tsUpdated": "2026-11-18T23:55:15.902Z",
+    "sourceSession": "main-lead@openrig-apptest",
+    "destinationSession": "sam@external",
+    "state": "done",
+    "priority": "routine",
+    "tier": null,
+    "tags": null,
+    "blockedOn": null,
+    "handedOffTo": null,
+    "handedOffFrom": null,
+    "expiresAt": null,
+    "chainOfRecord": null,
+    "body": "Hello! Second test received.",
+    "summary": "Hello from main-lead",
+    "evidenceRef": null,
+    "humanIntent": null,
+    "humanDetail": null,
+    "replyTo": null,
+    "humanQuestions": null,
+    "humanAnswers": null,
+    "delegatedDecision": null,
+    "closureReason": "no-follow-on",
+    "closureTarget": "Test approve from the OpenRig app",
+    "closureRequiredAt": null,
+    "claimedAt": null,
+    "lastNudgeAttempt": "2026-11-18T23:51:34.157Z",
+    "lastNudgeResult": "gateway-owned: 'sam@external' is a virtual @external destination — delivery rides the gateway subsystem (Slack connector), whose own ledger is the delivery record; tmux was not consulted (it can never hold this address class)",
+    "lastNudgeWireResult": "gateway-owned: 'sam@external' is a virtual @external destination — delivery rides the gateway subsystem (Slack connector), whose own ledger is the delivery record; tmux was not consulted (it can never hold this address class)",
+    "lastHeartbeat": null,
+    "resolution": null,
+    "targetRepo": null,
+    "deliveryOutcome": null
+  }
+]

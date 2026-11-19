@@ -55,10 +55,29 @@ public func isOverdue(_ item: QItem, now: Date) -> Bool {
     return workStatus(item).isActive && closeBy < now
 }
 
-/// Active rows waiting on the human, oldest first. Permission prompts join this list in M5.
-public func needsYou(_ items: [QItem]) -> [QItem] {
-    items.filter { workStatus($0).needsYou || (workStatus($0).isActive && $0.asksHuman) }
-        .sorted { ($0.updated ?? .distantPast) < ($1.updated ?? .distantPast) }
+/// What an agent sent the person: something to decide, or an FYI.
+public enum ForYou: Equatable, Sendable {
+    case decision, update
+}
+
+/// A live row addressed to the person: `me`, or the unnamed person, whom agents also reply to.
+public func forYou(_ item: QItem, me: String) -> ForYou? {
+    guard item.destination == me || Human.isYou(item.destination) else { return nil }
+    switch workStatus(item) {
+    case .pending, .inProgress: return item.humanIntent == "update" && !item.asksHuman ? .update : .decision
+    default: return nil
+    }
+}
+
+/// Rows waiting on the person, oldest first: held rows, questions and decisions, then FYIs.
+public func needsYou(_ items: [QItem], me: String = Human.session) -> [QItem] {
+    let oldestFirst: (QItem, QItem) -> Bool = { ($0.updated ?? .distantPast) < ($1.updated ?? .distantPast) }
+    let waiting = items.filter { item in
+        let status = workStatus(item)
+        return status.needsYou || (status.isActive && item.asksHuman) || forYou(item, me: me) == .decision
+    }
+    let updates = items.filter { forYou($0, me: me) == .update }
+    return waiting.sorted(by: oldestFirst) + updates.sorted(by: oldestFirst)
 }
 
 // MARK: - Chain of record

@@ -29,13 +29,18 @@ public struct QItem: Decodable, Sendable, Identifiable, Hashable {
     public var resolution: String?
     /// True when the row carries questions for a human.
     public var asksHuman: Bool
+    /// For a row to a person: `decision` (the daemon's default) or `update`, an FYI.
+    public var humanIntent: String?
+    /// The artifact a person is asked to judge; required on every row to a person.
+    public var evidenceRef: String?
 
     public init(
         id: String, source: String, destination: String, state: QItemState, priority: String? = nil,
         summary: String = "", body: String? = nil, tags: [String] = [], blockedOn: String? = nil,
         handedOffFrom: String? = nil, handedOffTo: String? = nil, closureReason: String? = nil,
         closureTarget: String? = nil, closeBy: Date? = nil, claimedAt: Date? = nil, created: Date? = nil,
-        updated: Date? = nil, chainOfRecord: [String]? = nil, resolution: String? = nil, asksHuman: Bool = false
+        updated: Date? = nil, chainOfRecord: [String]? = nil, resolution: String? = nil, asksHuman: Bool = false,
+        humanIntent: String? = nil, evidenceRef: String? = nil
     ) {
         self.id = id
         self.source = source
@@ -57,12 +62,14 @@ public struct QItem: Decodable, Sendable, Identifiable, Hashable {
         self.chainOfRecord = chainOfRecord
         self.resolution = resolution
         self.asksHuman = asksHuman
+        self.humanIntent = humanIntent
+        self.evidenceRef = evidenceRef
     }
 
     private enum CodingKeys: String, CodingKey {
         case qitemId, sourceSession, destinationSession, state, priority, summary, body, tags, blockedOn
         case handedOffFrom, handedOffTo, closureReason, closureTarget, closureRequiredAt, claimedAt
-        case tsCreated, tsUpdated, chainOfRecord, resolution, humanQuestions
+        case tsCreated, tsUpdated, chainOfRecord, resolution, humanQuestions, humanIntent, evidenceRef
     }
 
     public init(from decoder: any Decoder) throws {
@@ -91,6 +98,8 @@ public struct QItem: Decodable, Sendable, Identifiable, Hashable {
         updated = c.lenient(String.self, .tsUpdated).flatMap(parseDaemonDate)
         chainOfRecord = c.lenient([String].self, .chainOfRecord)
         resolution = c.lenient(String.self, .resolution)
+        humanIntent = c.lenient(String.self, .humanIntent)
+        evidenceRef = c.lenient(String.self, .evidenceRef)
         // Shape not observed yet (gap 7 in PLAN.md): any non-null, non-empty value counts.
         if let questions = c.lenient([JSONValue].self, .humanQuestions) {
             asksHuman = !questions.isEmpty

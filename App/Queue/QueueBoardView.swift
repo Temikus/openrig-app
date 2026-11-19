@@ -143,7 +143,12 @@ struct QItemCard: View {
     @Environment(SelectionStore.self) private var selection
 
     private var status: WorkStatus { workStatus(item) }
+    private var forYou: ForYou? { RigDomain.forYou(item, me: rig.me) }
     private var isSelected: Bool { selection.qitemID == item.id }
+    private var border: Color {
+        if isSelected { return .accentColor }
+        return status.needsYou || forYou == .decision ? .red : Color(nsColor: .separatorColor)
+    }
 
     var body: some View {
         Button {
@@ -153,7 +158,7 @@ struct QItemCard: View {
                 HStack {
                     Text(shortQItemID(item.id)).font(.caption.monospaced()).foregroundStyle(.secondary)
                     Spacer()
-                    StatusTag(status: status, overdue: isOverdue(item, now: now))
+                    StatusTag(status: status, overdue: isOverdue(item, now: now), forYou: forYou)
                 }
                 Text(item.summary.isEmpty ? "No summary" : item.summary)
                     .font(.callout.weight(.medium))
@@ -175,14 +180,9 @@ struct QItemCard: View {
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.background, in: .rect(cornerRadius: 9))
+            // One ring: selection replaces the red needs-you border instead of circling it.
             .overlay {
-                RoundedRectangle(cornerRadius: 9)
-                    .strokeBorder(status.needsYou ? Color.red : Color(nsColor: .separatorColor), lineWidth: 1)
-            }
-            .overlay {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary, lineWidth: 2).padding(-3)
-                }
+                RoundedRectangle(cornerRadius: 9).strokeBorder(border, lineWidth: isSelected ? 2 : 1)
             }
         }
         .buttonStyle(.plain)
@@ -193,10 +193,13 @@ struct QItemCard: View {
     @ViewBuilder private var blockerLine: some View {
         switch status {
         case .blocked(on: .outside(let ref)):
-            Label("on you · \(ref)", systemImage: "person.fill.questionmark")
-                .font(.caption)
-                .foregroundStyle(.red)
-                .lineLimit(1)
+            Label(
+                ref == rig.me || Human.isYou(ref) ? "on you" : "on you · \(ref)",
+                systemImage: "person.fill.questionmark"
+            )
+            .font(.caption)
+            .foregroundStyle(.red)
+            .lineLimit(1)
         case .blocked(on: .qitem(let id)):
             Button("held on \(shortQItemID(id))", systemImage: "link") { selection.select(qitem: id) }
                 .buttonStyle(.link)
@@ -223,6 +226,8 @@ struct QItemCard: View {
 struct StatusTag: View {
     let status: WorkStatus
     var overdue = false
+    /// Set for a live row addressed to the person, which reads as theirs rather than as pending work.
+    var forYou: ForYou?
 
     var body: some View {
         HStack(spacing: 6) {
@@ -235,7 +240,12 @@ struct StatusTag: View {
     }
 
     private var label: String {
-        switch status {
+        switch forYou {
+        case .decision?: return "Asks you"
+        case .update?: return "FYI"
+        case nil: break
+        }
+        return switch status {
         case .pending: "Pending"
         case .inProgress: "In progress"
         case .blocked(on: .outside): "Needs you"
@@ -247,7 +257,8 @@ struct StatusTag: View {
     }
 
     private var color: Color {
-        switch status {
+        if let forYou { return forYou == .decision ? .red : .secondary }
+        return switch status {
         case .inProgress: .orange
         case .blocked(on: .outside): .red
         case .closed, .handedOff: .secondary

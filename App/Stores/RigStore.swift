@@ -68,7 +68,7 @@ final class RigStore {
         (graph?.seats ?? []).compactMap { seat in stops[seat.id].flatMap { PromptInstance(seat: seat, stop: $0) } }
     }
 
-    var needsYou: [NeedsYouEntry] { needsYouEntries(prompts: prompts, seats: graph?.seats ?? [], items: items) }
+    var needsYou: [NeedsYouEntry] { needsYouEntries(prompts: prompts, seats: graph?.seats ?? [], items: items, me: me) }
 
     /// The prompt as drawn on the seat's pane: the only place the command is visible
     /// (the daemon reports "Bash: details withheld").

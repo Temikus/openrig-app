@@ -198,13 +198,23 @@ struct QItemActions: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            FlowLayout(spacing: 6) {
-                ForEach(panels) { p in
-                    Button(p.rawValue) { panel = panel == p ? nil : p }
-                        .buttonStyle(.bordered)
-                        .tint(panel == p ? .accentColor : nil)
-                        .controlSize(.small)
-                        .fixedSize()
+            if isForYou {
+                // The answer panel above is the main action; these stay reachable without competing with it.
+                Menu("More") {
+                    ForEach(panels) { p in Button(p.rawValue) { panel = p } }
+                }
+                .menuStyle(.button)
+                .controlSize(.small)
+                .fixedSize()
+            } else {
+                FlowLayout(spacing: 6) {
+                    ForEach(panels) { p in
+                        Button(p.rawValue) { panel = panel == p ? nil : p }
+                            .buttonStyle(.bordered)
+                            .tint(panel == p ? .accentColor : nil)
+                            .controlSize(.small)
+                            .fixedSize()
+                    }
                 }
             }
             if let panel {
@@ -226,8 +236,12 @@ struct QItemActions: View {
         .onChange(of: item.id) { panel = nil }
     }
 
+    private var isForYou: Bool { forYou(item, me: rig.me) != nil }
+
     private var panels: [ActionPanel] {
         var list: [ActionPanel] = [.handOff, .block, .close, .nudge, .note]
+        // A row addressed to the person: nudging would message themselves, and Close would skip telling the asker.
+        if isForYou { list.removeAll { $0 == .nudge || $0 == .close } }
         if case .blocked(on: .outside) = workStatus(item) { list.insert(.resolve, at: 0) }
         if isOverdue(item, now: .now) { list.append(.deadline) }
         return list
