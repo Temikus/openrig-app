@@ -144,6 +144,14 @@ public struct RigCLI: Sendable {
         process.standardInput = input
         process.standardOutput = out
         process.standardError = err
+        // Set before launch, so an exit that comes before anyone waits is still seen. `waitUntilExit` from a
+        // detached task has hung after the child had already exited.
+        let exited = AsyncStream<Void> { done in
+            process.terminationHandler = { _ in
+                done.yield()
+                done.finish()
+            }
+        }
         try process.run()
 
         input.fileHandleForWriting.write(Data((stdin ?? "").utf8))
@@ -153,7 +161,8 @@ public struct RigCLI: Sendable {
         async let stdoutData = Task.detached { out.fileHandleForReading.readDataToEndOfFile() }.value
         async let stderrData = Task.detached { err.fileHandleForReading.readDataToEndOfFile() }.value
         let (o, e) = await (stdoutData, stderrData)
-        await Task.detached { process.waitUntilExit() }.value
+        // Detached, so cancellation can't end the wait early: reading the status of an unreaped child throws.
+        await Task.detached { for await _ in exited { break } }.value
         return CLIResult(
             status: process.terminationStatus,
             stdout: String(decoding: o, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines),

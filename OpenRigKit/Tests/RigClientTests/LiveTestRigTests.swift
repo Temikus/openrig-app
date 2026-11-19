@@ -51,6 +51,41 @@ struct LiveTestRigTests {
         #expect(sent.succeeded, "\(sent.stderr)")
     }
 
+    /// The answer buttons' flow: the seat asks the person, who approves; the seat is told, then the row closes.
+    @Test(.timeLimit(.minutes(1))) func approvingTellsTheSeatThenCloses() async throws {
+        let http = DaemonHTTP(baseURL: DaemonLocator().locate().baseURL)
+        let me = Human.address(in: try? await http.participants())
+        let asSeat = try #require(RigCLI.locate(actor: seat))
+        let asMe = try #require(RigCLI.locate(actor: me))
+
+        // A row to a person must name evidence they can judge.
+        let evidence = FileManager.default.temporaryDirectory.appending(path: "openrig-app-answer-test.md")
+        try "openrig-app answer test".write(to: evidence, atomically: true, encoding: .utf8)
+        let asked = try await asSeat.run(
+            arguments: [
+                "queue", "create", "--destination", me, "--summary", "OpenRig.app live test: approve me",
+                "--evidence-ref", evidence.path, "--body-file", "-", "--no-nudge", "--json",
+            ], stdin: "Asked and answered by OpenRigKit's LiveTestRigTests. No action needed.")
+        #expect(asked.succeeded, "\(asked.stderr)")
+        let id = try #require(asked.stdout.firstMatch(of: /qitem-[0-9A-Za-z-]+/).map { String($0.output) })
+        let item = try await http.qitem(id: id)
+        #expect(item.source == seat && item.destination == me)
+
+        var ran: [RigAction] = []
+        let result = await Answer(.approve, note: "live test").run(on: item) { action in
+            ran.append(action)
+            return (try? await asMe.run(action).succeeded) ?? false
+        }
+        #expect(result.told && result.closed)
+        #expect(ran.first == result.sent)
+
+        let closed = try await http.qitem(id: id)
+        #expect(closed.state == .done)
+        #expect(closed.closureReason == "no-follow-on")
+        let seatName = seat.split(separator: "@").first.map(String.init) ?? seat
+        #expect(closed.resolution == "Approved · told \(seatName): live test")
+    }
+
     private struct Transition: Decodable {
         var actorSession: String?
     }

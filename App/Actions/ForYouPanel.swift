@@ -14,15 +14,16 @@ struct ForYouPanel: View {
     @State private var note = ""
     @State private var tell = true
     @State private var replying = false
-    /// The row whose answer already reached the asker, so a retry after a failed close doesn't send it twice.
-    @State private var toldFor: QItem.ID?
+    /// The message that already reached the asker, so a retry after a failed close doesn't send it twice.
+    @State private var sent: RigAction?
+    /// A reply went out from this panel, so Done can record the question as answered.
+    @State private var replied = false
 
     /// Shared with QItemInspector, which shows the outcome once the closed row drops this panel.
     static func key(_ item: QItem) -> String { "answer:\(item.id)" }
     private var key: String { Self.key(item) }
     private var asker: String { rig.displayName(session: item.source) }
     private var askerSeat: Seat? { rig.seat(session: item.source) }
-    private var trimmed: String { note.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var busy: Bool { actions.isRunning(key) || actions.offline }
     /// Tell only reaches a seat in this rig; anywhere else the answer is only recorded on the row.
     private var canTell: Bool { askerSeat != nil }
@@ -43,7 +44,10 @@ struct ForYouPanel: View {
             case .update: update
             }
             if replying, let askerSeat {
-                MessageComposer(seat: askerSeat, inline: true, autofocus: true) { replying = false }
+                MessageComposer(seat: askerSeat, inline: true, autofocus: true) {
+                    replying = false
+                    replied = true
+                }
             }
         }
         .padding(12)
@@ -52,15 +56,20 @@ struct ForYouPanel: View {
             note = ""
             tell = true
             replying = false
-            toldFor = nil
+            sent = nil
+            replied = false
         }
     }
 
     private var decision: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Note for \(asker) (optional)", text: $note, axis: .vertical)
-                .lineLimit(1...4)
-                .help("Your reason or instructions; it goes with the answer.")
+            TextField(
+                canTell && tell ? "Reason or next step (optional)" : "Note (recorded on the row)", text: $note,
+                axis: .vertical
+            )
+            .lineLimit(1...4)
+            .help(
+                canTell && tell ? "Goes to \(asker) with your answer, and onto the row." : "Recorded on the row only.")
             if canTell {
                 Toggle("Tell \(asker)", isOn: $tell)
                     .toggleStyle(.checkbox)
@@ -73,10 +82,10 @@ struct ForYouPanel: View {
             HStack {
                 ActionStatusLine(key: key)
                 Spacer()
-                Button("Deny") { Task { await answer(.denied, verb: "Denied") } }
+                Button("Deny") { Task { await answer(.deny) } }
                     .buttonStyle(.bordered)
                     .disabled(busy)
-                Button("Approve") { Task { await answer(.noFollowOn, verb: "Approved") } }
+                Button("Approve") { Task { await answer(.approve) } }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.return, modifiers: .command)
                     .disabled(busy)
@@ -99,7 +108,7 @@ struct ForYouPanel: View {
                 Spacer()
                 replyButton
                 // Once answered in their own words, the person clears the row; the agent isn't asked to.
-                Button("Done") { Task { await answer(.noFollowOn, verb: nil, resolution: "Answered by message") } }
+                Button("Done") { Task { await answer(.answered) } }
                     .buttonStyle(.borderedProminent)
                     .disabled(busy)
                     .help("Closes the row without telling \(asker). Reply first if you haven't answered.")
@@ -112,7 +121,7 @@ struct ForYouPanel: View {
             ActionStatusLine(key: key)
             Spacer()
             replyButton
-            Button("Got it") { Task { await answer(.noFollowOn, verb: nil) } }
+            Button("Got it") { Task { await answer(.acknowledge) } }
                 .buttonStyle(.borderedProminent)
                 .disabled(busy)
                 .help("Closes the row: you've read it and nothing follows.")
@@ -125,19 +134,18 @@ struct ForYouPanel: View {
         }
     }
 
-    /// Tells the asker first, then closes: a failed message leaves the row open with the error beside the buttons.
-    /// `verb` nil is an acknowledgement, with no message.
-    private func answer(_ reason: CloseReason, verb: String?, resolution fixed: String? = nil) async {
-        let told = verb != nil && tell && canTell
-        if let verb, told, toldFor != item.id {
-            let text = "\(verb): \(item.summary) (\(item.id))" + (trimmed.isEmpty ? "" : "\n\(trimmed)")
-            guard await actions.perform(.send(session: item.source, text: text), key: key) else { return }
-            toldFor = item.id
+    /// A failed message or close shows its error beside the buttons and leaves the row open.
+    private func answer(_ verdict: Answer.Verdict) async {
+        let answer = Answer(verdict, note: note, tell: tell && canTell, replied: replied)
+        let outcome = answer.outcome(asker: asker, told: answer.message(for: item) != nil || sent != nil)
+        let result = await answer.run(on: item, alreadySent: sent) { action in
+            // The outcome waits for the close, so a close that then fails never shows a success first.
+            if case .send = action {
+                return await actions.perform(action, key: key, success: "\(asker) told; closing…")
+            }
+            return await actions.perform(action, key: key, success: outcome)
         }
-        let resolution = fixed ?? (trimmed.isEmpty ? verb : "\(verb ?? "Noted"): \(trimmed)")
-        await actions.perform(
-            .close(id: item.id, reason: reason, target: nil, resolution: resolution), key: key,
-            success: [verb ?? "Closed", told ? "\(asker) told" : nil].compactMap(\.self).joined(separator: " · "))
+        sent = result.closed ? nil : result.sent
     }
 }
 
