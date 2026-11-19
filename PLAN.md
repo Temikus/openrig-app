@@ -390,3 +390,24 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - **Deferred.** "Offer Allow once in the banner" (needs the per-prompt check the inspector does, against a banner that can sit in Notification Center for hours) and "Read prompts on every rig" (polling every rig's panes) are shown disabled as coming later.
 - **Terminals.** The smallest tile text (default 8.5 pt) replaces the fixed floor. "Start typing on focus" never starts on a tile showing a prompt, since Enter there answers it. Esc can go to the pane (`TerminalKeyContext.escGoesToPane`), leaving ⌘T as the way out.
 
+
+### Design review, 2026-11-19 (platform conventions, accessibility)
+
+The review is in `design/reviews/2026-11-19-quick/` (finding ids below).
+- **Done:**
+  - AX-04-01, AX-05-01: VoiceOver reads tiles; snapshot terminals leave the Tab order.
+  - PC-03, PC-04, PC-08, PC-09: menu commands. ⌘N queues a task; New Window is ⌥⌘N.
+  - AX-03-01, AX-03-02, AX-03-03: spoken names, and the canvas read pod by pod.
+  - AX-06-01: announcements.
+  - AX-01-01, AX-01-02: contrast.
+  - AX-02-01: needs-you wires dash-dot only under Differentiate Without Color.
+  - AX-09-01: 24 pt zoom targets.
+  - AX-10-01: tile order held under the pointer or VoiceOver.
+  - PC-05-01, PC-06-01.
+- **Checked from the in-app AX dump** (`OPENRIG_DEBUG_AX`) with the screen locked: tiles, picker, footer, zoom and canvas order.
+- **Not seen live:** menu items enabling per view (no key window while locked), hover freezing, Settings reopening on its last tab.
+- **Open:**
+  - PC-07-01: the toolbar relabels as the inspector shows or hides. Icon-only everywhere would end it, but the design shows labels.
+  - AX-02-02: sidebar badges differ by fill and lightness; the label carries the summary.
+  - AX-08-01: "Sent" still hides after 1.5 s; it is now also announced.
+- **Launch.** Giving the main `WindowGroup` an id (for New Window) let state saved by a killed process restore no window. `.defaultLaunchBehavior(.presented)` opens one anyway.
