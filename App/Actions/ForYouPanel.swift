@@ -102,7 +102,7 @@ struct ForYouPanel: View {
                 Button("Done") { Task { await answer(.noFollowOn, verb: nil, resolution: "Answered by message") } }
                     .buttonStyle(.borderedProminent)
                     .disabled(busy)
-                    .help("Closes the row once you've answered \(asker) in your own words.")
+                    .help("Closes the row without telling \(asker). Reply first if you haven't answered.")
             }
         }
     }

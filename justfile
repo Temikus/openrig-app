@@ -30,6 +30,10 @@ test:
 test-live:
     OPENRIG_LIVE_WRITES=1 swift test {{ spm }} --filter LiveWriteTests
 
+# The app's write actions as its person, against a throwaway seat (it messages that seat's agent)
+test-rig seat:
+    OPENRIG_TEST_SEAT={{ quote(seat) }} swift test {{ spm }} --filter LiveTestRigTests
+
 # Check formatting
 lint:
     swift format lint --strict --recursive OpenRigKit/Package.swift OpenRigKit/Sources OpenRigKit/Tests App

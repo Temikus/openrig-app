@@ -40,7 +40,7 @@
 4. **No link from a permission prompt to a qitem.** It has to be inferred from the seat's `currentQitems`.
 5. **Positive `permission_stop` shape unverified.** Every seat reported `unavailable`. It is Claude-only.
 6. **No short ids.** Real ids look like `qitem-20261111110308-f963e5f7`; the design's `q-0409` does not exist.
-7. **No "asked you" source observed.** `/api/attention` items were empty; `humanQuestions` and `/api/queue/open-human-updates` are the candidates.
+7. **"Asked you" source: closed.** Agents ask the person with a queue row addressed to them (see "Acting as a person" below). `humanQuestions` is `[{id, question, options: [{id, label}]}]`; `GET /api/attention` is the daemon's own Feed of the same rows.
 8. **`rig queue resolve` route not traced.** It uses the operator-bearer write gate, and its help says loopback daemons without a configured bearer need none.
 
 ## 2. Architecture
@@ -361,3 +361,12 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - **Focused tile.** Message mode shows the snapshot tail; Type mode (second click, or ⌘T) shows the live client sized to the tile, with a tmux `refresh-client` after each resize. A live client positioned partly outside its clip draws nothing in SwiftTerm, so it is never offset. The client keeps the pane's own width (a narrower one crops its right-hand columns) and only its height follows the tile; the pane itself is never resized (`ignore-size`).
 - **Fixed on the way:** the blank focused tile (one subscriber per `AttachSession`; SwiftUI's replacement view was unsubscribed by the old one), and attention tints drawing dark in light mode.
 - **Keys:** ⌘] / ⌘[ move focus, ⌘T toggles Type mode, Esc leaves Type mode and then releases focus. No key answers a prompt.
+
+### Acting as a person
+- **Lost replies.** A message from the app reached orch-lead as `From: operator-human@kernel` with the hint `↩ Reply: rig send operator-human@kernel`. That seat is the TUI's pane, so the reply was typed into the TUI ("unknown command") and lost, while rig reported it delivered. The daemon keeps every message in the sender's outbox (`GET /api/queue/outbox/list?rig=`).
+- **Identity.** The app now acts as the gateway's default person (`rig gateway human add <id> --default`, here `artem@external`), else `human@host`. From either, the envelope's hint becomes `rig queue create --destination <you> …`, so replies are queue rows. Unregistered, `human@host` has no wake route and the daemon's stuck sweep files an `undelivered-wake` row back to the sender within minutes; a registered person is `gateway-owned` and isn't swept.
+- **Rows to a person need `--evidence-ref`** (`human_route_fields_required`); `just test-live` now passes one.
+- **Needs you** adds live rows addressed to the person (or to `human@host`/`human@kernel`): decisions with held rows, FYIs (`humanIntent: update`) last. The badge counts decisions only; FYIs alone show a grey count.
+- **Answering.** Approve and Deny close the row (`no-follow-on` / `denied`, note as resolution). Closing doesn't tell the asker, and neither does the TUI's own `approve` (`ownerNotificationLevel: RECORD`), so the app sends the answer with `rig send` first, then closes; a failed send leaves the row open. FYIs get Got it (close) and Reply. Rows with options get Reply and Done for now: the daemon's `answer` verb has no CLI wrapper, only `POST /api/mission-control/action`, which accepts a loopback call without a bearer and records the `X-OpenRig-Session` actor.
+- **`just test-rig <seat>@<throwaway rig>`** runs the app's create, block, resolve, close and send as the person and checks every transition names them. Passed on `openrig-apptest`.
+- **Still open:** rows for you on another rig only show when that rig is selected; answering options in the app (`answer` verb).
