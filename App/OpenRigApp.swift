@@ -18,6 +18,8 @@ struct OpenRigApp: App {
                 .frame(minWidth: 820, minHeight: 520)
         }
         .defaultSize(width: 1440, height: 900)
+        // Saved state from before the window had an id restores nothing; open one anyway.
+        .defaultLaunchBehavior(.presented)
         .commands { OpenRigCommands(store: store) }
 
         Settings {

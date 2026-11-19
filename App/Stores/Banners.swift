@@ -36,6 +36,10 @@ final class Banners: NSObject, UNUserNotificationCenterDelegate {
 
         let fresh = tracker.update(current, enabled: enabled)
         guard !fresh.isEmpty else { return }
+        // In front, banners may be held and VoiceOver users would hear nothing.
+        if NSApp.isActive {
+            announce(fresh.map { "\($0.title). \($0.body)" }.joined(separator: " "), urgent: true)
+        }
         if settings.bannersOnlyInBackground, NSApp.isActive, store.windowInFront {
             Self.debugLog("held: window in front (\(fresh.count))")
             return

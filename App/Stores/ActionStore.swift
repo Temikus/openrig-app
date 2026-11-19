@@ -18,7 +18,18 @@ final class ActionStore {
     var http: DaemonHTTP?
     /// Who the app acts as, for the CLI and the HTTP answer alike.
     private(set) var actor = Human.session
-    private(set) var status: [String: Status] = [:]
+    private(set) var status: [String: Status] = [:] {
+        // Results show next to their control, which VoiceOver may not be on; say them too.
+        didSet {
+            for (key, value) in status where oldValue[key] != value {
+                switch value {
+                case .succeeded(let message): announce(message)
+                case .failed(let message): announce("Failed: \(message)", urgent: true)
+                case .running: break
+                }
+            }
+        }
+    }
     /// Set while the daemon is unreachable: writes would fail, so their buttons disable.
     var offline = false
 

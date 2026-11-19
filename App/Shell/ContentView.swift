@@ -129,7 +129,8 @@ struct AdaptiveLabelStyle: LabelStyle {
     var keepsIcon = false
     func makeBody(configuration: Configuration) -> some View {
         if iconOnly {
-            configuration.icon
+            // The system style keeps the title as the spoken name; the bare icon was read as the SF Symbol's name.
+            Label(configuration).labelStyle(.iconOnly)
         } else if keepsIcon {
             // A toolbar shows any Label as its icon unless told otherwise.
             Label(configuration).labelStyle(.titleAndIcon)
@@ -225,15 +226,25 @@ struct DaemonStatusFooter: View {
                 ProgressView().controlSize(.small)
                 Text("Connecting…")
             case .running(let health):
-                Image(systemName: health.isHealthy ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(health.isHealthy ? .green : .orange)
-                Text("Daemon \(health.semver ?? "")")
-                if !store.isLive {
-                    Text("· polling").foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Image(systemName: health.isHealthy ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(health.isHealthy ? .green : .orange)
+                    Text("Daemon \(health.semver ?? "")")
+                    if !store.isLive {
+                        Text("· polling").foregroundStyle(.secondary)
+                    }
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityAddTraits(.isStaticText)
+                .accessibilityLabel(
+                    "Daemon \(health.semver ?? ""), \(health.isHealthy ? "running" : "running with problems")"
+                        + (store.isLive ? "" : ", polling"))
             case .unreachable(_, let since):
-                Image(systemName: "xmark.octagon.fill").foregroundStyle(Color.attention)
-                Text("Daemon stopped · since \(since, style: .time)")
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark.octagon.fill").foregroundStyle(Color.attention)
+                    Text("Daemon stopped · since \(since, style: .time)")
+                }
+                .accessibilityElement(children: .combine)
                 Spacer(minLength: 4)
                 Button("Start") { Task { await store.startDaemon() } }
                     .controlSize(.small)

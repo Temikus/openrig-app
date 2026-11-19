@@ -341,11 +341,14 @@ final class AppStore {
             actions.http = client
         }
         do {
-            daemon = .running(try await client.health())
+            let health = try await client.health()
+            if case .unreachable = daemon { announce("Daemon reconnected") }
+            daemon = .running(health)
             actions.offline = false
         } catch {
             actions.offline = true
             if case .unreachable = daemon { return }
+            if case .running = daemon { announce("Daemon stopped. Showing the last data, read-only.", urgent: true) }
             daemon = .unreachable(reason: error.userMessage, since: .now)
         }
     }

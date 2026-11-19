@@ -4,6 +4,13 @@
     /// OPENRIG_DEBUG_AX=<file>[,<tabs>]: after launch settles, writes the main window's accessibility tree as the app
     /// itself serves it (macOS hides other apps' windows from AX while the screen is locked), then moves keyboard
     /// focus `tabs` times as Tab would and logs each stop. Moving focus sends nothing to tmux.
+    enum OpenRigDebug {
+        /// The rig OPENRIG_DEBUG_OPEN names; the main window's title starts with it.
+        static var rigName: String {
+            String(ProcessInfo.processInfo.environment["OPENRIG_DEBUG_OPEN"]?.split(separator: "/").first ?? "")
+        }
+    }
+
     @MainActor
     enum AccessibilityDump {
         static func run() async {
@@ -12,13 +19,17 @@
             let path = String(parts[0])
             let tabs = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
             try? await Task.sleep(for: .seconds(6))
-            guard let window = NSApp.windows.first(where: { $0.isVisible && $0.title != "" && !($0 is NSPanel) })
-            else { return }
-            // Menu items read their focused scene values from the key window.
-            NSApp.activate()
-            window.makeKeyAndOrderFront(nil)
-            try? await Task.sleep(for: .seconds(1))
-            var out = "key window: \(NSApp.keyWindow?.title ?? "none")\n"
+            // The main window, not the menu bar item's own window ("Item-0").
+            guard let window = NSApp.windows.first(where: { $0.isVisible && $0.title.hasPrefix(OpenRigDebug.rigName) })
+            else {
+                let all = NSApp.windows.map { "\(type(of: $0)) \"\($0.title)\" visible=\($0.isVisible)" }
+                try? all.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
+                return
+            }
+            // Menu items read focused scene values from the key window; while the screen is locked there is none,
+            // and they all read as off.
+            var out = "key window: \(NSApp.keyWindow?.title ?? "none"), dumping \"\(window.title)\" with "
+            out += "\(window.accessibilityChildren()?.count ?? -1) children\n"
             dump(window, depth: 0, into: &out)
             out += "\n# Menus\n"
             for top in NSApp.mainMenu?.items ?? [] {
