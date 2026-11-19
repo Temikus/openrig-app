@@ -29,6 +29,10 @@ public struct QItem: Decodable, Sendable, Identifiable, Hashable {
     public var resolution: String?
     /// True when the row carries questions for a human.
     public var asksHuman: Bool
+    /// The questions, each with 2–4 options, when the asker gave fixed choices.
+    public var humanQuestions: [HumanQuestion] = []
+    /// Answers recorded so far: question id → option id.
+    public var humanAnswers: [String: String] = [:]
     /// For a row to a person: `decision` (the daemon's default) or `update`, an FYI.
     public var humanIntent: String?
     /// The artifact a person is asked to judge; required on every row to a person.
@@ -69,7 +73,7 @@ public struct QItem: Decodable, Sendable, Identifiable, Hashable {
     private enum CodingKeys: String, CodingKey {
         case qitemId, sourceSession, destinationSession, state, priority, summary, body, tags, blockedOn
         case handedOffFrom, handedOffTo, closureReason, closureTarget, closureRequiredAt, claimedAt
-        case tsCreated, tsUpdated, chainOfRecord, resolution, humanQuestions, humanIntent, evidenceRef
+        case tsCreated, tsUpdated, chainOfRecord, resolution, humanQuestions, humanAnswers, humanIntent, evidenceRef
     }
 
     public init(from decoder: any Decoder) throws {
@@ -100,12 +104,40 @@ public struct QItem: Decodable, Sendable, Identifiable, Hashable {
         resolution = c.lenient(String.self, .resolution)
         humanIntent = c.lenient(String.self, .humanIntent)
         evidenceRef = c.lenient(String.self, .evidenceRef)
-        // Shape not observed yet (gap 7 in PLAN.md): any non-null, non-empty value counts.
+        humanQuestions = c.lenient([HumanQuestion].self, .humanQuestions) ?? []
+        humanAnswers = c.lenient([String: String].self, .humanAnswers) ?? [:]
+        // Any non-null, non-empty value counts, even one whose shape didn't decode.
         if let questions = c.lenient([JSONValue].self, .humanQuestions) {
             asksHuman = !questions.isEmpty
         } else {
             asksHuman = c.lenient(JSONValue.self, .humanQuestions).map { $0 != .null } ?? false
         }
+    }
+}
+
+/// A question with fixed choices, as `rig queue create --human-questions-file` takes it.
+public struct HumanQuestion: Decodable, Sendable, Hashable, Identifiable {
+    public var id: String
+    public var question: String
+    public var options: [Option]
+
+    public struct Option: Decodable, Sendable, Hashable, Identifiable {
+        public var id: String
+        public var label: String
+        /// The asker's suggestion; at most one per question.
+        public var recommended: Bool?
+
+        public init(id: String, label: String, recommended: Bool? = nil) {
+            self.id = id
+            self.label = label
+            self.recommended = recommended
+        }
+    }
+
+    public init(id: String, question: String, options: [Option]) {
+        self.id = id
+        self.question = question
+        self.options = options
     }
 }
 

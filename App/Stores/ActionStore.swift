@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import RigClient
+import RigModel
 
 /// Runs `rig` commands for the UI and keeps each control's last outcome, shown next to that control.
 /// Results reach the views through the event stream; nothing here refreshes state by hand.
@@ -13,6 +14,10 @@ final class ActionStore {
     }
 
     private(set) var cli: RigCLI?
+    /// For the one write the CLI can't make: answering an ask's questions.
+    var http: DaemonHTTP?
+    /// Who the app acts as, for the CLI and the HTTP answer alike.
+    private(set) var actor = Human.session
     private(set) var status: [String: Status] = [:]
     /// Set while the daemon is unreachable: writes would fail, so their buttons disable.
     var offline = false
@@ -23,7 +28,31 @@ final class ActionStore {
 
     /// Stamps later writes with `session` as the actor.
     func act(as session: String) {
+        actor = session
         cli?.actor = session
+    }
+
+    /// Records one answer on an ask through the daemon's HTTP API, under `key` like `perform`.
+    @discardableResult
+    func answer(_ answer: AskAnswer, on id: QItem.ID, key: String, success: String) async -> Bool {
+        if offline {
+            status[key] = .failed("The daemon isn't running. Start it from the sidebar, then try again.")
+            return false
+        }
+        guard let http else {
+            status[key] = .failed("Not connected to the daemon yet.")
+            return false
+        }
+        status[key] = .running
+        do {
+            try await http.answer(qitem: id, answer, as: actor)
+            status[key] = .succeeded(success)
+            clearLater(key)
+            return true
+        } catch {
+            status[key] = .failed(error.userMessage)
+            return false
+        }
     }
 
     func isRunning(_ key: String) -> Bool { status[key] == .running }

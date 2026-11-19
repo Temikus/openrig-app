@@ -86,6 +86,53 @@ struct LiveTestRigTests {
         #expect(closed.resolution == "Approved · told \(seatName): live test")
     }
 
+    /// Questions with options: the seat asks two, the person picks through the HTTP `answer` verb, and the daemon
+    /// records both, returns them to the seat as one reply row, and closes the ask.
+    @Test(.timeLimit(.minutes(1))) func answeringQuestionsReturnsThemAndCloses() async throws {
+        let http = DaemonHTTP(baseURL: DaemonLocator().locate().baseURL)
+        let me = Human.address(in: try? await http.participants())
+        let asSeat = try #require(RigCLI.locate(actor: seat))
+        let dir = FileManager.default.temporaryDirectory
+        let evidence = dir.appending(path: "openrig-app-questions-test.md")
+        try "openrig-app questions test".write(to: evidence, atomically: true, encoding: .utf8)
+        let questions = dir.appending(path: "openrig-app-questions.json")
+        try """
+        [{"id": "builds", "question": "Which builds start now?",
+          "options": [{"id": "both", "label": "Both"}, {"id": "b1", "label": "dev-b1 only"}]},
+         {"id": "review", "question": "Who reviews?",
+          "options": [{"id": "sec", "label": "review-security"}, {"id": "design", "label": "review-design"}]}]
+        """.write(to: questions, atomically: true, encoding: .utf8)
+        let asked = try await asSeat.run(
+            arguments: [
+                "queue", "create", "--destination", me, "--summary", "OpenRig.app live test: two picks",
+                "--human-questions-file", questions.path, "--evidence-ref", evidence.path, "--body-file", "-",
+                "--no-nudge", "--json",
+            ], stdin: "Asked and answered by OpenRigKit's LiveTestRigTests. No action needed.")
+        #expect(asked.succeeded, "\(asked.stderr)")
+        let id = try #require(asked.stdout.firstMatch(of: /qitem-[0-9A-Za-z-]+/).map { String($0.output) })
+        let item = try await http.qitem(id: id)
+        #expect(item.humanQuestions.map(\.id) == ["builds", "review"])
+
+        let answers = QuestionAnswers(picks: ["builds": "both", "review": "sec"])
+        var failure: (any Error)?
+        let sent = await answers.run(on: item) { call in
+            do {
+                try await http.answer(qitem: id, call, as: me)
+                return true
+            } catch {
+                failure = error
+                return false
+            }
+        }
+        #expect(sent, "\(String(describing: failure))")
+
+        let answered = try await http.qitem(id: id)
+        #expect(answered.state == .done)
+        #expect(answered.humanAnswers == ["builds": "both", "review": "sec"])
+        let replies = try await http.queue(rigName: String(seat.split(separator: "@").last ?? ""))
+        #expect(replies.contains { $0.source == me && $0.destination == seat && $0.tags.contains("human-answer") })
+    }
+
     private struct Transition: Decodable {
         var actorSession: String?
     }

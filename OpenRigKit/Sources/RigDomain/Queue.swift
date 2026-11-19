@@ -82,7 +82,7 @@ public func needsYou(_ items: [QItem], me: String = Human.session) -> [QItem] {
 
 /// How a finished row ended, as one plain word, instead of the daemon's closure reason (`no-follow-on`).
 public enum Outcome: Equatable, Sendable {
-    case approved, denied, done, canceled
+    case approved, denied, answered, done, canceled
     case replaced(by: String?)
     case escalated(to: String?)
     case handedOff(to: String?)
@@ -91,6 +91,7 @@ public enum Outcome: Equatable, Sendable {
         switch self {
         case .approved: "Approved"
         case .denied: "Denied"
+        case .answered: "Answered"
         case .done: "Done"
         case .canceled: "Canceled"
         case .replaced: "Replaced"
@@ -101,7 +102,7 @@ public enum Outcome: Equatable, Sendable {
 }
 
 /// nil while the row is open. An approval is a `no-follow-on` close whose resolution starts "Approved", as the app's
-/// answer and the TUI's approve both write it.
+/// answer and the TUI's approve both write it; an answered ask carries its picks in `humanAnswers`.
 public func outcome(_ item: QItem) -> Outcome? {
     switch workStatus(item) {
     case .handedOff(let to): return .handedOff(to: to)
@@ -115,6 +116,8 @@ public func outcome(_ item: QItem) -> Outcome? {
             let resolution = (item.resolution ?? "").lowercased()
             if resolution.hasPrefix("approved") { return .approved }
             if resolution.hasPrefix("denied") { return .denied }
+            // An ask closed by the daemon's `answer`: the picks are on the row, the resolution is empty.
+            if !item.humanAnswers.isEmpty { return .answered }
             return .done
         }
     default: return nil

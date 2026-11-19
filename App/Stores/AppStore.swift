@@ -86,6 +86,7 @@ final class AppStore {
         let endpoint = locator.locate()
         self.endpoint = endpoint
         self.client = DaemonHTTP(baseURL: endpoint.baseURL, timeout: 3)
+        actions.http = client
     }
 
     var selectedRig: RigSummary? { rigs.first { $0.id == selectedRigID } }
@@ -179,6 +180,7 @@ final class AppStore {
             endpoint = located
             client = DaemonHTTP(baseURL: located.baseURL, timeout: 3)
             rig?.client = client
+            actions.http = client
         }
         do {
             daemon = .running(try await client.health())
@@ -317,6 +319,7 @@ extension DaemonError {
         case .unreachable(let message): message
         case .http(let status, let path): "HTTP \(status) from \(path)"
         case .decoding(let path, _): "Unexpected response from \(path)"
+        case .refused(_, let message): message
         }
     }
 }

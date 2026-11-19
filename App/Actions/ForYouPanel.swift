@@ -18,6 +18,8 @@ struct ForYouPanel: View {
     @State private var sent: RigAction?
     /// A reply went out from this panel, so Done can record the question as answered.
     @State private var replied = false
+    /// The person's picks for a row with questions, sent together.
+    @State private var choices = QuestionAnswers()
 
     /// Shared with QItemInspector, which shows the outcome once the closed row drops this panel.
     static func key(_ item: QItem) -> String { "answer:\(item.id)" }
@@ -58,6 +60,7 @@ struct ForYouPanel: View {
             replying = false
             sent = nil
             replied = false
+            choices = QuestionAnswers()
         }
     }
 
@@ -94,8 +97,49 @@ struct ForYouPanel: View {
         }
     }
 
-    /// Questions with options aren't answerable here yet; a yes or no would answer the wrong thing.
-    private var questions: some View {
+    /// One radio list per question, then one send: the daemon returns the answers to the asker and closes the row.
+    @ViewBuilder private var questions: some View {
+        if item.humanQuestions.isEmpty {
+            questionsWithoutShape
+        } else {
+            let missing = choices.missing(in: item).count
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(item.humanQuestions) { question in
+                    QuestionPicker(question: question, recorded: item.humanAnswers[question.id], answers: $choices)
+                }
+                HStack {
+                    ActionStatusLine(key: key)
+                    Spacer()
+                    let total = item.humanQuestions.count
+                    Text("\(total - missing) of \(total) answered")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    replyButton
+                    Button("Send answers") { Task { await sendAnswers() } }
+                        .buttonStyle(.borderedProminent)
+                        .keyboardShortcut(.return, modifiers: .command)
+                        .disabled(busy || missing > 0)
+                        .help(missing > 0 ? "Answer every question first." : "Send answers (⌘↩)")
+                }
+            }
+        }
+    }
+
+    private func sendAnswers() async {
+        let calls = choices.calls(for: item)
+        var sentCount = 0
+        _ = await choices.run(on: item) { call in
+            sentCount += 1
+            // Only the last call finishes the ask; earlier ones only record a pick.
+            let last = sentCount == calls.count
+            return await actions.answer(
+                call, on: item.id, key: key, success: last ? "Answers sent to \(asker)" : "Recorded")
+        }
+    }
+
+    /// A row whose questions didn't decode: answer in your own words, then close.
+    private var questionsWithoutShape: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(
                 "\(asker) asks questions with options. Answer them in the TUI's Feed, or reply here in your own words."
@@ -146,6 +190,77 @@ struct ForYouPanel: View {
             return await actions.perform(action, key: key, success: outcome)
         }
         sent = result.closed ? nil : result.sent
+    }
+}
+
+/// One question as a radio list, plus "Other…" for the person's own words.
+private struct QuestionPicker: View {
+    let question: HumanQuestion
+    /// The option already recorded on the row, from an earlier send.
+    let recorded: String?
+    @Binding var answers: QuestionAnswers
+
+    /// Can't clash with an option: the daemon allows only letters, digits, "-" and "_" in ids.
+    private static let other = "(other)"
+
+    private var selection: Binding<String?> {
+        Binding {
+            answers.other[question.id] != nil ? Self.other : answers.picks[question.id]
+        } set: { value in
+            if value == Self.other {
+                answers.picks[question.id] = nil
+                answers.other[question.id] = answers.other[question.id] ?? ""
+            } else {
+                answers.other[question.id] = nil
+                answers.picks[question.id] = value
+            }
+        }
+    }
+
+    /// The asker's suggestion is marked in grey, so the mark doesn't read as part of the answer.
+    private func label(_ option: HumanQuestion.Option) -> AttributedString {
+        var text = AttributedString(option.label)
+        if option.recommended == true {
+            var mark = AttributedString("  suggested")
+            mark.foregroundColor = .secondary
+            text += mark
+        }
+        return text
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(question.question).font(.callout.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+            if let recorded {
+                Label(
+                    question.options.first { $0.id == recorded }?.label ?? recorded,
+                    systemImage: "checkmark.circle.fill"
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            } else {
+                Picker(question.question, selection: selection) {
+                    ForEach(question.options) { option in
+                        Text(label(option)).tag(String?.some(option.id))
+                    }
+                    Text("Other…").tag(String?.some(Self.other))
+                }
+                .pickerStyle(.radioGroup)
+                .labelsHidden()
+                if answers.other[question.id] != nil {
+                    TextField(
+                        "Your answer",
+                        text: Binding {
+                            answers.other[question.id] ?? ""
+                        } set: {
+                            answers.other[question.id] = $0
+                        },
+                        axis: .vertical
+                    )
+                    .lineLimit(1...3)
+                }
+            }
+        }
     }
 }
 

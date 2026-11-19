@@ -68,6 +68,22 @@ struct QItemInspector: View {
                 }
                 .font(.callout)
 
+                // The picks recorded on the row, under each full question; long questions would stretch the grid above.
+                let answered = item.humanQuestions.filter { item.humanAnswers[$0.id] != nil }
+                if !answered.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Answers").font(.headline)
+                        ForEach(answered) { question in
+                            let pick = item.humanAnswers[question.id] ?? ""
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(question.question).foregroundStyle(.secondary)
+                                Text(question.options.first { $0.id == pick }?.label ?? pick)
+                            }
+                            .font(.callout)
+                        }
+                    }
+                }
+
                 if let kind = forYou(item, me: rig.me) {
                     ForYouPanel(item: item, kind: kind)
                 } else {

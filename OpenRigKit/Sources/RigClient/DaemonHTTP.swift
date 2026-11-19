@@ -1,14 +1,24 @@
 import Foundation
 import RigModel
 
+/// One answer to an ask's questions.
+public enum AskAnswer: Sendable, Equatable {
+    case choice(question: String, option: String)
+    /// The person's own words, recorded under the first question still unanswered.
+    case words(String)
+}
+
 public enum DaemonError: Error, Sendable, Equatable {
     /// Nothing answered: the daemon is stopped or the port is wrong.
     case unreachable(String)
     case http(status: Int, path: String)
     case decoding(path: String, message: String)
+    /// The daemon said no, with its own reason (e.g. `answer_not_recorded`).
+    case refused(code: String, message: String)
 }
 
-/// Read-only access to the daemon's HTTP API. Writes go through the `rig` CLI instead.
+/// Access to the daemon's HTTP API. Writes go through the `rig` CLI, except answering an ask's questions: the
+/// `answer` verb has no CLI wrapper, only `POST /api/mission-control/action`.
 public struct DaemonHTTP: Sendable {
     public var baseURL: URL
     var session: URLSession
@@ -71,6 +81,44 @@ public struct DaemonHTTP: Sendable {
 
     public func qitem(id: String) async throws(DaemonError) -> QItem {
         try await get("/api/queue/\(id)")
+    }
+
+    /// Records one answer on an ask, as `actor`: a choice, or the person's own words. When the last question is
+    /// answered, the daemon returns the answers to the asker as one reply row and closes the ask.
+    public func answer(qitem id: String, _ answer: AskAnswer, as actor: String) async throws(DaemonError) {
+        var body: [String: String] = ["verb": "answer", "qitemId": id, "actorSession": actor]
+        switch answer {
+        case .choice(let question, let option):
+            body["questionId"] = question
+            body["optionId"] = option
+        case .words(let text):
+            body["decision"] = text
+        }
+        let path = "/api/mission-control/action"
+        var request = URLRequest(url: baseURL.appending(path: path), timeoutInterval: timeout)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // Names the actor at this hop, so the daemon records the person (transport provenance).
+        request.setValue(actor, forHTTPHeaderField: "X-OpenRig-Session")
+        request.httpBody = try? JSONEncoder().encode(body)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw .unreachable(error.localizedDescription)
+        }
+        struct Refusal: Decodable {
+            var error: String?
+            var message: String?
+        }
+        // A refusal body counts whatever the status, in case one ever comes back with a 2xx.
+        if let refusal = try? JSONDecoder().decode(Refusal.self, from: data), let code = refusal.error {
+            throw .refused(code: code, message: refusal.message ?? code)
+        }
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            throw .http(status: http.statusCode, path: path)
+        }
     }
 
     func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws(DaemonError) -> T {

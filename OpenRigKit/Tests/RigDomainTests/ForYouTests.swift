@@ -82,6 +82,9 @@ import Testing
         #expect(closed("no-follow-on", "approved") == .approved, "the TUI's approve")
         #expect(closed("denied", "Denied · told orch-lead") == .denied)
         #expect(closed("no-follow-on", "LGTM, two nits") == .done)
+        var answered = item("a", .done, closureReason: "no-follow-on")
+        answered.humanAnswers = ["builds": "both"]
+        #expect(outcome(answered) == .answered)
         #expect(closed(nil) == .done)
         #expect(closed(nil, state: .canceled) == .canceled)
         #expect(closed("superseded", target: "qitem-2") == .replaced(by: "qitem-2"))
