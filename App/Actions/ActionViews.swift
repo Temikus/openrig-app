@@ -21,7 +21,7 @@ struct ActionStatusLine: View {
         case .failed(let text)?:
             Label(text, systemImage: "exclamationmark.triangle.fill")
                 .font(.caption)
-                .foregroundStyle(.red)
+                .foregroundStyle(Color.attention)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
         case nil:

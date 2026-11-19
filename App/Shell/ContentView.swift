@@ -224,7 +224,7 @@ struct DaemonStatusFooter: View {
                     Text("· polling").foregroundStyle(.secondary)
                 }
             case .unreachable(_, let since):
-                Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
+                Image(systemName: "xmark.octagon.fill").foregroundStyle(Color.attention)
                 Text("Daemon stopped · since \(since, style: .time)")
                 Spacer(minLength: 4)
                 Button("Start") { Task { await store.startDaemon() } }
@@ -338,7 +338,7 @@ struct StatusBanners: View {
     var body: some View {
         VStack(spacing: 0) {
             if case .unreachable(let reason, _) = store.daemon {
-                banner(tint: .red, symbol: "bolt.horizontal.circle") {
+                banner(tint: .attention, symbol: "bolt.horizontal.circle") {
                     Text("Daemon stopped. Showing data from \(stale), read-only.")
                         .help(reason)
                     Spacer()

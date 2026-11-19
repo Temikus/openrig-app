@@ -51,10 +51,10 @@ struct SeatInspector: View {
             if case .down(let presence) = SeatPhase(seat) {
                 DownSeatNotice(seat: seat, presence: presence)
                     .padding(10)
-                    .background(presence.needsYou ? Color.orange.opacity(0.08) : .clear, in: .rect(cornerRadius: 10))
+                    .background(presence.needsYou ? Color.attention.opacity(0.08) : .clear, in: .rect(cornerRadius: 10))
             }
             if let prompt = rig.prompts.first(where: { $0.seatID == seat.id }) {
-                Text("Needs you").font(.subheadline.weight(.semibold)).foregroundStyle(.red)
+                Text("Needs you").font(.subheadline.weight(.semibold)).foregroundStyle(Color.attention)
                 NeedsYouRow(entry: .prompt(prompt, linked: prompt.linkedQItem(in: rig.items)))
             }
             if let q, !(q.needsYou.isEmpty && q.owned.isEmpty && q.delegated.isEmpty) {
@@ -71,7 +71,7 @@ struct SeatInspector: View {
     @ViewBuilder private func group(_ title: String, _ items: [QItem]) -> some View {
         if !items.isEmpty {
             Text(title).font(.subheadline.weight(.semibold))
-                .foregroundStyle(title == "Needs you" ? Color.red : .secondary)
+                .foregroundStyle(title == "Needs you" ? Color.attention : .secondary)
             ForEach(items) { QItemCard(item: $0, now: .now) }
         }
     }

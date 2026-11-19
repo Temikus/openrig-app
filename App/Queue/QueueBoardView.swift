@@ -227,7 +227,7 @@ struct QItemCard: View {
     private var isSelected: Bool { selection.qitemID == item.id }
     private var border: Color {
         if isSelected { return .accentColor }
-        return status.needsYou || forYou == .decision ? .red : Color(nsColor: .separatorColor)
+        return status.needsYou || forYou == .decision ? Color.attention : Color(nsColor: .separatorColor)
     }
 
     var body: some View {
@@ -288,7 +288,7 @@ struct QItemCard: View {
                 systemImage: "person.fill.questionmark"
             )
             .font(.caption)
-            .foregroundStyle(.red)
+            .foregroundStyle(Color.attention)
             .lineLimit(1)
         case .blocked(on: .qitem(let id)):
             Button("held on \(shortQItemID(id))", systemImage: "link") { selection.select(qitem: id) }
@@ -375,10 +375,10 @@ struct StatusTag: View {
     }
 
     private var color: Color {
-        if let forYou { return forYou == .decision ? .red : .secondary }
+        if let forYou { return forYou == .decision ? Color.attention : .secondary }
         return switch status {
         case .inProgress: .orange
-        case .blocked(on: .outside): .red
+        case .blocked(on: .outside): .attention
         case .closed, .handedOff: .secondary
         default: .primary
         }

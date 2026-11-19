@@ -36,7 +36,7 @@ struct ForYouPanel: View {
                 Text(kind == .decision ? "\(asker) asks you to decide" : "\(asker) sent you an update")
             } icon: {
                 Image(systemName: kind == .decision ? "person.fill.questionmark" : "envelope")
-                    .foregroundStyle(kind == .decision ? Color.red : .secondary)
+                    .foregroundStyle(kind == .decision ? Color.attention : .secondary)
             }
             .font(.callout.weight(.semibold))
             if let evidence = item.evidenceRef { EvidenceLine(ref: evidence) }
@@ -53,7 +53,7 @@ struct ForYouPanel: View {
             }
         }
         .padding(12)
-        .background((kind == .decision ? Color.red : .secondary).opacity(0.06), in: .rect(cornerRadius: 10))
+        .background((kind == .decision ? Color.attention : .secondary).opacity(0.06), in: .rect(cornerRadius: 10))
         .onChange(of: item.id) {
             note = ""
             tell = true

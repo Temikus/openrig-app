@@ -226,7 +226,7 @@ struct NeedsYouRow: View {
             switch entry {
             case .prompt(let prompt, let linked):
                 HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.red)
+                    Image(systemName: "exclamationmark.circle.fill").foregroundStyle(Color.attention)
                     Text(rig.seat(prompt.seatID)?.displayName ?? prompt.session).font(.callout.weight(.semibold))
                     Text("asks to run").foregroundStyle(.secondary)
                     Spacer()
@@ -269,7 +269,7 @@ struct NeedsYouRow: View {
                     HStack(spacing: 6) {
                         let kind = forYou(item, me: rig.me)
                         Image(systemName: kind == .update ? "envelope" : "person.fill.questionmark")
-                            .foregroundStyle(kind == .update ? Color.secondary : .red)
+                            .foregroundStyle(kind == .update ? Color.secondary : Color.attention)
                         Text(shortQItemID(item.id)).font(.caption.monospaced())
                         if kind != nil {
                             Text(rig.displayName(session: item.source)).fontWeight(.semibold)
@@ -277,7 +277,7 @@ struct NeedsYouRow: View {
                         Text(item.summary).lineLimit(2)
                         Spacer()
                         switch kind {
-                        case .decision?: Text("Asks you").foregroundStyle(.red)
+                        case .decision?: Text("Asks you").foregroundStyle(Color.attention)
                         case .update?: Text("FYI").foregroundStyle(.secondary)
                         case nil: Text(rig.displayName(session: item.destination)).foregroundStyle(.secondary)
                         }
@@ -301,7 +301,7 @@ struct NeedsYouRow: View {
         switch entry {
         case .seat: .orange
         case .qitem(let item) where forYou(item, me: rig.me) == .update: .secondary
-        default: .red
+        default: .attention
         }
     }
 
@@ -407,7 +407,7 @@ struct CountBadge: View {
 extension NeedsYouButton {
     fileprivate func bell(urgent: Int, any: Bool) -> some View {
         Image(systemName: urgent > 0 ? "bell.badge.fill" : "bell")
-            .foregroundStyle(urgent > 0 ? Color.red : any ? .primary : .secondary)
+            .foregroundStyle(urgent > 0 ? Color.attention : any ? .primary : .secondary)
     }
 }
 
@@ -467,7 +467,7 @@ struct AttentionElsewhereRow: View {
             opened()
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.red)
+                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(Color.attention)
                 Text(seats == 1 ? "1 seat needs you" : "\(seats) seats need you").fontWeight(.semibold)
                 Text("permission prompt or stopped").foregroundStyle(.secondary)
                 Spacer()
@@ -476,7 +476,7 @@ struct AttentionElsewhereRow: View {
             }
             .font(.callout)
             .padding(10)
-            .background(Color.red.opacity(0.06), in: .rect(cornerRadius: 10))
+            .background(Color.attention.opacity(0.06), in: .rect(cornerRadius: 10))
             .contentShape(.rect(cornerRadius: 10))
         }
         .buttonStyle(.plain)
@@ -498,19 +498,19 @@ struct ElsewhereRow: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: fyi ? "envelope" : "person.fill.questionmark")
-                    .foregroundStyle(fyi ? Color.secondary : .red)
+                    .foregroundStyle(fyi ? Color.secondary : Color.attention)
                 Text(shortQItemID(item.id)).font(.caption.monospaced())
                 Text(item.source.split(separator: "@").first.map(String.init) ?? item.source).fontWeight(.semibold)
                 Text(item.summary).lineLimit(2)
                 Spacer()
-                Text(fyi ? "FYI" : "Asks you").foregroundStyle(fyi ? Color.secondary : .red)
+                Text(fyi ? "FYI" : "Asks you").foregroundStyle(fyi ? Color.secondary : Color.attention)
                 // Opens elsewhere, unlike this rig's rows, which answer in place.
                 Image(systemName: "arrow.up.forward").font(.caption).foregroundStyle(.secondary)
                     .accessibilityHidden(true)
             }
             .font(.callout)
             .padding(10)
-            .background((fyi ? Color.secondary : .red).opacity(0.06), in: .rect(cornerRadius: 10))
+            .background((fyi ? Color.secondary : Color.attention).opacity(0.06), in: .rect(cornerRadius: 10))
             .contentShape(.rect(cornerRadius: 10))
         }
         .buttonStyle(.plain)
