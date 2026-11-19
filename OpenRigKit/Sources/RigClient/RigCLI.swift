@@ -106,25 +106,40 @@ public struct RigCLI: Sendable {
     public var executable: URL
     /// Session stamped as the actor on every write, via `OPENRIG_SESSION_NAME`.
     public var actor: String
+    /// The daemon the app reads from, so the CLI writes to the same one. Nil lets the CLI find its own.
+    public var daemonURL: URL?
+    /// Operator bearer for gated writes; the CLI reads it from `OPENRIG_AUTH_BEARER_TOKEN`.
+    public var bearer: String?
+    /// Prepended to PATH: the folder of a node the person picked (nvm, asdf, mise).
+    public var extraPath: String?
 
-    public init(executable: URL, actor: String) {
+    public init(
+        executable: URL, actor: String, daemonURL: URL? = nil, bearer: String? = nil, extraPath: String? = nil
+    ) {
         self.executable = executable
         self.actor = actor
+        self.daemonURL = daemonURL
+        self.bearer = bearer
+        self.extraPath = extraPath
     }
 
     public static let searchPaths = ["/opt/homebrew/bin/rig", "/usr/local/bin/rig"]
 
     /// GUI apps don't inherit the shell's PATH, so look in the usual install places.
     public static func locate(searchPaths: [String] = searchPaths, actor: String = Human.session) -> RigCLI? {
-        searchPaths.first { FileManager.default.isExecutableFile(atPath: $0) }
-            .map { RigCLI(executable: URL(filePath: $0), actor: actor) }
+        ToolLocator.resolve(override: nil, searchPaths: searchPaths).map { RigCLI(executable: $0.url, actor: actor) }
     }
 
-    static func environment(base: [String: String], actor: String) -> [String: String] {
+    static func environment(
+        base: [String: String], actor: String, daemonURL: URL? = nil, bearer: String? = nil, extraPath: String? = nil
+    ) -> [String: String] {
         var env = base
         env["OPENRIG_SESSION_NAME"] = actor
+        if let daemonURL { env["OPENRIG_URL"] = daemonURL.absoluteString }
+        if let bearer, !bearer.isEmpty { env["OPENRIG_AUTH_BEARER_TOKEN"] = bearer }
         // rig is a Node script: its `#!/usr/bin/env node` needs node on PATH.
-        env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (base["PATH"] ?? "/usr/bin:/bin")
+        let prefix = (extraPath.map { [$0] } ?? []) + ["/opt/homebrew/bin", "/usr/local/bin"]
+        env["PATH"] = (prefix + [base["PATH"] ?? "/usr/bin:/bin"]).joined(separator: ":")
         env["NO_COLOR"] = "1"
         return env
     }
@@ -137,7 +152,9 @@ public struct RigCLI: Sendable {
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments
-        process.environment = Self.environment(base: ProcessInfo.processInfo.environment, actor: actor)
+        process.environment = Self.environment(
+            base: ProcessInfo.processInfo.environment, actor: actor, daemonURL: daemonURL, bearer: bearer,
+            extraPath: extraPath)
         let input = Pipe()
         let out = Pipe()
         let err = Pipe()

@@ -23,11 +23,18 @@ public struct DaemonHTTP: Sendable {
     public var baseURL: URL
     var session: URLSession
     var timeout: TimeInterval
+    /// Sent on every request, as the CLI does, for daemons with an operator bearer configured.
+    public var bearer: String?
 
-    public init(baseURL: URL, session: URLSession = .shared, timeout: TimeInterval = 5) {
+    public init(baseURL: URL, session: URLSession = .shared, timeout: TimeInterval = 5, bearer: String? = nil) {
         self.baseURL = baseURL
         self.session = session
         self.timeout = timeout
+        self.bearer = bearer
+    }
+
+    private func authorize(_ request: inout URLRequest) {
+        if let bearer, !bearer.isEmpty { request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization") }
     }
 
     public func health() async throws(DaemonError) -> DaemonHealth {
@@ -101,6 +108,7 @@ public struct DaemonHTTP: Sendable {
         // Names the actor at this hop, so the daemon records the person (transport provenance).
         request.setValue(actor, forHTTPHeaderField: "X-OpenRig-Session")
         request.httpBody = try? JSONEncoder().encode(body)
+        authorize(&request)
         let data: Data
         let response: URLResponse
         do {
@@ -128,6 +136,7 @@ public struct DaemonHTTP: Sendable {
         }
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        authorize(&request)
 
         let data: Data
         let response: URLResponse

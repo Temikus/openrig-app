@@ -126,6 +126,22 @@ import Testing
         #expect(env["NO_COLOR"] == "1")
     }
 
+    @Test func environmentPassesSettingsToTheCLI() {
+        let env = RigCLI.environment(
+            base: ["PATH": "/usr/bin", "OPENRIG_URL": "http://stale:1"], actor: "human@host",
+            daemonURL: URL(string: "http://127.0.0.1:7500"), bearer: "s3cret",
+            extraPath: "/Users/x/.nvm/versions/node/v22/bin")
+        #expect(env["OPENRIG_URL"] == "http://127.0.0.1:7500")
+        #expect(env["OPENRIG_AUTH_BEARER_TOKEN"] == "s3cret")
+        #expect(env["PATH"]?.hasPrefix("/Users/x/.nvm/versions/node/v22/bin:/opt/homebrew/bin:") == true)
+    }
+
+    @Test func environmentLeavesUnsetSettingsAlone() {
+        let env = RigCLI.environment(base: ["PATH": "/usr/bin"], actor: "human@host")
+        #expect(env["OPENRIG_URL"] == nil)
+        #expect(env["OPENRIG_AUTH_BEARER_TOKEN"] == nil)
+    }
+
     @Test func failureCarriesStderr() async throws {
         let cli = RigCLI(executable: URL(filePath: "/bin/sh"), actor: "human@host")
         // /bin/sh stands in for rig: exercises stdin, exit codes and stderr capture end to end.

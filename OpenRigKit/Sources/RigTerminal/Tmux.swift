@@ -21,11 +21,14 @@ public struct Tmux: Sendable {
 
     /// The tmux OpenRig uses: its socket comes from `$OPENRIG_HOME/tmux-server.json`,
     /// falling back to tmux's own default socket for this user.
+    /// `executable` is the person's pick from Settings; when given, the search paths aren't tried.
     public static func locate(
         openRigHome: URL = FileManager.default.homeDirectoryForCurrentUser.appending(path: ".openrig"),
+        executable: URL? = nil,
         fileManager: FileManager = .default
     ) -> Tmux? {
-        guard let path = searchPaths.first(where: { fileManager.isExecutableFile(atPath: $0) }) else { return nil }
+        let candidates = executable.map { [$0.path] } ?? searchPaths
+        guard let path = candidates.first(where: { fileManager.isExecutableFile(atPath: $0) }) else { return nil }
         struct ServerFile: Decodable { var socketPath: String? }
         let configured = (try? Data(contentsOf: openRigHome.appending(path: "tmux-server.json")))
             .flatMap { try? JSONDecoder().decode(ServerFile.self, from: $0) }?.socketPath

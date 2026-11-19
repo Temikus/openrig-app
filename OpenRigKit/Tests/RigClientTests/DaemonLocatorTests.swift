@@ -60,6 +60,16 @@ import Testing
         #expect(endpoint.source == .environment)
     }
 
+    @Test func overrideBeatsEnvironmentAndStateFile() throws {
+        try writeState(#"{"pid":1,"port":7500}"#)
+        let locator = DaemonLocator(
+            environment: ["OPENRIG_URL": "http://10.0.0.5:9000"], homeDirectory: home,
+            override: URL(string: "http://10.0.4.12:7433/"))
+        let endpoint = locator.locate()
+        #expect(endpoint.baseURL.absoluteString == "http://10.0.4.12:7433")
+        #expect(endpoint.source == .custom)
+    }
+
     @Test func openRigHomeMovesTheStateFile() throws {
         let custom = home.appending(path: "custom")
         try FileManager.default.createDirectory(at: custom, withIntermediateDirectories: true)

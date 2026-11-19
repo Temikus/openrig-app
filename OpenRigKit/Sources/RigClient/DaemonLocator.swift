@@ -3,6 +3,8 @@ import Foundation
 /// Where the daemon is, and how we found out.
 public struct DaemonEndpoint: Sendable, Equatable {
     public enum Source: Sendable, Equatable {
+        /// Set in Settings › Connection.
+        case custom
         case environment
         case stateFile(pid: Int)
         case fallback
@@ -25,13 +27,17 @@ public struct DaemonLocator: Sendable {
 
     var environment: [String: String]
     var homeDirectory: URL
+    /// The person's own address, which beats every other source.
+    public var override: URL?
 
     public init(
         environment: [String: String] = ProcessInfo.processInfo.environment,
-        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        override: URL? = nil
     ) {
         self.environment = environment
         self.homeDirectory = homeDirectory
+        self.override = override
     }
 
     public var openRigHome: URL {
@@ -44,15 +50,25 @@ public struct DaemonLocator: Sendable {
     public var stateFile: URL { openRigHome.appending(path: "daemon.json") }
 
     public func locate() -> DaemonEndpoint {
-        if let raw = environment["OPENRIG_URL"]?.trimmingCharacters(in: .whitespaces), !raw.isEmpty,
-            let url = URL(string: raw.hasSuffix("/") ? String(raw.dropLast()) : raw), url.host() != nil
-        {
+        if let override, let url = Self.normalized(override.absoluteString) {
+            return DaemonEndpoint(baseURL: url, source: .custom)
+        }
+        if let raw = environment["OPENRIG_URL"], let url = Self.normalized(raw) {
             return DaemonEndpoint(baseURL: url, source: .environment)
         }
         if let state = readStateFile() {
             return state
         }
         return DaemonEndpoint(baseURL: Self.defaultURL, source: .fallback)
+    }
+
+    /// A daemon base URL without a trailing slash, or nil when `raw` has no host.
+    public static func normalized(_ raw: String) -> URL? {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, let url = URL(string: trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed),
+            url.host() != nil
+        else { return nil }
+        return url
     }
 
     private struct StateFile: Decodable {
