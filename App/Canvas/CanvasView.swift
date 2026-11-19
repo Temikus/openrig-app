@@ -22,7 +22,14 @@ struct CanvasView: View {
                     .scaleEffect(zoom, anchor: .topLeading)
                     .frame(
                         width: layout.bounds.width * zoom, height: layout.bounds.height * zoom,
-                        alignment: .topLeading)
+                        alignment: .topLeading
+                    )
+                    // At least the visible area, with the grid across all of it: content smaller than the window sits
+                    // centred, and the space around it was bare background that read as a separate panel.
+                    .frame(minWidth: visible.width, minHeight: visible.height)
+                    .background { DotGrid() }
+                    .contentShape(Rectangle())
+                    .onTapGesture { selection.clear() }
             }
             .scrollPosition($scroll)
             .onScrollGeometryChange(for: CGRect.self) { geo in
@@ -115,7 +122,6 @@ struct CanvasContent: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            DotGrid()
             ForEach(podFrames, id: \.id) { pod in
                 PodGroup(title: pod.title, seatCount: pod.count)
                     .frame(width: pod.frame.width, height: pod.frame.height)
@@ -157,8 +163,6 @@ struct CanvasContent: View {
                 }
             }
         }
-        .contentShape(Rectangle())
-        .onTapGesture { selection.clear() }
     }
 
     /// One label per work wire and next hop (not past hops), placed clear of the seats.
