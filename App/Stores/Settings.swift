@@ -50,6 +50,8 @@ final class AppSettings {
     /// Written as the person moves around; read by "Open to" and "Reopen the last rig".
     var lastRigName: String? { didSet { save(lastRigName, "lastRigName") } }
     var lastView: ViewMode { didSet { save(lastView.rawValue, "lastView") } }
+    /// A person registered with the gateway, or `human@host`. Nil means the gateway's default person.
+    var actAs: String? { didSet { save(actAs, "actAs") } }
 
     // Connection
     /// Nil means find the daemon the way the CLI does.
@@ -85,6 +87,7 @@ final class AppSettings {
         appearance = defaults.string(forKey: "appearance").flatMap(Appearance.init) ?? .system
         lastRigName = defaults.string(forKey: "lastRigName")
         lastView = defaults.string(forKey: "lastView").flatMap(ViewMode.init) ?? .canvas
+        actAs = defaults.string(forKey: "actAs")
         customAddress = defaults.string(forKey: "customAddress").flatMap(URL.init(string:))
         rigPath = defaults.string(forKey: "rigPath").map { URL(filePath: $0) }
         tmuxPath = defaults.string(forKey: "tmuxPath").map { URL(filePath: $0) }

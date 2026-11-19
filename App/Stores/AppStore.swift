@@ -45,8 +45,11 @@ final class AppStore {
     private(set) var rig: RigStore?
     let selection = SelectionStore()
     let actions = ActionStore()
-    /// Who the app acts as; see `Human.address(in:)`.
+    /// Who the app acts as: Settings' pick when the gateway still has that person, else `Human.address(in:)`.
     private(set) var me = Human.session
+    /// The gateway's people, for Settings › General › Act as.
+    private(set) var gateway: GatewayParticipants?
+    var people: [String] { gateway?.participants.filter { $0.kind == "person" }.map(\.address) ?? [] }
     /// Open rows addressed to the person on every rig, refreshed with the rig list.
     private var rowsForMe: [QItem] = []
     /// Whether each view shows the inspector, remembered across switches. Terminals starts without it, since
@@ -320,7 +323,14 @@ final class AppStore {
     /// Registering a person (`rig gateway human add … --default`) takes effect without a relaunch.
     private func refreshIdentity() async {
         guard let gateway = try? await client.participants() else { return }
-        let address = Human.address(in: gateway)
+        self.gateway = gateway
+        applyIdentity()
+    }
+
+    /// Re-reads Settings › General › Act as.
+    func applyIdentity() {
+        let picked = settings.actAs.flatMap { people.contains($0) || Human.isYou($0) ? $0 : nil }
+        let address = picked ?? Human.address(in: gateway)
         guard address != me else { return }
         me = address
         actions.act(as: address)

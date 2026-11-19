@@ -36,5 +36,10 @@ struct OpenRigApp: App {
                 Divider()
             }
         }
+
+        Settings {
+            SettingsView()
+                .environment(store)
+        }
     }
 }
