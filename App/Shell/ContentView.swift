@@ -7,8 +7,8 @@ struct ContentView: View {
     /// Remembered per view: Terminals starts without the inspector, since its tiles carry each seat's state.
     @State private var inspectorByMode: [ViewMode: Bool] = [.terminals: false]
     @State private var showsQueueTask = false
-    /// Too narrow for the full toolbar: Needs you shrinks to a bell and a count so it never overflows.
-    @State private var narrow = false
+    @State private var fit = ToolbarFit.full
+    private var narrow: Bool { fit != .full }
 
     var body: some View {
         @Bindable var store = store
@@ -16,10 +16,21 @@ struct ContentView: View {
             RigSidebar()
                 .navigationSplitViewColumnWidth(min: 200, ideal: 230)
         } detail: {
-            RigDetail()
-                .inspector(isPresented: $showsInspector) {
-                    InspectorPanel()
-                        .inspectorColumnWidth(min: 260, ideal: 320, max: 420)
+            // The toolbar belongs to the detail column, so its trailing items end at the inspector's edge
+            // instead of straddling it; the inspector's toggle sits over the inspector while it shows.
+            RigDetail(showsTitle: fit != .tight)
+                .onGeometryChange(for: ToolbarFit.self) {
+                    ToolbarFit(detailWidth: $0.size.width)
+                } action: {
+                    fit = $0
+                }
+                .toolbar { detailToolbar }
+        }
+        .inspector(isPresented: $showsInspector) {
+            InspectorPanel()
+                .inspectorColumnWidth(min: 260, ideal: 320, max: 420)
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) { inspectorToggle }
                 }
         }
         .environment(store.selection)
@@ -28,78 +39,106 @@ struct ContentView: View {
             if old != new { inspectorByMode[old] = showsInspector }
             showsInspector = inspectorByMode[new] ?? true
         }
-        .onGeometryChange(for: Bool.self) {
-            $0.size.width < 1100
-        } action: {
-            narrow = $0
+    }
+
+    @ToolbarContentBuilder private var detailToolbar: some ToolbarContent {
+        @Bindable var store = store
+        // Centred, the picker needs room on both sides; when tight it goes leading instead.
+        ToolbarItem(placement: fit == .tight ? .navigation : .principal) {
+            Picker("View", selection: $store.viewMode) {
+                ForEach(ViewMode.allCases) { mode in
+                    Label {
+                        // The shortcut, as in the design; dimmed where the control keeps text styling.
+                        Text(mode.title) + Text("  \(mode.shortcutHint)").foregroundStyle(.secondary)
+                    } icon: {
+                        Image(systemName: mode.systemImage)
+                    }
+                    .labelStyle(.adaptive(iconOnly: narrow))
+                    .help("\(mode.title) (\(mode.shortcutHint))")
+                    .tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            // The toolbar keeps an item's first layout and priority: without a new identity, a window narrowed
+            // after launch keeps the wide labels and everything spills into the overflow menu.
+            .id(fit)
         }
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Picker("View", selection: $store.viewMode) {
-                    ForEach(ViewMode.allCases) { mode in
-                        Label {
-                            // The shortcut, as in the design; dimmed where the control keeps text styling.
-                            Text(mode.title) + Text("  \(mode.shortcutHint)").foregroundStyle(.secondary)
-                        } icon: {
-                            Image(systemName: mode.systemImage)
-                        }
-                        .labelStyle(.adaptive(iconOnly: narrow))
-                        .help("\(mode.title) (\(mode.shortcutHint))")
-                        .tag(mode)
+        // If tight and still short, the picker overflows first: ⌘1–3 still switch views, and Needs you stays in sight.
+        .keptVisible(fit != .tight)
+        ToolbarItem(placement: .primaryAction) {
+            NeedsYouButton(compact: narrow).id(narrow)
+        }
+        .keptVisible()
+        ToolbarItem(placement: .primaryAction) {
+            Button("Queue task", systemImage: "plus") { showsQueueTask = true }
+                .labelStyle(.adaptive(iconOnly: narrow, keepsIcon: true))
+                .help("Queue task (⌘N)")
+                .buttonStyle(.glassProminent)
+                .disabled(store.rig == nil || !store.isUp)
+                .keyboardShortcut("n")
+                // Outside the popover, so a width change while the form is open keeps the draft.
+                .id(narrow)
+                .popover(isPresented: $showsQueueTask, arrowEdge: .bottom) {
+                    if let rig = store.rig {
+                        QueueTaskForm(
+                            rig: rig, preselected: rig.seat(store.selection.seatID)?.sessionName,
+                            done: { showsQueueTask = false }
+                        )
+                        .environment(store.actions)
                     }
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                // The toolbar keeps an item's first layout: without a new identity, a window narrowed after
-                // launch keeps the wide labels and everything spills into the overflow menu.
-                .id(narrow)
-            }
-            .keptVisible()
-            ToolbarItem(placement: .primaryAction) {
-                NeedsYouButton(compact: narrow).id(narrow)
-            }
-            .keptVisible()
-            ToolbarItem(placement: .primaryAction) {
-                Button("Queue task", systemImage: "plus") { showsQueueTask = true }
-                    .labelStyle(.titleAndIcon)
-                    .buttonStyle(.glassProminent)
-                    .disabled(store.rig == nil || !store.isUp)
-                    .keyboardShortcut("n")
-                    .popover(isPresented: $showsQueueTask, arrowEdge: .bottom) {
-                        if let rig = store.rig {
-                            QueueTaskForm(
-                                rig: rig, preselected: rig.seat(store.selection.seatID)?.sessionName,
-                                done: { showsQueueTask = false }
-                            )
-                            .environment(store.actions)
-                        }
-                    }
-            }
-            ToolbarSpacer(.fixed)
-            ToolbarItem(placement: .primaryAction) {
-                Button("Inspector", systemImage: "sidebar.right") { showsInspector.toggle() }
-            }
         }
+        .keptVisible()
+    }
+
+    private var inspectorToggle: some View {
+        Button("Inspector", systemImage: "sidebar.right") { showsInspector.toggle() }
     }
 }
 
-/// Title only, or icon only when space is short.
+/// How much of the toolbar fits over the detail column; the inspector's toolbar sits over the inspector.
+enum ToolbarFit: Equatable {
+    /// Labels on every item.
+    case full
+    /// Icons only.
+    case compact
+    /// Icons, no rig title, and the view picker after the sidebar toggle; it overflows first if still short.
+    case tight
+
+    init(detailWidth: CGFloat) {
+        self = detailWidth >= 880 ? .full : detailWidth >= 400 ? .compact : .tight
+    }
+}
+
+/// Title (with or without its icon), or icon only when space is short.
 struct AdaptiveLabelStyle: LabelStyle {
     let iconOnly: Bool
+    /// Icon and title when wide, rather than title only.
+    var keepsIcon = false
     func makeBody(configuration: Configuration) -> some View {
-        if iconOnly { configuration.icon } else { configuration.title }
+        if iconOnly {
+            configuration.icon
+        } else if keepsIcon {
+            // A toolbar shows any Label as its icon unless told otherwise.
+            Label(configuration).labelStyle(.titleAndIcon)
+        } else {
+            configuration.title
+        }
     }
 }
 
 extension LabelStyle where Self == AdaptiveLabelStyle {
-    static func adaptive(iconOnly: Bool) -> AdaptiveLabelStyle { AdaptiveLabelStyle(iconOnly: iconOnly) }
+    static func adaptive(iconOnly: Bool, keepsIcon: Bool = false) -> AdaptiveLabelStyle {
+        AdaptiveLabelStyle(iconOnly: iconOnly, keepsIcon: keepsIcon)
+    }
 }
 
 extension ToolbarContent {
     /// Stays in the toolbar when the window is too narrow for every item; others go to the overflow menu first.
-    @ToolbarContentBuilder func keptVisible() -> some ToolbarContent {
+    @ToolbarContentBuilder func keptVisible(_ kept: Bool = true) -> some ToolbarContent {
         if #available(macOS 26.1, *) {
-            visibilityPriority(.high)
+            visibilityPriority(kept ? .high : .automatic)
         } else {
             self
         }
@@ -196,6 +235,8 @@ struct DaemonStatusFooter: View {
 // MARK: - Detail
 
 struct RigDetail: View {
+    /// Off when the toolbar is tight, to leave room for the view picker; the sidebar still shows the rig.
+    var showsTitle = true
     @Environment(AppStore.self) private var store
 
     var body: some View {
@@ -217,6 +258,7 @@ struct RigDetail: View {
                 .safeAreaInset(edge: .top, spacing: 0) { StatusBanners(rig: rig) }
                 .navigationTitle(summary.name)
                 .navigationSubtitle(subtitle(rig))
+                .toolbar(removing: showsTitle ? nil : .title)
             } else if case .unreachable(let reason, _) = store.daemon {
                 ContentUnavailableView {
                     Label("Daemon not reachable", systemImage: "bolt.horizontal.circle")

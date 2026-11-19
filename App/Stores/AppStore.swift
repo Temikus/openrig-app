@@ -201,13 +201,15 @@ final class AppStore {
             case "light"?: NSApp.appearance = NSAppearance(named: .aqua)
             default: break
             }
-            // OPENRIG_DEBUG_SIZE="<width>x<height>" resizes the window once launch has settled, as a person would.
-            if let size = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SIZE"]?.split(separator: "x"),
-                size.count == 2, let w = Double(size[0]), let h = Double(size[1]),
-                let window = NSApp.windows.first(where: \.isVisible)
-            {
-                try? await Task.sleep(for: .seconds(3))
-                window.setFrame(NSRect(x: 0, y: 0, width: w, height: h), display: true)
+            // OPENRIG_DEBUG_SIZE="<width>x<height>[,<width>x<height>…]" resizes the window once launch has settled,
+            // as a person would, then to each later size 3 s apart.
+            if let window = NSApp.windows.first(where: \.isVisible) {
+                for spec in (ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SIZE"] ?? "").split(separator: ",") {
+                    let size = spec.split(separator: "x")
+                    guard size.count == 2, let w = Double(size[0]), let h = Double(size[1]) else { continue }
+                    try? await Task.sleep(for: .seconds(3))
+                    window.setFrame(NSRect(x: 0, y: 0, width: w, height: h), display: true)
+                }
             }
             guard let spec = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_OPEN"] else { return }
             let parts = spec.split(separator: "/").map(String.init)

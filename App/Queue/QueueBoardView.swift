@@ -55,7 +55,7 @@ struct QueueBoardView: View {
                 .environment(\.boardColumnWidth, max(220, (visibleWidth - 32 - 3 * 14) / 4 - 20))
             }
         }
-        .searchable(text: $filter.search, placement: .toolbar, prompt: "Search qitems")
+        .searchable(text: $filter.search, placement: .toolbar, prompt: "Search queue")
     }
 
     private func filterRow(now: Date) -> some View {
