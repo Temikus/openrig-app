@@ -23,7 +23,7 @@ final class TerminalStore {
     @ObservationIgnored private var attachController: FocusedAttach?
     @ObservationIgnored private var wake: CheckedContinuation<Void, Never>?
 
-    init(tmux: Tmux? = Tmux.locate()) {
+    init(tmux: Tmux?) {
         self.tmux = tmux
         attachController = tmux.map { FocusedAttach(tmux: $0) }
     }

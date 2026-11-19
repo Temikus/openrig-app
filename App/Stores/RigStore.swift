@@ -26,7 +26,7 @@ final class RigStore {
     private(set) var stops: [Seat.ID: PermissionStop] = [:]
     /// Active workflow instances bound to this rig; they give a packet's planned next hop.
     private(set) var workflows: [WorkflowInstance] = []
-    let terminals = TerminalStore()
+    let terminals: TerminalStore
     #if DEBUG
         private let launched = Date.now
     #endif
@@ -37,10 +37,11 @@ final class RigStore {
     // Routing depends on the selected qitem's chain; cache one result per selection.
     @ObservationIgnored private var routeCache: [String: RouteResult] = [:]
 
-    init(rigID: String, rigName: String, client: DaemonHTTP) {
+    init(rigID: String, rigName: String, client: DaemonHTTP, tmux: Tmux?) {
         self.rigID = rigID
         self.rigName = rigName
         self.client = client
+        terminals = TerminalStore(tmux: tmux)
     }
 
     func seat(_ id: Seat.ID?) -> Seat? {

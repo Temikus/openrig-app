@@ -22,8 +22,14 @@ final class ActionStore {
     /// Set while the daemon is unreachable: writes would fail, so their buttons disable.
     var offline = false
 
-    init(cli: RigCLI? = RigCLI.locate()) {
+    init(cli: RigCLI? = nil) {
         self.cli = cli
+    }
+
+    /// Swaps in a CLI built from Settings, keeping who the app acts as.
+    func use(_ cli: RigCLI?) {
+        self.cli = cli
+        self.cli?.actor = actor
     }
 
     /// Stamps later writes with `session` as the actor.
@@ -65,7 +71,7 @@ final class ActionStore {
             return false
         }
         guard let cli else {
-            status[key] = .failed("rig CLI not found in /opt/homebrew/bin or /usr/local/bin.")
+            status[key] = .failed("rig not found. Pick it in Settings › Connection.")
             return false
         }
         status[key] = .running

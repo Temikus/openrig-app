@@ -4,6 +4,7 @@ import Observation
 import RigClient
 import RigDomain
 import RigModel
+import RigTerminal
 
 enum ViewMode: String, CaseIterable, Identifiable {
     case canvas, queue, terminals
@@ -63,30 +64,82 @@ final class AppStore {
             rigName(ofSession: $0.source).map(known.contains) ?? false
         }
     }
-    var viewMode: ViewMode = .canvas
+    var viewMode: ViewMode = .canvas {
+        didSet { settings.lastView = viewMode }
+    }
+    let settings: AppSettings
+    /// The operator bearer from the Keychain, sent by both the HTTP client and the CLI.
+    private(set) var token: String?
 
     var selectedRigID: RigSummary.ID? {
         didSet {
             guard selectedRigID != oldValue else { return }
             selection.clear()
             rig = selectedRigID.map { id in
-                RigStore(rigID: id, rigName: rigs.first { $0.id == id }?.name ?? id, client: client)
+                RigStore(rigID: id, rigName: rigs.first { $0.id == id }?.name ?? id, client: client, tmux: tmux())
             }
+            if let name = rig?.rigName { settings.lastRigName = name }
             rig?.me = me
             Task { await rig?.refresh() }
         }
     }
 
-    private let locator: DaemonLocator
+    private var locator: DaemonLocator
     private var client: DaemonHTTP
     private var rigsRefresh: Task<Void, Never>?
+    @ObservationIgnored private var loops: [Task<Void, Never>] = []
 
-    init(locator: DaemonLocator = DaemonLocator()) {
+    init(settings: AppSettings = AppSettings()) {
+        self.settings = settings
+        let token = OperatorToken.read()
+        self.token = token
+        let locator = DaemonLocator(override: settings.customAddress)
         self.locator = locator
         let endpoint = locator.locate()
         self.endpoint = endpoint
-        self.client = DaemonHTTP(baseURL: endpoint.baseURL, timeout: 3)
+        client = DaemonHTTP(baseURL: endpoint.baseURL, timeout: 3, bearer: token)
+        viewMode = settings.launchView
         actions.http = client
+        actions.use(cli())
+    }
+
+    /// Starts polling and the event stream for the life of the app, not of a window: banners, the menu bar item and
+    /// the Dock badge keep working with the window closed.
+    func start() {
+        guard loops.isEmpty else { return }
+        loops = [Task { await runPolling() }, Task { await runEvents() }]
+    }
+
+    /// Re-reads Settings › Connection: address, token and tool picks. The next poll uses them.
+    func applyConnectionSettings() {
+        token = OperatorToken.read()
+        locator = DaemonLocator(override: settings.customAddress)
+        endpoint = locator.locate()
+        client = DaemonHTTP(baseURL: endpoint.baseURL, timeout: 3, bearer: token)
+        rig?.client = client
+        actions.http = client
+        actions.use(cli())
+        if let id = selectedRigID {
+            rig = RigStore(rigID: id, rigName: rig?.rigName ?? id, client: client, tmux: tmux())
+            rig?.me = me
+        }
+        daemon = .connecting
+        Task { await refreshNow() }
+    }
+
+    /// The rig CLI as Settings describes it: the picked or found executable, aimed at the same daemon as the app.
+    private func cli() -> RigCLI? {
+        guard let rig = ToolLocator.resolve(override: settings.rigPath, searchPaths: RigCLI.searchPaths) else {
+            return nil
+        }
+        return RigCLI(
+            executable: rig.url, actor: me,
+            daemonURL: settings.customAddress.flatMap { DaemonLocator.normalized($0.absoluteString) },
+            bearer: token, extraPath: settings.nodePath?.deletingLastPathComponent().path)
+    }
+
+    private func tmux() -> Tmux? {
+        Tmux.locate(openRigHome: locator.openRigHome, executable: settings.tmuxPath)
     }
 
     var selectedRig: RigSummary? { rigs.first { $0.id == selectedRigID } }
@@ -178,7 +231,7 @@ final class AppStore {
         let located = locator.locate()
         if located.baseURL != endpoint.baseURL {
             endpoint = located
-            client = DaemonHTTP(baseURL: located.baseURL, timeout: 3)
+            client = DaemonHTTP(baseURL: located.baseURL, timeout: 3, bearer: token)
             rig?.client = client
             actions.http = client
         }
@@ -198,7 +251,8 @@ final class AppStore {
         await refreshRowsForMe()
         self.rigs = rigs.filter { !$0.isArchived }
         if selectedRigID == nil || !self.rigs.contains(where: { $0.id == selectedRigID }) {
-            selectedRigID = self.rigs.first?.id
+            let last = settings.reopenLastRig ? self.rigs.first { $0.name == settings.lastRigName } : nil
+            selectedRigID = (last ?? self.rigs.first)?.id
             #if DEBUG
                 await openDebugTarget()
             #endif

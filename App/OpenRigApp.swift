@@ -2,14 +2,18 @@ import SwiftUI
 
 @main
 struct OpenRigApp: App {
-    @State private var store = AppStore()
+    @State private var store: AppStore
+
+    init() {
+        let store = AppStore()
+        store.start()
+        _store = State(initialValue: store)
+    }
 
     var body: some Scene {
         WindowGroup("OpenRig") {
             ContentView()
                 .environment(store)
-                .task { await store.runPolling() }
-                .task { await store.runEvents() }
                 .frame(minWidth: 820, minHeight: 520)
         }
         .defaultSize(width: 1440, height: 900)
