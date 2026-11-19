@@ -436,17 +436,19 @@ struct TerminalTile: View {
             let fitRows = max(2, Int(inner.height / TerminalSurface.lineHeight(font)))
             Group {
                 if focused, terminals.typing, let attach = terminals.attach, let size = terminals.attachSize {
-                    // Type mode: the live client, sized to the tile so it is drawn whole. (Positioned partly
-                    // outside its clip, SwiftTerm's view of an attached client draws nothing.)
+                    // Type mode: the live client at the whole pane's size, with the font shrunk until all of it fits.
+                    // A shorter client shows only the pane's top rows (`ignore-size`), which hid Claude Code's input
+                    // box; a taller view than its clip draws nothing in SwiftTerm. Below the smallest tile text if
+                    // need be: seeing what you type matters more here.
+                    let pane = GridSize(cols: snap.cols, rows: snap.rows + snap.statusRows)
+                    let typeFont = TerminalSurface.fittingFontSize(
+                        cols: pane.cols, rows: pane.rows, width: inner.width, height: inner.height, range: 6...13)
                     TerminalSurface(
-                        source: .attached(attach), cols: size.cols, rows: size.rows, fontSize: font,
+                        source: .attached(attach), cols: size.cols, rows: size.rows, fontSize: typeFont,
                         interactive: true, optionAsMeta: app.settings.optionAsMeta
                     )
                     .fixedSize()
-                    .onChange(of: fitRows, initial: true) {
-                        // The pane's own width: a narrower client crops the pane's right-hand columns.
-                        terminals.fitAttach(GridSize(cols: snap.cols, rows: fitRows))
-                    }
+                    .onChange(of: pane, initial: true) { terminals.fitAttach(pane) }
                 } else {
                     // The tail of the agent's transcript (not Claude Code's input box), as many rows as fit;
                     // tiles never scroll. A focused tile shows this too until Type mode: snapshots refresh every

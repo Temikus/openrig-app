@@ -77,8 +77,8 @@ final class TerminalStore {
         focusedSeatID = seat.id
     }
 
-    /// Resizes the focused client to what its tile shows. Smaller than the pane, tmux shows the part
-    /// around the cursor, which in Type mode is where the user is typing.
+    /// Resizes the focused client, to the pane's size when the pane changes. Smaller than the pane, the client
+    /// would show only its top rows, not the input at the bottom.
     func fitAttach(_ size: GridSize) {
         guard let attach, attachSize != size, size.cols > 0, size.rows > 1 else { return }
         // The view's grid first, then the client, then a full redraw: tmux repaints as soon as the PTY
