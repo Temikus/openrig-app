@@ -73,6 +73,8 @@ final class AppStore {
     let settings: AppSettings
     /// The operator bearer from the Keychain, sent by both the HTTP client and the CLI.
     private(set) var token: String?
+    /// Whether the daemon's operator gate accepts the token (or no token), for Settings › Connection.
+    private(set) var tokenCheck: DaemonHTTP.OperatorAuth?
 
     var selectedRigID: RigSummary.ID? {
         didSet {
@@ -208,7 +210,13 @@ final class AppStore {
         Task {
             await loadToken()
             await refreshNow()
+            await checkToken()
         }
+    }
+
+    /// Asks the daemon's operator gate about the current token, changing nothing (see `checkOperatorAuth`).
+    func checkToken() async {
+        tokenCheck = await client.checkOperatorAuth(as: me)
     }
 
     /// Reads the token off the main thread: the Keychain may ask the person first (after a rebuild changes an ad-hoc

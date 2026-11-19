@@ -129,6 +129,30 @@ public struct DaemonHTTP: Sendable {
         }
     }
 
+    /// Whether the daemon's operator gate lets this client's writes through, checked without changing anything: an
+    /// answer to a row that doesn't exist passes the gate and is then refused as not found.
+    public enum OperatorAuth: Sendable, Equatable {
+        case accepted
+        /// The gate said no: the token is wrong, or the daemon wants one and none was sent.
+        case rejected(status: Int)
+        case unreachable
+    }
+
+    public func checkOperatorAuth(as actor: String) async -> OperatorAuth {
+        let body = [
+            "verb": "answer", "qitemId": "qitem-00000000000000-auth-check", "actorSession": actor, "decision": "-",
+        ]
+        var request = URLRequest(url: baseURL.appending(path: "/api/mission-control/action"), timeoutInterval: timeout)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(actor, forHTTPHeaderField: "X-OpenRig-Session")
+        request.httpBody = try? JSONEncoder().encode(body)
+        authorize(&request)
+        guard let (_, response) = try? await session.data(for: request), let http = response as? HTTPURLResponse
+        else { return .unreachable }
+        return http.statusCode == 401 || http.statusCode == 403 ? .rejected(status: http.statusCode) : .accepted
+    }
+
     func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws(DaemonError) -> T {
         var url = baseURL.appending(path: path)
         if !query.isEmpty {

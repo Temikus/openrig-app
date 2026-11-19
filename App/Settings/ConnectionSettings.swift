@@ -37,6 +37,7 @@ struct ConnectionSettings: View {
             }
         }
         .settingsForm()
+        .task { await store.checkToken() }
         .onAppear {
             custom = store.settings.customAddress != nil
             customText = store.settings.customAddress?.absoluteString ?? ""
@@ -176,7 +177,15 @@ struct ConnectionSettings: View {
                     store.applyConnectionSettings()
                 }
             } label: {
-                RowLabel("Operator token", "Saved in the Keychain. Sent with answers and rig commands.")
+                Text("Operator token")
+                switch store.tokenCheck {
+                case .rejected(let status)?:
+                    Text("Rejected (\(status)). Answers and actions will fail.").foregroundStyle(Color.attention)
+                case .accepted?:
+                    Text("Saved in the Keychain. Accepted by the daemon.")
+                default:
+                    Text("Saved in the Keychain. Sent with answers and rig commands.")
+                }
             }
         } else {
             LabeledContent {
@@ -189,7 +198,12 @@ struct ConnectionSettings: View {
                         store.applyConnectionSettings()
                     }
             } label: {
-                RowLabel("Operator token", "Kept in the Keychain. Also passed to rig commands.")
+                Text("Operator token")
+                if case .rejected? = store.tokenCheck {
+                    Text("The daemon asks for one. Paste it from its config.").foregroundStyle(Color.attention)
+                } else {
+                    Text("Kept in the Keychain. Also passed to rig commands.")
+                }
             }
         }
     }

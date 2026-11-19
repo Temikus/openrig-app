@@ -83,3 +83,38 @@ final class RecordingProtocol: URLProtocol, @unchecked Sendable {
     }
     override func stopLoading() {}
 }
+
+@Suite struct OperatorAuthTests {
+    /// The stub answers with the status named in the URL, so parallel tests don't share state.
+    func client(status: Int) -> DaemonHTTP {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StatusProtocol.self]
+        return DaemonHTTP(
+            baseURL: URL(string: "http://auth.test/\(status)")!, session: URLSession(configuration: config))
+    }
+
+    @Test func aGateRefusalIsRejected() async {
+        #expect(await client(status: 401).checkOperatorAuth(as: "human@host") == .rejected(status: 401))
+        #expect(await client(status: 403).checkOperatorAuth(as: "human@host") == .rejected(status: 403))
+    }
+
+    /// Past the gate, the probe's made-up row is simply not found: nothing is answered.
+    @Test func anythingPastTheGateIsAccepted() async {
+        #expect(await client(status: 404).checkOperatorAuth(as: "human@host") == .accepted)
+        #expect(await client(status: 400).checkOperatorAuth(as: "human@host") == .accepted)
+    }
+}
+
+/// Answers each request to auth.test with the status in the URL's first path component.
+final class StatusProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { request.url?.host == "auth.test" }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let code = Int(request.url?.pathComponents.dropFirst().first ?? "") ?? 200
+        let response = HTTPURLResponse(url: request.url!, statusCode: code, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(#"{"error":"qitem_not_found"}"#.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
