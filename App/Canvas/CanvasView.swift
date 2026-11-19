@@ -130,11 +130,13 @@ struct CanvasContent: View {
     }
 
     var body: some View {
+        let order = readingOrder
         ZStack(alignment: .topLeading) {
             ForEach(podFrames, id: \.id) { pod in
                 PodGroup(title: pod.title, seatCount: pod.count)
                     .frame(width: pod.frame.width, height: pod.frame.height)
                     .offset(x: pod.frame.minX, y: pod.frame.minY)
+                    .accessibilitySortPriority(order[pod.id] ?? 0)
             }
             WireLayer(
                 routes: routes, selectedQItem: selection.qitemID,
@@ -169,9 +171,33 @@ struct CanvasContent: View {
                     }
                     .offset(x: frame.minX, y: frame.minY)
                     .accessibilityLabel("\(seat.displayName), \(SeatPhase(seat).label)")
+                    .accessibilitySortPriority(order[seat.id] ?? 0)
                 }
             }
         }
+    }
+
+    /// VoiceOver order: each pod's heading, then its seats top to bottom, pods left to right; wire chips (priority 0)
+    /// come last. Pods, wires and seats are siblings in one ZStack, so without this the headings came after every seat.
+    private var readingOrder: [String: Double] {
+        let reading = { (a: CGRect, b: CGRect) in (a.minX, a.minY) < (b.minX, b.minY) }
+        let pods = podFrames.sorted { reading($0.frame, $1.frame) }
+        var order: [String: Double] = [:]
+        var next = Double(pods.count + graph.seats.count + 1)
+        for pod in pods {
+            order[pod.id] = next
+            next -= 1
+            let seats = graph.seats.filter { seat in
+                let podID = seat.podID.flatMap { layout.pods[$0] == nil ? nil : $0 } ?? unassignedPodID
+                return podID == pod.id
+            }
+            let frames = seats.compactMap { seat in layout.seats[seat.id].map { (seat.id, $0) } }
+            for (id, _) in frames.sorted(by: { ($0.1.minY, $0.1.minX) < ($1.1.minY, $1.1.minX) }) {
+                order[id] = next
+                next -= 1
+            }
+        }
+        return order
     }
 
     /// One label per work wire and next hop (not past hops), placed clear of the seats.
@@ -218,6 +244,11 @@ struct PodGroup: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 16)
                 .frame(height: 36)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(
+                    seatCount == 0 ? title : "\(title), \(seatCount == 1 ? "1 seat" : "\(seatCount) seats")"
+                )
+                .accessibilityAddTraits(.isHeader)
             }
     }
 }
