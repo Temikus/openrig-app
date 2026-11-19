@@ -4,7 +4,7 @@ A 2x PNG of every artboard in the Paper file "OpenRig — Canvas prototype" (fil
 
 | Folder | Paper page |
 |---|---|
-| `1-starter-rig-canvas/` | Starter · Rig canvas: the main window (canvas, queue board, terminals) and inline action states |
+| `1-starter-rig-canvas/` | Starter · Rig canvas: the main window (canvas, queue board, terminals, terminals in Type mode) and inline action states |
 | `2-remaining-items-options/` | Remaining items · options: answering options, which rig has something for you, queue search, closed-row wording |
 | `3-wiring-explorations/` | Wiring explorations: four wire styles for the canvas |
 | `4-settings-window/` | Settings window: the four tabs and the States board |
