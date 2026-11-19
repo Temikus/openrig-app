@@ -20,6 +20,9 @@ struct TerminalSurface: NSViewRepresentable {
     let interactive: Bool
     /// Settings › Terminals › Use Option as Meta.
     var optionAsMeta = true
+    /// What VoiceOver reads while typing: the pane as plain text, and whose it is.
+    var accessibleText = ""
+    var accessibleName = ""
     /// Asks tmux to repaint a live client, after a font change cleared the view.
     var onRepaint: (() -> Void)?
 
@@ -69,8 +72,8 @@ struct TerminalSurface: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    func makeNSView(context: Context) -> TerminalView {
-        let view = TerminalView(frame: .zero, font: Self.font(fontSize))
+    func makeNSView(context: Context) -> TileTerminalView {
+        let view = TileTerminalView(frame: .zero, font: Self.font(fontSize))
         view.terminalDelegate = context.coordinator
         view.nativeBackgroundColor = NSColor(white: 0.08, alpha: 1)
         view.nativeForegroundColor = NSColor(white: 0.88, alpha: 1)
@@ -81,7 +84,7 @@ struct TerminalSurface: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ view: TerminalView, context: Context) {
+    func updateNSView(_ view: TileTerminalView, context: Context) {
         let coordinator = context.coordinator
         // A new font makes SwiftTerm refit its grid to the frame and soft-reset, so the grid is set again whenever
         // the font changes, and a live client is asked to repaint what the reset cleared.
@@ -99,6 +102,9 @@ struct TerminalSurface: NSViewRepresentable {
         // Take the keyboard once, as Type mode starts; afterwards a click elsewhere keeps the keyboard there.
         let startsTyping = interactive && !coordinator.interactive
         coordinator.interactive = interactive
+        view.interactive = interactive
+        view.accessibleName = accessibleName
+        view.accessibleText = accessibleText
 
         switch source {
         case .snapshot(let snap, let lastRows, let transcriptOnly):
@@ -117,11 +123,11 @@ struct TerminalSurface: NSViewRepresentable {
         }
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, nsView: TerminalView, context: Context) -> CGSize? {
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: TileTerminalView, context: Context) -> CGSize? {
         nsView.getOptimalFrameSize().size
     }
 
-    static func dismantleNSView(_ view: TerminalView, coordinator: Coordinator) {
+    static func dismantleNSView(_ view: TileTerminalView, coordinator: Coordinator) {
         coordinator.bind(nil)
     }
 
@@ -167,4 +173,25 @@ struct TerminalSurface: NSViewRepresentable {
         func iTermContent(source: TerminalView, content: ArraySlice<UInt8>) {}
         func rangeChanged(source: TerminalView, startY: Int, endY: Int) {}
     }
+}
+
+/// A tile's terminal. Snapshot tiles stay out of the Tab order and the accessibility tree: they drop every key, and
+/// the tile's own button reads their text. While typing, VoiceOver sees a text area holding the pane's text.
+/// (SwiftTerm's Mac view exposes no text, and its `acceptsFirstResponder` can't be overridden from here.)
+final class TileTerminalView: TerminalView {
+    var interactive = false
+    var accessibleName = ""
+    var accessibleText = "" {
+        didSet {
+            if interactive, accessibleText != oldValue {
+                NSAccessibility.post(element: self, notification: .valueChanged)
+            }
+        }
+    }
+
+    override var canBecomeKeyView: Bool { interactive && super.canBecomeKeyView }
+    override func isAccessibilityElement() -> Bool { interactive }
+    override func accessibilityRole() -> NSAccessibility.Role? { .textArea }
+    override func accessibilityLabel() -> String? { "\(accessibleName)'s terminal" }
+    override func accessibilityValue() -> Any? { accessibleText }
 }

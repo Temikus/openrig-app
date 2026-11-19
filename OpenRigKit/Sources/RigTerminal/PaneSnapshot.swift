@@ -59,16 +59,8 @@ public struct PaneSnapshot: Sendable, Equatable {
     /// With `lastRows`, only the bottom rows are drawn (small tiles show the tail of the pane).
     /// `transcriptOnly` ends the tail at `transcriptEnd`, leaving out the agent's input box.
     public func ansi(lastRows: Int? = nil, transcriptOnly: Bool = false) -> [UInt8] {
-        var shown = lines
-        // capture-pane drops trailing blank lines; pad so "the bottom" means the pane's bottom.
-        if shown.count < rows { shown += Array(repeating: "", count: rows - shown.count) }
-        var cursorRow = cursorY
-        if let lastRows, lastRows < shown.count || transcriptOnly {
-            let end = min(shown.count, transcriptOnly ? transcriptEnd : contentEnd)
-            let start = max(0, end - lastRows)
-            shown = Array(shown[start..<end])
-            cursorRow -= start
-        }
+        let (shown, start) = tail(lastRows: lastRows, transcriptOnly: transcriptOnly)
+        let cursorRow = cursorY - start
         var text = "\u{1B}[0m\u{1B}[H\u{1B}[2J"
         // Reset attributes at each line start so a colour never bleeds into the next line.
         text += shown.map { "\u{1B}[0m" + $0 }.joined(separator: "\r\n")
@@ -78,6 +70,27 @@ public struct PaneSnapshot: Sendable, Equatable {
             text += "\u{1B}[?25h\u{1B}[\(cursorRow + 1);\(cursorX + 1)H"
         }
         return Array(text.utf8)
+    }
+}
+
+extension PaneSnapshot {
+    /// The rows `ansi` draws, as plain text without trailing blanks: what VoiceOver reads for a tile.
+    public func text(lastRows: Int? = nil, transcriptOnly: Bool = false) -> String {
+        let shown = tail(lastRows: lastRows, transcriptOnly: transcriptOnly).lines.map {
+            String(strippingEscapes($0).reversed().drop { $0.isWhitespace }.reversed())
+        }
+        return shown.reversed().drop { $0.isEmpty }.reversed().joined(separator: "\n")
+    }
+
+    /// The rows to show, and the index of the first one in the pane.
+    fileprivate func tail(lastRows: Int?, transcriptOnly: Bool) -> (lines: [String], start: Int) {
+        var shown = lines
+        // capture-pane drops trailing blank lines; pad so "the bottom" means the pane's bottom.
+        if shown.count < rows { shown += Array(repeating: "", count: rows - shown.count) }
+        guard let lastRows, lastRows < shown.count || transcriptOnly else { return (shown, 0) }
+        let end = min(shown.count, transcriptOnly ? transcriptEnd : contentEnd)
+        let start = max(0, end - lastRows)
+        return (Array(shown[start..<end]), start)
     }
 }
 

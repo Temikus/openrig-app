@@ -360,6 +360,7 @@ final class AppStore {
             selectedRigID = (last ?? self.rigs.first)?.id
             #if DEBUG
                 await openDebugTarget()
+                Task { await AccessibilityDump.run() }
             #endif
         }
     }

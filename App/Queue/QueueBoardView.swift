@@ -157,7 +157,7 @@ struct BoardSearchField: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
             } else {
-                Text("⌘F").font(.caption.monospaced()).foregroundStyle(.tertiary).accessibilityHidden(true)
+                Text("⌘F").font(.caption.monospaced()).foregroundStyle(.secondary).accessibilityHidden(true)
             }
         }
         .font(.callout)

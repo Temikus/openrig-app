@@ -39,7 +39,7 @@ struct QItemInspector: View {
                     Text(item.summary.isEmpty ? "No summary" : item.summary)
                         .font(.title3.weight(.semibold))
                         .textSelection(.enabled)
-                    Text(item.id).font(.caption.monospaced()).foregroundStyle(.tertiary).textSelection(.enabled)
+                    Text(item.id).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
                     if let ended = outcome(item) {
                         Text(endedLine(ended)).font(.callout).foregroundStyle(.secondary)
                     }
@@ -158,7 +158,7 @@ struct ChainOfRecordView: View {
                                 Spacer()
                                 StatusTag(status: workStatus(item), outcome: outcome(item))
                             case .missing:
-                                Text("not loaded").font(.callout).foregroundStyle(.tertiary)
+                                Text("not loaded").font(.callout).foregroundStyle(.secondary)
                                 Spacer()
                             }
                         }

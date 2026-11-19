@@ -352,7 +352,7 @@ private struct PlaceholderTile: View {
         RoundedRectangle(cornerRadius: 10)
             .strokeBorder(Color(nsColor: .separatorColor), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
             .overlay {
-                Text("\(seat.displayName) · focused").font(.callout).foregroundStyle(.tertiary)
+                Text("\(seat.displayName) · focused").font(.callout).foregroundStyle(.secondary)
             }
     }
 }
@@ -406,7 +406,9 @@ struct TerminalTile: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel(
                             focused
-                                ? "Type into \(seat.displayName)'s terminal" : "Focus \(seat.displayName)'s terminal")
+                                ? "Type into \(seat.displayName)'s terminal" : "Focus \(seat.displayName)'s terminal"
+                        )
+                        .accessibilityValue(terminals.snapshot(seat)?.text(lastRows: 12, transcriptOnly: true) ?? "")
                     }
                 }
             if let prompt {
@@ -520,7 +522,7 @@ struct TerminalTile: View {
             .buttonStyle(.plain)
             .help(rig.item(id)?.summary ?? seat.currentQItems.first?.bodyExcerpt ?? id)
         } else {
-            Text("no work").font(.caption).foregroundStyle(.tertiary)
+            Text("no work").font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -597,7 +599,8 @@ struct TerminalTile: View {
                     let offset = snap.panOffset(clientRows: shown - snap.statusRows)
                     TerminalSurface(
                         source: .attached(attach), cols: size.cols, rows: size.rows, fontSize: typeFont,
-                        interactive: true, optionAsMeta: app.settings.optionAsMeta, onRepaint: { terminals.repaint() }
+                        interactive: true, optionAsMeta: app.settings.optionAsMeta, accessibleText: snap.text(),
+                        accessibleName: seat.displayName, onRepaint: { terminals.repaint() }
                     )
                     .fixedSize()
                     .onChange(of: target, initial: true) { if inner.width > 0 { terminals.fitAttach(target) } }

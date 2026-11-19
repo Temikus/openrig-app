@@ -67,6 +67,7 @@ import Testing
         #expect(terminal.text(row: 0) == "⏺ Read file")
         #expect(terminal.text(row: 1) == "  done")
         #expect(!terminal.cursorVisible, "the cursor belongs to the input box, which isn't shown")
+        #expect(snap.text(lastRows: 2, transcriptOnly: true) == "⏺ Read file\n  done", "VoiceOver reads what's drawn")
 
         // No input box: same as the plain tail.
         let plain = PaneSnapshot(pane: "%1", cols: 10, rows: 3, cursorX: 0, cursorY: 2, lines: ["a", "b", "$ "])
