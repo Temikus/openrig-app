@@ -107,7 +107,12 @@ final class RigStore {
         #if DEBUG
             // OPENRIG_DEBUG_PROMPT="<session>|<command>[;<session>|<command>…]" shows fake prompts, to see the
             // control without a real one. Answering re-reads the real (absent) prompt, so nothing is sent.
-            for (n, spec) in (ProcessInfo.processInfo.environment["OPENRIG_DEBUG_PROMPT"] ?? "")
+            // OPENRIG_DEBUG_PROMPT_AFTER=<seconds> holds them back that long, so they arrive as new (for banners).
+            let env = ProcessInfo.processInfo.environment
+            let after = env["OPENRIG_DEBUG_PROMPT_AFTER"].flatMap(Double.init) ?? 0
+            let specs = Date.now.timeIntervalSince(launched) >= after ? env["OPENRIG_DEBUG_PROMPT"] ?? "" : ""
+            for (n, spec)
+                in specs
                 .split(separator: ";").enumerated()
             {
                 guard let bar = spec.firstIndex(of: "|"),

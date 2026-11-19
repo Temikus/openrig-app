@@ -36,18 +36,45 @@ final class Banners: NSObject, UNUserNotificationCenterDelegate {
 
         let fresh = tracker.update(current, enabled: enabled)
         guard !fresh.isEmpty else { return }
-        if settings.bannersOnlyInBackground, NSApp.isActive, store.windowInFront { return }
-        guard await authorized() else { return }
+        if settings.bannersOnlyInBackground, NSApp.isActive, store.windowInFront {
+            Self.debugLog("held: window in front (\(fresh.count))")
+            return
+        }
+        let allowed = await authorized()
+        Self.debugLog("fresh \(fresh.count), authorized \(allowed)")
+        guard allowed else { return }
         for notice in fresh { post(notice, sound: settings.promptSound) }
+    }
+
+    /// OPENRIG_DEBUG_BANNERS=<file>: one line per decision and per banner posted.
+    nonisolated static func debugLog(_ line: String) {
+        #if DEBUG
+            guard let path = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_BANNERS"] else { return }
+            let text = "\(line)\n"
+            if let handle = FileHandle(forWritingAtPath: path) {
+                _ = try? handle.seekToEnd()
+                try? handle.write(contentsOf: Data(text.utf8))
+                try? handle.close()
+            } else {
+                try? text.write(toFile: path, atomically: true, encoding: .utf8)
+            }
+        #endif
     }
 
     private func authorized() async -> Bool {
         let center = UNUserNotificationCenter.current()
-        switch await center.notificationSettings().authorizationStatus {
+        let status = await center.notificationSettings().authorizationStatus
+        Self.debugLog("authorization status \(status.rawValue)")
+        switch status {
         case .authorized, .provisional, .ephemeral: return true
         case .notDetermined where !asked:
             asked = true
-            return (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
+            do {
+                return try await center.requestAuthorization(options: [.alert, .sound])
+            } catch {
+                Self.debugLog("authorization failed: \(error)")
+                return false
+            }
         default: return false
         }
     }
@@ -60,7 +87,10 @@ final class Banners: NSObject, UNUserNotificationCenterDelegate {
         // System sounds aren't in the app bundle, so the app plays the permission sound itself.
         if notice.kind == .permission || notice.kind == .otherRig, !sound.isEmpty { NSSound(named: sound)?.play() }
         let request = UNNotificationRequest(identifier: notice.key, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request)
+        UNUserNotificationCenter.current().add(request) { error in
+            Self.debugLog(
+                "\(notice.kind.rawValue) | \(notice.title) | \(notice.body) | \(error.map { "\($0)" } ?? "ok")")
+        }
     }
 
     private static func encode(_ target: NoticeTarget) -> [String: String] {

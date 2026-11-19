@@ -97,13 +97,11 @@ final class AppStore {
 
     init(settings: AppSettings = AppSettings()) {
         self.settings = settings
-        let token = OperatorToken.read()
-        self.token = token
         let locator = DaemonLocator(override: settings.customAddress)
         self.locator = locator
         let endpoint = locator.locate()
         self.endpoint = endpoint
-        client = DaemonHTTP(baseURL: endpoint.baseURL, timeout: 3, bearer: token)
+        client = DaemonHTTP(baseURL: endpoint.baseURL, timeout: 3)
         viewMode = settings.launchView
         actions.http = client
         actions.use(cli())
@@ -115,6 +113,7 @@ final class AppStore {
         guard loops.isEmpty else { return }
         banners = Banners(store: self)
         loops = [Task { await runPolling() }, Task { await runEvents() }]
+        Task { await loadToken() }
         // NSApp exists once the run loop has started.
         Task { NSApp.appearance = settings.appearance.nsAppearance }
     }
@@ -176,7 +175,6 @@ final class AppStore {
 
     /// Re-reads Settings › Connection: address, token and tool picks. The next poll uses them.
     func applyConnectionSettings() {
-        token = OperatorToken.read()
         locator = DaemonLocator(override: settings.customAddress)
         endpoint = locator.locate()
         client = DaemonHTTP(baseURL: endpoint.baseURL, timeout: 3, bearer: token)
@@ -188,7 +186,22 @@ final class AppStore {
             rig?.me = me
         }
         daemon = .connecting
-        Task { await refreshNow() }
+        Task {
+            await loadToken()
+            await refreshNow()
+        }
+    }
+
+    /// Reads the token off the main thread: the Keychain may ask the person first (after a rebuild changes an ad-hoc
+    /// signature, or for an item another tool wrote), and that wait must not freeze the app.
+    func loadToken() async {
+        let read = await Task.detached { OperatorToken.read() }.value
+        guard read != token else { return }
+        token = read
+        client.bearer = read
+        rig?.client = client
+        actions.http = client
+        actions.use(cli())
     }
 
     /// The rig CLI as Settings describes it: the picked or found executable, aimed at the same daemon as the app.
