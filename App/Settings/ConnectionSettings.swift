@@ -70,8 +70,10 @@ struct ConnectionSettings: View {
             } label: {
                 Label {
                     Text("Not answering")
-                    Text("\(reason) since \(since.formatted(date: .omitted, time: .shortened))")
-                        .foregroundStyle(Color.attention)
+                    Text(
+                        "\(reason.trimmingCharacters(in: CharacterSet(charactersIn: ". "))) since \(since.formatted(date: .omitted, time: .shortened))"
+                    )
+                    .foregroundStyle(Color.attention)
                 } icon: {
                     Image(systemName: "circle.fill").foregroundStyle(Color.attention).imageScale(.small)
                 }
