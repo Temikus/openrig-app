@@ -402,7 +402,7 @@ struct CountBadge: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 6)
             .frame(minWidth: 18, minHeight: 18)
-            .background(quiet ? Color.secondary : Color.attentionFill, in: .capsule)
+            .background(quiet ? Color.quietFill : Color.attentionFill, in: .capsule)
             .overlay { if onSelection { Capsule().strokeBorder(.white, lineWidth: 1.5) } }
     }
 }

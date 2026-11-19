@@ -14,6 +14,9 @@ extension Color {
     /// dark-mode coral isn't.
     static let attentionFill = Color(.sRGB, red: 0.76, green: 0.26, blue: 0.21)
 
+    /// The grey badge for FYIs only: white on it is about 5:1, where white on `Color.secondary` was about 3.3:1.
+    static let quietFill = Color(white: 0.42)
+
     /// "Approved": system green is too light for text on white, so light mode gets a deeper one.
     static let approved = Color(
         nsColor: NSColor(name: "approved") { appearance in

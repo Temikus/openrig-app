@@ -4,13 +4,8 @@ import SwiftUI
 struct SettingsView: View {
     enum Pane: String { case general, connection, notifications, terminals }
 
-    #if DEBUG
-        /// OPENRIG_DEBUG_SETTINGS=<pane> opens Settings on that tab at launch, for screenshots without a click.
-        @State private var pane =
-            ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SETTINGS"].flatMap(Pane.init) ?? .general
-    #else
-        @State private var pane = Pane.general
-    #endif
+    /// Reopens on the last tab, as Mac Settings windows do.
+    @AppStorage("settingsPane") private var pane = Pane.general
 
     var body: some View {
         TabView(selection: $pane) {
@@ -22,6 +17,14 @@ struct SettingsView: View {
             Tab("Terminals", systemImage: "apple.terminal", value: .terminals) { TerminalSettings() }
         }
         .frame(width: 640)
+        #if DEBUG
+            // OPENRIG_DEBUG_SETTINGS=<pane> opens Settings on that tab at launch, for screenshots without a click.
+            .onAppear {
+                if let debug = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SETTINGS"].flatMap(Pane.init) {
+                    pane = debug
+                }
+            }
+        #endif
     }
 }
 

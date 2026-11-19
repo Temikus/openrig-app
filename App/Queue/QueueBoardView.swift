@@ -221,12 +221,14 @@ struct QItemCard: View {
     let now: Date
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
+    @Environment(\.appearsActive) private var appearsActive
 
     private var status: WorkStatus { workStatus(item) }
     private var forYou: ForYou? { RigDomain.forYou(item, me: rig.me) }
     private var isSelected: Bool { selection.qitemID == item.id }
     private var border: Color {
-        if isSelected { return .accentColor }
+        // Grey in an inactive window, as list selection is.
+        if isSelected { return appearsActive ? .accentColor : .secondary }
         return status.needsYou || forYou == .decision ? Color.attention : Color(nsColor: .separatorColor)
     }
 
