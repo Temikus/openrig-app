@@ -12,13 +12,19 @@ struct WireStyle {
     static func of(_ kind: WireKind) -> WireStyle {
         switch kind {
         case .delegates: WireStyle(color: .secondary.opacity(0.7), width: 1.5, dash: [])
-        case .observes: WireStyle(color: .secondary.opacity(0.7), width: 1.5, dash: [7, 5])
+        // Quiet at rest: watch lines are context, not flow. `focused` restores them for a hovered or selected seat.
+        case .observes: WireStyle(color: .secondary.opacity(0.45), width: 1, dash: [7, 5])
         case .related: WireStyle(color: .secondary.opacity(0.5), width: 1.5, dash: [2, 4])
         case .inFlight: WireStyle(color: .orange, width: 3, dash: [])
         case .needsYou: WireStyle(color: .red, width: 3, dash: [])
         case .next: WireStyle(color: .orange, width: 2, dash: [6, 4])
         case .past: WireStyle(color: .secondary.opacity(0.6), width: 1.5, dash: [1.5, 4])
         }
+    }
+
+    /// Full strength, for a wire whose seat is hovered or selected.
+    static func focused(_ kind: WireKind) -> WireStyle {
+        kind == .observes ? WireStyle(color: .secondary.opacity(0.75), width: 1.5, dash: [7, 5]) : of(kind)
     }
 
     var strokeStyle: StrokeStyle {
@@ -29,14 +35,17 @@ struct WireStyle {
 struct WireLayer: View {
     let routes: RouteResult
     let selectedQItem: QItem.ID?
+    /// Hovered and selected seats: their wires draw at full strength.
+    var focus: Set<String> = []
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         Canvas { context, _ in
             // Spec edges first so work wires (M2) draw on top.
             let order: [WireKind] = [.related, .observes, .delegates, .past, .next, .inFlight, .needsYou]
             for kind in order {
-                let style = WireStyle.of(kind)
                 for wire in routes.wires where wire.kind == kind {
+                    let style = style(wire)
                     let path = Path(roundedPath(wire.points))
                     if let selectedQItem, wire.id == "q:\(selectedQItem)" {
                         // Selection ring: a wider halo under the wire.
@@ -54,13 +63,31 @@ struct WireLayer: View {
                     }
                 }
             }
+            // Smaller than the port dots, in the colour of the wire that branches there.
             for j in routes.junctions {
+                let color = branching(at: j).map { style($0).color } ?? .secondary
                 context.fill(
-                    Path(ellipseIn: CGRect(x: j.x - 3, y: j.y - 3, width: 6, height: 6)), with: .color(.secondary))
+                    Path(ellipseIn: CGRect(x: j.x - 2.25, y: j.y - 2.25, width: 4.5, height: 4.5)), with: .color(color))
             }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    private func style(_ wire: Wire) -> WireStyle {
+        contrast == .increased || focus.contains(wire.source) || focus.contains(wire.target)
+            ? .focused(wire.kind) : .of(wire.kind)
+    }
+
+    /// The most prominent wire through a junction (drawn last of those on it).
+    private func branching(at p: CGPoint) -> Wire? {
+        let order: [WireKind] = [.related, .observes, .delegates, .past, .next, .inFlight, .needsYou]
+        return routes.wires.filter { w in
+            w.segments.contains { a, b in
+                (a.x == b.x && p.x == a.x && min(a.y, b.y) <= p.y && p.y <= max(a.y, b.y))
+                    || (a.y == b.y && p.y == a.y && min(a.x, b.x) <= p.x && p.x <= max(a.x, b.x))
+            }
+        }.max { (order.firstIndex(of: $0.kind) ?? 0) < (order.firstIndex(of: $1.kind) ?? 0) }
     }
 }
 
@@ -88,7 +115,8 @@ struct LegendBar: View {
             if showsLegend {
                 ForEach(entries, id: \.0) { kind, label in
                     HStack(spacing: 5) {
-                        LegendSwatch(style: .of(kind))
+                        // Full strength: a resting "observes" swatch would vanish on the glass bar.
+                        LegendSwatch(style: .focused(kind))
                         Text(label)
                     }
                 }

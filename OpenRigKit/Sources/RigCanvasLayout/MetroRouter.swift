@@ -121,7 +121,7 @@ public func route(_ layout: CanvasLayout, _ requests: [WireRequest], options o: 
 
     var wires = ordered.compactMap { routed[$0.id] }
     assignLanes(&wires, spacing: o.laneSpacing)
-    let junctions = findJunctions(wires)
+    let junctions = thinned(findJunctions(wires), within: o.laneSpacing)
     let byID = Dictionary(uniqueKeysWithValues: wires.map { ($0.id, $0) })
     var seen = Set<String>()
     let output = requests.compactMap { r -> Wire? in seen.insert(r.id).inserted ? byID[r.id] : nil }
@@ -409,6 +409,15 @@ func findJunctions(_ wires: [Wire]) -> [CGPoint] {
         }
     }
     return found.sorted().map { CGPoint(x: $0.x, y: $0.y) }
+}
+
+/// Drops each junction within `gap` of one already kept, so lanes branching side by side show one dot, not a clump.
+public func thinned(_ points: [CGPoint], within gap: CGFloat) -> [CGPoint] {
+    var kept: [CGPoint] = []
+    for p in points where !kept.contains(where: { abs($0.x - p.x) <= gap && abs($0.y - p.y) <= gap }) {
+        kept.append(p)
+    }
+    return kept
 }
 
 /// The polyline as a path with rounded corners (quadratic curves through each corner point).

@@ -106,6 +106,7 @@ struct CanvasContent: View {
     let routes: RouteResult
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
+    @State private var hoveredSeat: String?
 
     private var commonModel: String? {
         let counts = Dictionary(grouping: graph.seats.compactMap(\.model), by: { $0 }).mapValues(\.count)
@@ -120,7 +121,9 @@ struct CanvasContent: View {
                     .frame(width: pod.frame.width, height: pod.frame.height)
                     .offset(x: pod.frame.minX, y: pod.frame.minY)
             }
-            WireLayer(routes: routes, selectedQItem: selection.qitemID)
+            WireLayer(
+                routes: routes, selectedQItem: selection.qitemID,
+                focus: Set([selection.seatID, hoveredSeat].compactMap(\.self)))
             ForEach(chips, id: \.wire.id) { chip in
                 WireChip(
                     item: chip.item, kind: chip.wire.kind, label: chip.label,
@@ -141,6 +144,13 @@ struct CanvasContent: View {
                         $0.size.height
                     } action: {
                         rig.reportHeight($0, for: seat.id)
+                    }
+                    .onHover { inside in
+                        if inside {
+                            hoveredSeat = seat.id
+                        } else if hoveredSeat == seat.id {
+                            hoveredSeat = nil
+                        }
                     }
                     .offset(x: frame.minX, y: frame.minY)
                     .accessibilityLabel("\(seat.displayName), \(SeatPhase(seat).label)")

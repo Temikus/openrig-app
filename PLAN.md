@@ -156,7 +156,7 @@ A pure function, `route(layout, requests) -> [Wire]`.
    - Work wires reuse the spec edge's geometry for the same seat pair and draw above it.
    - A next-hop wire runs in the adjacent lane, as the dashed amber does beside the red in the mock.
    - A work hop with no spec edge is routed fresh.
-7. **Finish.** Round corners with `min(10, l1/2, l2/2)`, as in the prototype's routing script. Put junction dots at trunk branches. Place the chip at the midpoint of the longest segment that clears all node rectangles.
+7. **Finish.** Round corners with `min(10, l1/2, l2/2)`, as in the prototype's routing script. Put junction dots at trunk branches: 4.5 pt, in the colour of the most prominent wire through them, and only one where several sit within a lane of each other (`thinned`). "Observes" wires draw faint and thin at rest and at full strength while either end's seat is hovered or selected, so watch lines stay context, not flow. Place the chip at the midpoint of the longest segment that clears all node rectangles.
 
 ### Router tests, written first
 - Every segment is axis-aligned.

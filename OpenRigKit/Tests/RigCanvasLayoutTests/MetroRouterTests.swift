@@ -60,6 +60,19 @@ import Testing
         #expect(result.junctions.contains(firstLegs.first!), "trunk branch gets a junction dot")
     }
 
+    @Test func thinnedKeepsOneDotPerClump() {
+        let clump = [CGPoint(x: 100, y: 50), CGPoint(x: 108, y: 50), CGPoint(x: 100, y: 58), CGPoint(x: 120, y: 50)]
+        #expect(thinned(clump, within: 8) == [CGPoint(x: 100, y: 50), CGPoint(x: 120, y: 50)])
+    }
+
+    @Test func noTwoJunctionsWithinALane() {
+        for (i, a) in result.junctions.enumerated() {
+            for b in result.junctions[(i + 1)...] {
+                #expect(abs(a.x - b.x) > 8 || abs(a.y - b.y) > 8, "\(a) and \(b) clump")
+            }
+        }
+    }
+
     @Test func differentSourceParallelSegmentsAreALaneApart() {
         let interior = result.wires.flatMap { w in w.segments.dropFirst().dropLast().map { (w.source, $0.0, $0.1) } }
         for (i, s) in interior.enumerated() {
