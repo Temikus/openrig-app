@@ -429,7 +429,7 @@ struct StatusTag: View {
     private var color: Color {
         if let forYou { return forYou == .decision ? Color.attention : .secondary }
         return switch status {
-        case .inProgress: .orange
+        case .inProgress: .approved
         case .blocked(on: .outside): .attention
         case .closed, .handedOff: .secondary
         default: .primary

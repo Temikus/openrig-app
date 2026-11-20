@@ -166,7 +166,7 @@ struct ChainOfRecordView: View {
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: index == chain.focusIndex ? "largecircle.fill.circle" : "circle")
-                                .foregroundStyle(index == chain.focusIndex ? Color.orange : .secondary)
+                                .foregroundStyle(index == chain.focusIndex ? Color.accentColor : .secondary)
                                 .imageScale(.small)
                             Text(shortQItemID(link.id)).font(.caption.monospaced())
                             switch link {

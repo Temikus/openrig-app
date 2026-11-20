@@ -15,9 +15,9 @@ struct WireStyle {
         // Quiet at rest: watch lines are context, not flow. `focused` restores them for a hovered or selected seat.
         case .observes: WireStyle(color: .secondary.opacity(0.45), width: 1, dash: [7, 5])
         case .related: WireStyle(color: .secondary.opacity(0.5), width: 1.5, dash: [2, 4])
-        case .inFlight: WireStyle(color: .orange, width: 3, dash: [])
+        case .inFlight: WireStyle(color: .moving, width: 3, dash: [])
         case .needsYou: WireStyle(color: .attention, width: 3, dash: [])
-        case .next: WireStyle(color: .orange, width: 2, dash: [6, 4])
+        case .next: WireStyle(color: .moving, width: 2, dash: [6, 4])
         case .past: WireStyle(color: .secondary.opacity(0.6), width: 1.5, dash: [1.5, 4])
         }
     }

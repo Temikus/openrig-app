@@ -543,7 +543,7 @@ struct TerminalTile: View {
                 selection.select(qitem: id)
             } label: {
                 HStack(spacing: 5) {
-                    Circle().fill(held ? Color.secondary : .orange).frame(width: 6, height: 6)
+                    Circle().fill(held ? Color.secondary : .moving).frame(width: 6, height: 6)
                     Text(held ? "\(shortQItemID(id)) held" : shortQItemID(id))
                 }
                 .font(.caption.monospaced())

@@ -20,7 +20,7 @@
   --color-attention-text: var(--color-attention);
   --color-attention-line: var(--color-attention);
   --color-attention-surface: #E0756314;
-  --color-in-flight: #E8B04B;
+  --color-in-flight: var(--color-working); /* moving work is green, as a working seat (review 2026-11-20, item 23) */
   --color-working: #3DDC84;
   --color-working-text: #94D7A8;
   --color-form-control: #38383D;
