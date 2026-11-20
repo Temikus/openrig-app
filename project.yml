@@ -16,7 +16,13 @@ targets:
   OpenRig:
     type: application
     platform: macOS
-    sources: [App]
+    sources:
+      - path: App
+        excludes: ["AppIcon.icon"]
+      # An Icon Composer bundle: one resource, not a folder of loose files.
+      - path: App/AppIcon.icon
+        type: file
+        buildPhase: resources
     dependencies:
       - package: OpenRigKit
         product: RigModel
@@ -40,6 +46,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.openrig.OpenRig
         MARKETING_VERSION: 0.1.0
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "6.0"
         # Sandbox stays off: the app runs `rig` and `tmux` and reads ~/.openrig.
