@@ -47,6 +47,12 @@ extension Color {
         "approved", dark: .systemGreen, light: NSColor(srgbRed: 0.09, green: 0.48, blue: 0.20, alpha: 1),
         lightHighContrast: NSColor(srgbRed: 0.05, green: 0.36, blue: 0.13, alpha: 1))
 
+    /// "Look at this" as text (a degraded rig's sidebar line). System orange is about 1.8:1 on the light sidebar, so
+    /// light mode gets a burnt orange; the bright orange stays for dots.
+    static let lookText = adaptive(
+        "lookText", dark: .systemOrange, light: NSColor(srgbRed: 0.66, green: 0.29, blue: 0.0, alpha: 1),
+        lightHighContrast: NSColor(srgbRed: 0.52, green: 0.22, blue: 0.0, alpha: 1))
+
     /// Work that is moving (in-flight and next-hop wires, an active item's dot): the green of a working seat. Orange
     /// is kept for things that need a look (overdue, down, changed).
     static let moving = Color.green

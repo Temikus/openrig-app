@@ -273,7 +273,7 @@ struct RigRow: View {
                     Text(rig.name)
                     Text(text)
                         .font(.caption)
-                        .foregroundStyle(line.tone == .attention && opText == nil ? Color.orange : .secondary)
+                        .foregroundStyle(line.tone == .attention && opText == nil ? Color.lookText : .secondary)
                         .monospacedDigit()
                 }
                 Spacer()
@@ -401,8 +401,9 @@ struct RigDetail: View {
                     }
                 }
                 .environment(rig)
-                // Offline or stopped, the last data stays on screen, dimmed: readable, but nothing is live.
-                .opacity(store.isUp && !(isStopped(summary) && rig.op == nil) ? 1 : 0.55)
+                // Offline, the last data stays on screen, dimmed, with when it was current. A stopped rig isn't
+                // dimmed: dimming took its text below 3:1; its banner and stopped seats say it isn't live.
+                .opacity(store.isUp ? 1 : 0.55)
                 .safeAreaInset(edge: .top, spacing: 0) { StatusBanners(rig: rig, summary: summary) }
                 .navigationTitle(summary.name)
                 .navigationSubtitle(subtitle(rig, summary))

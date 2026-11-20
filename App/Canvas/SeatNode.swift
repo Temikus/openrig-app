@@ -10,17 +10,23 @@ enum SeatPhase: Equatable {
     case starting
     /// Not up yet while its rig is starting.
     case waiting
+    /// Its rig was stopped on purpose (`rig down`): not a crash, so no ✕.
+    case stopped
     /// The session is gone: crashed, exited, or never started.
     case down(SeatPresence)
 
-    /// `rigStarting`: a `rig up` for this rig is in flight, so a seat still down is waiting its turn. A failed launch
-    /// still shows as failed.
-    init(_ seat: Seat, rigStarting: Bool = false) {
+    /// `rigStarting`: a `rig up` for this rig is in flight, so a seat still down is waiting its turn. `rigStopped`: the
+    /// whole rig is stopped, so an exited seat was stopped with it. A failed launch still shows as failed.
+    init(_ seat: Seat, rigStarting: Bool = false, rigStopped: Bool = false) {
         let p = presence(seat)
         if p == .starting {
             self = .starting
         } else if p != .live {
-            self = rigStarting && p != .failed ? .waiting : .down(p)
+            if rigStarting && p != .failed {
+                self = .waiting
+            } else {
+                self = rigStopped && p == .exited ? .stopped : .down(p)
+            }
         } else if seat.needsAttention || seat.activity?.state == .needsInput {
             self = .needsYou
         } else {
@@ -40,6 +46,7 @@ enum SeatPhase: Equatable {
         case .unknown: "no status"
         case .starting: "starting…"
         case .waiting: "waiting to start"
+        case .stopped: "stopped"
         case .down(.lost): "session lost"
         case .down(.failed): "failed to start"
         case .down: "exited"
@@ -56,8 +63,9 @@ enum SeatPhase: Equatable {
         }
     }
 
+    /// Not running: dashed border, stalled work. Includes a stopped rig's seats.
     var isDown: Bool {
-        if case .down = self { true } else { false }
+        if case .down = self { true } else { self == .stopped }
     }
 }
 
@@ -66,7 +74,9 @@ struct StatusDot: View {
 
     var body: some View {
         Group {
-            if phase.isDown {
+            if phase == .stopped {
+                Circle().strokeBorder(phase.color, lineWidth: 1.5)
+            } else if phase.isDown {
                 Image(systemName: "xmark")
                     .font(.system(size: 8, weight: .heavy))
                     .foregroundStyle(phase.color)
@@ -101,10 +111,13 @@ struct SeatNode: View {
     var prompt: PromptInstance?
     var linked: QItem?
     var rigStarting = false
+    var rigStopped = false
     var select: () -> Void = {}
     @Environment(\.appearsActive) private var appearsActive
 
-    private var phase: SeatPhase { prompt == nil ? SeatPhase(seat, rigStarting: rigStarting) : .needsYou }
+    private var phase: SeatPhase {
+        prompt == nil ? SeatPhase(seat, rigStarting: rigStarting, rigStopped: rigStopped) : .needsYou
+    }
 
     private var borderColor: Color {
         switch phase {

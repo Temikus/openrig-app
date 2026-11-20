@@ -141,6 +141,7 @@ struct CanvasContent: View {
     let layout: CanvasLayout
     let routes: RouteResult
     @Environment(RigStore.self) private var rig
+    @Environment(AppStore.self) private var app
     @Environment(SelectionStore.self) private var selection
     @State private var hoveredSeat: String?
     /// The seat VoiceOver is on, which holds the layout as the pointer does.
@@ -177,7 +178,8 @@ struct CanvasContent: View {
                     SeatNode(
                         seat: seat, isSelected: selection.seatID == seat.id, selectedQItem: selection.qitemID,
                         showsModel: seat.model != nil && seat.model != commonModel,
-                        prompt: prompt, linked: prompt?.linkedQItem(in: rig.items), rigStarting: rig.op == .starting
+                        prompt: prompt, linked: prompt?.linkedQItem(in: rig.items), rigStarting: rig.op == .starting,
+                        rigStopped: rig.op == nil && app.selectedRig.map(isStopped) == true
                     ) { selection.select(seat: seat, in: rig) }
                     .onGeometryChange(for: CGFloat.self) {
                         $0.size.height
