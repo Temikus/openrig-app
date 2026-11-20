@@ -11,6 +11,7 @@ struct ContentView: View {
     /// Unknown until the first layout, when a restored window may be too narrow for the inspector.
     @State private var detailWidth: CGFloat?
     @State private var showsQueueTask = false
+    @State private var showsGoTo = false
     /// Bumped by Rig › Needs You… to open the toolbar button's list.
     @State private var needsYouRequests = 0
     @State private var fit = ToolbarFit.full
@@ -66,8 +67,10 @@ struct ContentView: View {
             \.windowActions,
             WindowActions(
                 queueTask: store.rig == nil || !store.isUp ? nil : { showsQueueTask = true },
-                needsYou: { needsYouRequests += 1 })
+                needsYou: { needsYouRequests += 1 },
+                goTo: { showsGoTo = true })
         )
+        .sheet(isPresented: $showsGoTo) { GoToPalette().environment(store) }
         .onChange(of: appearsActive, initial: true) { store.windowInFront = appearsActive }
         .onDisappear { store.windowInFront = false }
     }

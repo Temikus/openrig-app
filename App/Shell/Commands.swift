@@ -5,6 +5,7 @@ import SwiftUI
 struct WindowActions {
     var queueTask: (() -> Void)?
     var needsYou: () -> Void
+    var goTo: () -> Void
 }
 
 struct CanvasZoomActions {
@@ -55,6 +56,9 @@ struct OpenRigCommands: Commands {
                 .disabled(window?.queueTask == nil)
             Button("Needs You…") { window?.needsYou() }
                 .keyboardShortcut("j")
+                .disabled(window == nil)
+            Button("Go to…") { window?.goTo() }
+                .keyboardShortcut("k")
                 .disabled(window == nil)
             Divider()
             Button("Refresh") { Task { await store.refreshNow() } }
