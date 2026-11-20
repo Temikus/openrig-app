@@ -70,6 +70,24 @@ import Testing
         #expect(risk.live == 2)
     }
 
+    /// Recorded from a throwaway rig right after `rig down`.
+    @Test func recordedStoppedRig() throws {
+        let rig = try #require(try RigFixtures.decode("ps-stopped", as: [RigSummary].self).first)
+        #expect(isStopped(rig))
+        #expect(rigLine(rig).tone == .stopped)
+        let graph = try RigFixtures.decode("graph-stopped", as: RigGraph.self)
+        #expect(graph.seats.allSatisfy { presence($0) == .exited })
+        #expect(stopRisk(graph).live == 0)
+        #expect(needsYouEntries(prompts: [], seats: graph.seats, items: []).isEmpty, "a stopped rig asks nothing")
+    }
+
+    /// Recorded half a second into `rig up --existing`: one seat launching, one not yet.
+    @Test func recordedStartingRig() throws {
+        let graph = try RigFixtures.decode("graph-starting", as: RigGraph.self)
+        #expect(graph.seats.map(presence).sorted { "\($0)" < "\($1)" } == [.exited, .starting])
+        #expect(startProgress(graph) == StartProgress(up: 0, total: 2))
+    }
+
     @Test func recordedRigIsAllUp() throws {
         let graph = try RigFixtures.decode("graph-denkeeper", as: RigGraph.self)
         let progress = startProgress(graph)

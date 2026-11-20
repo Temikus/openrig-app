@@ -438,16 +438,14 @@ struct RigDetail: View {
 
     private func subtitle(_ rig: RigStore, _ summary: RigSummary) -> String {
         guard let graph = rig.graph else { return "" }
-        switch rig.op {
-        case .starting?:
+        // `rig up` returns before the harnesses are ready, so pending seats keep the progress showing.
+        if rig.op == .starting || graph.seats.contains(where: { presence($0) == .starting }) {
             let progress = startProgress(graph)
             return "Starting · \(progress.up) of \(progress.total) up"
-        case .stopping?:
-            return "Stopping…"
-        case nil:
-            if isStopped(summary) {
-                return "Stopped · \(graph.seats.count) \(graph.seats.count == 1 ? "seat" : "seats")"
-            }
+        }
+        if rig.op == .stopping { return "Stopping…" }
+        if isStopped(summary) {
+            return "Stopped · \(graph.seats.count) \(graph.seats.count == 1 ? "seat" : "seats")"
         }
         let working = graph.seats.filter { SeatPhase($0) == .working }.count
         return

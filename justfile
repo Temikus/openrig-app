@@ -34,6 +34,10 @@ test-live:
 test-rig seat:
     OPENRIG_TEST_SEAT={{ quote(seat) }} swift test {{ spm }} --filter LiveTestRigTests
 
+# Stop, start and resume one seat of a throwaway rig through the CLI (stops that whole rig)
+test-lifecycle rig:
+    OPENRIG_TEST_RIG={{ quote(rig) }} swift test {{ spm }} --filter LiveLifecycleTests
+
 # Check formatting
 lint:
     swift format lint --strict --recursive OpenRigKit/Package.swift OpenRigKit/Sources OpenRigKit/Tests App

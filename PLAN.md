@@ -429,3 +429,21 @@ The review and fix log are in `design/reviews/2026-11-20-full/` (`review.md`, `p
   - 26: a drafted icon from the rig mark, replaceable later.
   - 33: Help › OpenRig Help (⌘?) opens openrig.dev.
   - PC-09-01: the window's minimum width grows while the inspector is open.
+
+### Rig controls, 2026-11-20
+
+Picked in Paper, page "Rig controls · options" (`design/ui/6-rig-controls/`).
+- **Status:** each sidebar row shows a state dot and one line from `rigLine`: "up 3d · 7 seats", orange "degraded · 6 of 7 seats", hollow "stopped · snapshot 2h ago". It comes from `lifecycleState` and `latestSnapshot` in `/api/ps`.
+- **Stop:** a toolbar power button (and Rig › Stop Rig…) opens a popover that names seats mid-turn, then runs `rig down <rig> --snapshot --yes`. There's no snapshot checkbox, because `rig down` snapshots anyway. There's no force stop in v1.
+- **Stopped rig:** a taller banner with Start Rig (`rig up <rig> --existing --yes`). The view stays readable, dimmed.
+- **Starting:** `rig up` returns in about 1.5 s, before the harnesses are ready. The subtitle and seats follow `startupStatus: "pending"` ("starting…"); seats not yet launched read "waiting to start".
+- **Seat down:** Resume Seat runs `rig launch <rig> <logicalId>`, and Start Fresh… runs `rig seat launch <seat> --fresh --reason …`. Both leave the other seats alone: `nonTargetEffects: unchanged`, and sibling tmux session ids are kept.
+- **Verified live** on a throwaway rig (one terminal seat, one Claude seat), since deleted:
+  - `just test-lifecycle <rig>` covers down, up, and kill-then-resume.
+  - Each control was pressed in a background copy through AX: Start Rig, the Stop popover's Stop, and Resume Seat.
+  - Fixtures recorded from it: `ps-stopped`, `graph-stopped`, `graph-starting`.
+- **Not seen live:**
+  - Start Fresh's confirmation dialog in the app. Its command was run through the CLI.
+  - Pointer and keyboard paths: Esc closing the popover, and Return not stopping.
+  - A failed start or stop banner.
+- **Existing crash, not from this work:** the window aborts with "more Update Constraints passes than views" when `OPENRIG_DEBUG_SIZE` resizes it with the inspector open. Reports from 15:53, 17:17 and 17:27 predate this work.

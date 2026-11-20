@@ -1,0 +1,21 @@
+[
+  {
+    "rigId": "01M7WA2JNSHB01MJN2CRBQC54X",
+    "name": "openrig-apptest",
+    "rigName": "openrig-apptest",
+    "nodeCount": 2,
+    "runningCount": 0,
+    "activeCount": 0,
+    "hasWorkCount": 0,
+    "status": "stopped",
+    "lifecycleState": "stopped",
+    "uptime": null,
+    "latestSnapshot": "8s ago",
+    "archivedAt": null,
+    "isArchived": false,
+    "periodicSnapshotActive": false,
+    "periodicSnapshotIntervalSeconds": 300,
+    "autoPeriodicSnapshotCount": 0,
+    "attentionCount": 1
+  }
+]
