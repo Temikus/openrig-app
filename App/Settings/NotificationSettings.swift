@@ -9,6 +9,9 @@ struct NotificationSettings: View {
 
     static let sounds = ["", "Glass", "Ping", "Pop", "Submarine", "Tink"]
 
+    /// The Settings window's tab (SettingsView keeps it in this key), for the link to General.
+    @AppStorage("settingsPane") private var pane = SettingsView.Pane.notifications.rawValue
+
     var body: some View {
         @Bindable var settings = store.settings
         Form {
@@ -17,12 +20,8 @@ struct NotificationSettings: View {
                 Toggle(isOn: kind(.permission)) {
                     RowLabel("A seat asks for permission", "Clicking it opens OpenRig at the prompt.")
                 }
-                Toggle(isOn: .constant(false)) {
-                    RowLabel(
-                        "Offer Allow once in the banner",
-                        "Coming later. It needs a check that the prompt hasn't changed since the banner.")
-                }
-                .disabled(true)
+                comingLater(
+                    "Offer Allow once in the banner", "Needs a check that the prompt hasn't changed since the banner.")
                 Toggle(isOn: kind(.ask)) {
                     RowLabel("An agent asks you something", "Clicking it opens the row in the inspector.")
                 }
@@ -34,19 +33,18 @@ struct NotificationSettings: View {
             }
             Section("Delivery") {
                 Toggle(isOn: $settings.bannersOnlyInBackground) {
-                    RowLabel(
-                        "Only when the window is closed or behind",
-                        "Needs OpenRig running. See General › Open at login.")
+                    Text("Only when the window is closed or behind")
+                    HStack(spacing: 4) {
+                        Text("Needs OpenRig running:")
+                        // To the setting itself, rather than describing where it is.
+                        Button("Open at login") { pane = SettingsView.Pane.general.rawValue }
+                            .buttonStyle(.link)
+                    }
                 }
                 Picker("From", selection: $settings.bannerScope) {
                     ForEach(AppSettings.BannerScope.allCases) { Text($0.title).tag($0) }
                 }
-                Toggle(isOn: .constant(false)) {
-                    RowLabel(
-                        "Read prompts on every rig",
-                        "Coming later. Other rigs' prompts arrive as a count, without the command.")
-                }
-                .disabled(true)
+                comingLater("Read prompts on every rig", "Other rigs' prompts arrive as a count, without the command.")
                 Picker("Sound for permission prompts", selection: $settings.promptSound) {
                     ForEach(Self.sounds, id: \.self) { Text($0.isEmpty ? "None" : $0).tag($0) }
                 }
@@ -105,6 +103,17 @@ struct NotificationSettings: View {
         let id = Bundle.main.bundleIdentifier ?? "dev.openrig.OpenRig"
         if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(id)") {
             NSWorkspace.shared.open(url)
+        }
+    }
+}
+
+extension NotificationSettings {
+    /// A planned option: a label, not a switch that looks live but does nothing.
+    fileprivate func comingLater(_ title: String, _ caption: String) -> some View {
+        LabeledContent {
+            Text("Coming later").foregroundStyle(.secondary)
+        } label: {
+            RowLabel(title, caption)
         }
     }
 }

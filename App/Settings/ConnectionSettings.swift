@@ -189,7 +189,7 @@ struct ConnectionSettings: View {
             }
         } else {
             LabeledContent {
-                SecureField("Token", text: $tokenText, prompt: Text("Only if the daemon has a bearer"))
+                SecureField("Token", text: $tokenText, prompt: Text("Optional"))
                     .labelsHidden()
                     .frame(width: 220)
                     .onSubmit {
@@ -202,7 +202,7 @@ struct ConnectionSettings: View {
                 if case .rejected? = store.tokenCheck {
                     Text("The daemon asks for one. Paste it from its config.").foregroundStyle(Color.attention)
                 } else {
-                    Text("Kept in the Keychain. Also passed to rig commands.")
+                    Text("Only if the daemon asks for a bearer token. Kept in the Keychain, passed to rig commands.")
                 }
             }
         }

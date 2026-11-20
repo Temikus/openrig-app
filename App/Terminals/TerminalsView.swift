@@ -305,12 +305,14 @@ struct TerminalsView: View {
         let rig = self.rig
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             let command = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
+            // By character, as the menu's key equivalents match: key codes are US positions, so on other layouts
+            // ⌘+ moved tiles (QWERTZ) and ⌘Y toggled typing (Dvorak). Escape has no character to match.
             let key: TerminalKey? =
-                switch (event.keyCode, command) {
-                case (53, false): .escape
-                case (30, true): .nextTile
-                case (33, true): .previousTile
-                case (17, true): .toggleTyping
+                switch (event.keyCode == 53 ? "\u{1b}" : event.charactersIgnoringModifiers?.lowercased(), command) {
+                case ("\u{1b}", false): .escape
+                case ("]", true): .nextTile
+                case ("[", true): .previousTile
+                case ("t", true): .toggleTyping
                 default: nil
                 }
             guard let key else { return event }
@@ -738,7 +740,7 @@ struct TerminalTile: View {
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 2) {
                 modeButton("Message · rig send", typing: false)
-                modeButton("Type into terminal", typing: true)
+                modeButton("Type into Terminal", typing: true)
                 if terminals.typing {
                     Spacer(minLength: 12)
                     Label("Keys go to \(seat.displayName) · \(stop)", systemImage: "keyboard")

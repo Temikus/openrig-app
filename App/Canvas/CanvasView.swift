@@ -97,6 +97,8 @@ struct CanvasView: View {
                     }
                     .padding(.trailing, 16)
                     .padding(.bottom, 64)
+                    // A pointer shortcut; the canvas itself scrolls for everyone else.
+                    .accessibilityHidden(true)
                 }
             }
         } else if let error = rig.error {

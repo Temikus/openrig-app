@@ -77,8 +77,9 @@ struct QueueBoardView: View {
                         BoardColumn(
                             title: "Done", items: columns.closed, now: now,
                             secondTitle: "Handed off", secondItems: columns.handedOff,
-                            emptyHint: noMatches
-                                ?? (filter.scope == .active ? "Switch to Today to see closed work." : nil))
+                            emptyHint: noMatches ?? (filter.scope == .active ? "Closed work is under Today." : nil),
+                            emptyAction: noMatches == nil && filter.scope == .active
+                                ? ("Show Today", { filter.scope = .today }) : nil)
                     }
                     .padding(16)
                 }
@@ -207,6 +208,8 @@ struct BoardColumn: View {
     var secondTitle: String?
     var secondItems: [QItem] = []
     var emptyHint: String?
+    /// A next step under the hint, e.g. "Show Today" on an empty Done column.
+    var emptyAction: (title: String, perform: () -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -220,10 +223,15 @@ struct BoardColumn: View {
                             ForEach(secondItems) { QItemCard(item: $0, now: now) }
                         }
                         if items.isEmpty && secondItems.isEmpty {
-                            Text(emptyHint ?? "Nothing here.")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .padding(.vertical, 8)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(emptyHint ?? "Nothing here.")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                if let emptyAction {
+                                    Button(emptyAction.title, action: emptyAction.perform).buttonStyle(.link)
+                                }
+                            }
+                            .padding(.vertical, 8)
                         }
                     }
                 }
@@ -334,6 +342,9 @@ struct QItemCard: View {
             Button("held on \(shortQItemID(id))", systemImage: "link") { selection.select(qitem: id) }
                 .buttonStyle(.link)
                 .font(.caption)
+                // Nested in the card's own button: a target of at least 24 pt, so a near miss doesn't pick the card.
+                .frame(minHeight: 24)
+                .contentShape(Rectangle())
         case .handedOff(let to):
             let next = rig.chains.chain(for: item.id)
             let successor = next.links.indices.contains(next.focusIndex + 1) ? next.links[next.focusIndex + 1].id : nil

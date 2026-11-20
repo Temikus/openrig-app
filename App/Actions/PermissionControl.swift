@@ -258,6 +258,8 @@ struct NeedsYouRow: View {
             case .prompt(let prompt, let linked):
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.circle.fill").foregroundStyle(Color.attention)
+                        .accessibilityHidden(true)
+                        .accessibilityHidden(true)
                     if let seat = rig.seat(prompt.seatID) {
                         Button(seat.displayName) { reveal(seat) }
                             .buttonStyle(.link)

@@ -91,6 +91,7 @@ struct SeatNode: View {
     var prompt: PromptInstance?
     var linked: QItem?
     var select: () -> Void = {}
+    @Environment(\.appearsActive) private var appearsActive
 
     private var phase: SeatPhase { prompt == nil ? SeatPhase(seat) : .needsYou }
 
@@ -125,7 +126,10 @@ struct SeatNode: View {
         }
         .overlay {
             if isSelected {
-                RoundedRectangle(cornerRadius: 13).strokeBorder(Color.primary, lineWidth: 2).padding(-3)
+                // The same ring as a selected queue card: accent, grey when the window is inactive.
+                RoundedRectangle(cornerRadius: 13)
+                    .strokeBorder(appearsActive ? Color.accentColor : .secondary, lineWidth: 2)
+                    .padding(-3)
             }
         }
         .accessibilityElement(children: .contain)

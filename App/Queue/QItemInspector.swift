@@ -30,7 +30,15 @@ struct QItemInspector: View {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
+                        // The short id, as on the card; the full one is in its tooltip and Copy ID.
                         Text(shortQItemID(item.id)).font(.callout.monospaced()).foregroundStyle(.secondary)
+                            .help(item.id)
+                            .contextMenu {
+                                Button("Copy ID") {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(item.id, forType: .string)
+                                }
+                            }
                         Spacer()
                         StatusTag(
                             status: workStatus(item), overdue: isOverdue(item, now: .now),
@@ -39,7 +47,6 @@ struct QItemInspector: View {
                     Text(item.summary.isEmpty ? "No summary" : item.summary)
                         .font(.title3.weight(.semibold))
                         .textSelection(.enabled)
-                    Text(item.id).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
                     if let ended = outcome(item) {
                         Text(endedLine(ended)).font(.callout).foregroundStyle(.secondary)
                     }
@@ -60,7 +67,15 @@ struct QItemInspector: View {
                     if let priority = item.priority { row("Priority", priority) }
                     if let created = item.created { row("Created", relative(created)) }
                     if let updated = item.updated { row("Updated", relative(updated)) }
-                    if let blocked = item.blockedOn { row("Blocked on", blocked) }
+                    if let blocked = item.blockedOn {
+                        // A link, and the same short id the card's "held on" uses.
+                        GridRow {
+                            Text("Blocked on").foregroundStyle(.secondary)
+                            Button(shortQItemID(blocked)) { selection.select(qitem: blocked) }
+                                .buttonStyle(.link)
+                                .help(blocked)
+                        }
+                    }
                     if let hop = rig.nextHop(for: item.id) {
                         row("Next", "\(hop.nextStepID) · \(rig.displayName(session: hop.owner))")
                     }

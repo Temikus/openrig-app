@@ -58,7 +58,8 @@ struct OpenRigCommands: Commands {
         }
         CommandGroup(before: .toolbar) {
             ForEach(Array(ViewMode.allCases.enumerated()), id: \.element) { index, mode in
-                Button(mode.title) { store.viewMode = mode }
+                // Menu items are title case ("Queue Board"); the picker keeps the design's "Queue board".
+                Button(mode.title.capitalized) { store.viewMode = mode }
                     .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")))
             }
             Divider()
@@ -89,7 +90,6 @@ struct OpenRigCommands: Commands {
             .keyboardShortcut("f")
             // With no rig there's no board to focus, and the request would linger for a later visit.
             .disabled(store.rig == nil)
-            Divider()
         }
     }
 }
