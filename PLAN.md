@@ -411,3 +411,23 @@ The review is in `design/reviews/2026-11-19-quick/` (finding ids below).
   - AX-02-02: sidebar badges differ by fill and lightness; the label carries the summary.
   - AX-08-01: "Sent" still hides after 1.5 s; it is now also announced.
 - **Launch.** Giving the main `WindowGroup` an id (for New Window) let state saved by a killed process restore no window. `.defaultLaunchBehavior(.presented)` opens one anyway.
+
+### Design review, 2026-11-20 (all five lenses)
+
+The review and fix log are in `design/reviews/2026-11-20-full/` (`review.md`, `progress.md`; numbers below are its items).
+- **Done:** 1 launch crash (inspector waits for room; ⌃⌘I widens a narrow window), 2–9 (VoiceOver groups, prompt
+  contrast, canvas 100% floor and stacked answers, drafts, Needs-you reveal), 10–12, 14–18, 20–22, 24, 25, 28, 30–32,
+  34–41. Also from use: Type mode shows the top of full-screen apps and keeps its pan through resizes.
+- **Not seen live:** Increase Contrast variants; drafts surviving a dismissal (needs typing into a live app); result
+  lines after a commit; ⌘[ (⌘] checked).
+- **Open, for a decision:**
+  - 13: a new prompt moves the seats around it. Hold the layout while hovered (the card then overlaps the seat below)
+    or float the control as an overlay.
+  - 19: Go to… (⌘K) palette for rigs, seats and tasks: a new feature.
+  - 23: orange means both "in flight" and "warning"; moving activity to green changes the legend and design.
+  - 26: app icon.
+  - 27: "qitem", "unpark", Held/Blocked in UI copy: product vocabulary.
+  - 29 (AX-08-01): success lines still auto-hide.
+  - 33: Help › OpenRig Help needs a docs URL.
+  - PC-09-01: shrinking the window with the inspector open still clips the sidebar (hiding it mid-resize left the split
+    view stuck wider than the window).
