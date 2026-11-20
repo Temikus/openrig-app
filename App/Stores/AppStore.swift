@@ -327,11 +327,6 @@ final class AppStore {
 
     /// Rigs with a `rig up` or `rig down` in flight. Kept here, not on RigStore, so it survives switching rigs.
     private(set) var rigOps: [RigSummary.ID: RigOp] = [:]
-    /// Bumped by Rig › Stop Rig… to open the toolbar's stop popover.
-    private(set) var stopRequests = 0
-
-    func requestStop() { stopRequests += 1 }
-
     /// The ActionStore key for a rig's start or stop, so its result shows next to the control.
     static func rigKey(_ id: RigSummary.ID) -> String { "rig:\(id)" }
 

@@ -11,6 +11,7 @@ struct ContentView: View {
     /// Unknown until the first layout, when a restored window may be too narrow for the inspector.
     @State private var detailWidth: CGFloat?
     @State private var showsQueueTask = false
+    @State private var showsStopConfirmation = false
     @State private var showsGoTo = false
     /// Bumped by Rig › Needs You… to open the toolbar button's list.
     @State private var needsYouRequests = 0
@@ -68,7 +69,9 @@ struct ContentView: View {
             WindowActions(
                 queueTask: store.rig == nil || !store.isUp ? nil : { showsQueueTask = true },
                 needsYou: { needsYouRequests += 1 },
-                goTo: { showsGoTo = true })
+                goTo: { showsGoTo = true },
+                stopRig: store.selectedRig.map { !isStopped($0) && store.isUp && store.rigOps[$0.id] == nil } == true
+                    ? { showsStopConfirmation = true } : nil)
         )
         .sheet(isPresented: $showsGoTo) { GoToPalette().environment(store) }
         .onChange(of: appearsActive, initial: true) { store.windowInFront = appearsActive }
@@ -100,10 +103,12 @@ struct ContentView: View {
         }
         // If tight and still short, the picker overflows first: ⌘1–3 still switch views, and Needs you stays in sight.
         .keptVisible(fit != .tight)
-        if let summary = store.selectedRig, !isStopped(summary) {
+        if let summary = store.selectedRig {
             ToolbarItem(placement: .primaryAction) {
-                RigStopButton(summary: summary)
+                RigPowerButton(summary: summary, confirmingStop: $showsStopConfirmation)
             }
+            // Its own glass group: a stop control shouldn't share a capsule with Needs you.
+            ToolbarSpacer(.fixed, placement: .primaryAction)
         }
         ToolbarItem(placement: .primaryAction) {
             // Re-identified when the badge comes or goes too: the toolbar keeps an item's first width, which cut
@@ -506,7 +511,7 @@ struct StatusBanners: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if store.isUp, isStopped(summary), rig.op != .starting {
+            if store.isUp, isStopped(summary) {
                 StoppedRigBanner(summary: summary)
             } else if case .failed? = store.actions.status[AppStore.rigKey(summary.id)] {
                 // A start or stop that failed on a rig still up: say so above the view, as the CLI put it.

@@ -7,6 +7,8 @@ struct WindowActions {
     var queueTask: (() -> Void)?
     var needsYou: () -> Void
     var goTo: () -> Void
+    /// Nil when the selected rig has nothing running, or a start or stop is in flight.
+    var stopRig: (() -> Void)?
 }
 
 struct CanvasZoomActions {
@@ -65,10 +67,12 @@ struct OpenRigCommands: Commands {
             Button("Start Rig") {
                 if let rig = store.selectedRig { Task { await store.startRig(rig) } }
             }
+            .keyboardShortcut("u", modifiers: [.command, .shift])
             .disabled(!canStart)
-            // Opens the toolbar's confirmation, which names who is mid-turn.
-            Button("Stop Rig…") { store.requestStop() }
-                .disabled(!canStop)
+            // Opens this window's confirmation, which names who is mid-turn.
+            Button("Stop Rig…") { window?.stopRig?() }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+                .disabled(window?.stopRig == nil)
             Divider()
             Button("Refresh") { Task { await store.refreshNow() } }
                 .keyboardShortcut("r")
@@ -115,11 +119,5 @@ struct OpenRigCommands: Commands {
     private var canStart: Bool {
         guard let rig = store.selectedRig, store.isUp, store.rigOps[rig.id] == nil else { return false }
         return isStopped(rig)
-    }
-
-    /// Needs a main window: the confirmation is the toolbar button's popover.
-    private var canStop: Bool {
-        guard let rig = store.selectedRig, store.isUp, store.rigOps[rig.id] == nil, window != nil else { return false }
-        return !isStopped(rig)
     }
 }

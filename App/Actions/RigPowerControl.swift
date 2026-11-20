@@ -3,22 +3,31 @@ import RigDomain
 import RigModel
 import SwiftUI
 
-/// The toolbar's Stop Rig button and its confirmation popover, which names the seats a stop would cut off mid-turn.
-struct RigStopButton: View {
+/// The toolbar's power item, there for every rig so the toolbar keeps its layout: Stop Rig… while any seat runs
+/// (a popover that names who is mid-turn), Start Rig when stopped, disabled while either is in flight.
+struct RigPowerButton: View {
     let summary: RigSummary
+    /// Owned by the window, so Rig › Stop Rig… opens this window's confirmation and no other.
+    @Binding var confirmingStop: Bool
     @Environment(AppStore.self) private var store
-    @State private var confirming = false
 
     var body: some View {
-        Button("Stop Rig", systemImage: "power") { confirming = true }
-            .labelStyle(.iconOnly)
-            .help(store.rigOps[summary.id] == .stopping ? "Stopping \(summary.name)…" : "Stop \(summary.name)…")
-            .disabled(store.rigOps[summary.id] != nil || !store.isUp)
-            .onChange(of: store.stopRequests) { confirming = true }
-            .popover(isPresented: $confirming, arrowEdge: .bottom) {
-                StopRigConfirmation(summary: summary, graph: store.rig?.graph) { confirming = false }
-                    .environment(store)
+        let busy = store.rigOps[summary.id]
+        Group {
+            if isStopped(summary) && busy != .stopping {
+                Button("Start Rig", systemImage: "power") { Task { await store.startRig(summary) } }
+                    .help(busy == .starting ? "Starting \(summary.name)…" : "Start \(summary.name) (⇧⌘U)")
+            } else {
+                Button("Stop Rig", systemImage: "power") { confirmingStop = true }
+                    .help(busy == .stopping ? "Stopping \(summary.name)…" : "Stop \(summary.name)… (⇧⌘D)")
             }
+        }
+        .labelStyle(.iconOnly)
+        .disabled(busy != nil || !store.isUp)
+        .popover(isPresented: $confirmingStop, arrowEdge: .bottom) {
+            StopRigConfirmation(summary: summary, graph: store.rig?.graph) { confirmingStop = false }
+                .environment(store)
+        }
     }
 }
 
@@ -62,12 +71,13 @@ struct StopRigConfirmation: View {
             HStack {
                 Spacer()
                 Button("Cancel", action: done).keyboardShortcut(.cancelAction)
-                // Not the default button: Return shouldn't stop a team.
+                // ⌘↩ as on the app's other commit buttons; plain Return shouldn't stop a team.
                 Button(stopTitle, role: .destructive) {
                     done()
                     Task { await store.stopRig(summary) }
                 }
-                .help(action.displayCommand)
+                .keyboardShortcut(.return, modifiers: .command)
+                .help("\(action.displayCommand) (⌘↩)")
             }
         }
         .padding(16)
@@ -107,11 +117,14 @@ struct StoppedRigBanner: View {
             }
             Spacer(minLength: 8)
             ActionStatusLine(key: AppStore.rigKey(summary.id))
-            Button("Start Rig") { Task { await store.startRig(summary) } }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(store.rigOps[summary.id] != nil || !store.isUp)
-                .help(action.displayCommand)
+            // Stays while the start runs, disabled, so the button and its result don't vanish under the pointer.
+            Button(store.rigOps[summary.id] == .starting ? "Starting…" : "Start Rig") {
+                Task { await store.startRig(summary) }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(store.rigOps[summary.id] != nil || !store.isUp)
+            .help("\(action.displayCommand) (⇧⌘U)")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
