@@ -177,7 +177,7 @@ struct CanvasContent: View {
                     SeatNode(
                         seat: seat, isSelected: selection.seatID == seat.id, selectedQItem: selection.qitemID,
                         showsModel: seat.model != nil && seat.model != commonModel,
-                        prompt: prompt, linked: prompt?.linkedQItem(in: rig.items)
+                        prompt: prompt, linked: prompt?.linkedQItem(in: rig.items), rigStarting: rig.op == .starting
                     ) { selection.select(seat: seat, in: rig) }
                     .onGeometryChange(for: CGFloat.self) {
                         $0.size.height

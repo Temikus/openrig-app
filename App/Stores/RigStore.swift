@@ -15,6 +15,8 @@ final class RigStore {
     var client: DaemonHTTP
     /// The app's own address, from AppStore.
     var me = Human.session
+    /// A start or stop of this rig in flight, mirrored from AppStore.
+    var op: RigOp?
 
     private(set) var graph: RigGraph?
     private(set) var items: [QItem] = []

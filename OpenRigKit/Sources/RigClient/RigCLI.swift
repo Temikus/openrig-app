@@ -34,6 +34,15 @@ public enum RigAction: Sendable, Equatable {
     /// and `rig send` refuses until this is done.
     case clearAttention(session: String, reason: String)
     case startDaemon
+    /// Brings a stopped rig back, resuming each seat's conversation where its harness allows. `--yes` because the
+    /// app has already asked; without a terminal the CLI would otherwise exit without acting.
+    case rigUp(rig: String)
+    /// Stops every seat. The CLI snapshots first anyway; `--snapshot` makes that explicit.
+    case rigDown(rig: String)
+    /// Launches one seat of a running rig, resuming it. Seats already running are left alone.
+    case launchSeat(rig: String, logicalId: String)
+    /// Starts one seat with a blank conversation. Sibling seats stay attached.
+    case freshSeat(session: String, reason: String)
 
     /// Arguments after `rig`. Passed to exec directly; no shell sees them.
     public var arguments: [String] {
@@ -69,6 +78,14 @@ public enum RigAction: Sendable, Equatable {
             args = ["seat", "clear-attention", session, "--reason", reason]
         case .startDaemon:
             return ["daemon", "start"]
+        case .rigUp(let rig):
+            args = ["up", rig, "--existing", "--yes"]
+        case .rigDown(let rig):
+            args = ["down", rig, "--snapshot", "--yes"]
+        case .launchSeat(let rig, let logicalId):
+            args = ["launch", rig, logicalId]
+        case .freshSeat(let session, let reason):
+            args = ["seat", "launch", session, "--fresh", "--reason", reason]
         }
         return args + ["--json"]
     }

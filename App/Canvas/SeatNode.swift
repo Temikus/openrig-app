@@ -6,13 +6,21 @@ import SwiftUI
 /// Seat state as the UI names it. Colour is always paired with a word.
 enum SeatPhase: Equatable {
     case working, needsYou, idle, unknown
+    /// Launching; the harness isn't ready yet.
+    case starting
+    /// Not up yet while its rig is starting.
+    case waiting
     /// The session is gone: crashed, exited, or never started.
     case down(SeatPresence)
 
-    init(_ seat: Seat) {
+    /// `rigStarting`: a `rig up` for this rig is in flight, so a seat still down is waiting its turn. A failed launch
+    /// still shows as failed.
+    init(_ seat: Seat, rigStarting: Bool = false) {
         let p = presence(seat)
-        if p != .live {
-            self = .down(p)
+        if p == .starting {
+            self = .starting
+        } else if p != .live {
+            self = rigStarting && p != .failed ? .waiting : .down(p)
         } else if seat.needsAttention || seat.activity?.state == .needsInput {
             self = .needsYou
         } else {
@@ -30,6 +38,8 @@ enum SeatPhase: Equatable {
         case .needsYou: "needs you"
         case .idle: "idle"
         case .unknown: "no status"
+        case .starting: "starting…"
+        case .waiting: "waiting to start"
         case .down(.lost): "session lost"
         case .down(.failed): "failed to start"
         case .down: "exited"
@@ -39,7 +49,7 @@ enum SeatPhase: Equatable {
     /// Orange, not red: red means a question is waiting, and nothing here is asking.
     var color: Color {
         switch self {
-        case .working: .green
+        case .working, .starting: .green
         case .needsYou: .attention
         case .down(let p) where p.needsYou: .orange
         default: .secondary
@@ -60,7 +70,7 @@ struct StatusDot: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 8, weight: .heavy))
                     .foregroundStyle(phase.color)
-            } else if phase == .unknown {
+            } else if phase == .unknown || phase == .starting || phase == .waiting {
                 Circle().strokeBorder(phase.color, lineWidth: 1.5)
             } else {
                 Circle().fill(phase.color)
@@ -90,10 +100,20 @@ struct SeatNode: View {
     let showsModel: Bool
     var prompt: PromptInstance?
     var linked: QItem?
+    var rigStarting = false
     var select: () -> Void = {}
     @Environment(\.appearsActive) private var appearsActive
 
-    private var phase: SeatPhase { prompt == nil ? SeatPhase(seat) : .needsYou }
+    private var phase: SeatPhase { prompt == nil ? SeatPhase(seat, rigStarting: rigStarting) : .needsYou }
+
+    private var borderColor: Color {
+        switch phase {
+        case .needsYou: .attention
+        case .starting: .green.opacity(0.6)
+        case _ where phase.isDown: phase.color
+        default: Color(nsColor: .separatorColor)
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -121,8 +141,8 @@ struct SeatNode: View {
         .overlay {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(
-                    phase == .needsYou ? Color.attention : phase.isDown ? phase.color : Color(nsColor: .separatorColor),
-                    style: StrokeStyle(lineWidth: 1, dash: phase.isDown ? [5, 3] : []))
+                    borderColor,
+                    style: StrokeStyle(lineWidth: 1, dash: phase.isDown || phase == .waiting ? [5, 3] : []))
         }
         .overlay {
             if isSelected {

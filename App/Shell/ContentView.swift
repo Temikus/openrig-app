@@ -100,6 +100,11 @@ struct ContentView: View {
         }
         // If tight and still short, the picker overflows first: ⌘1–3 still switch views, and Needs you stays in sight.
         .keptVisible(fit != .tight)
+        if let summary = store.selectedRig, !isStopped(summary) {
+            ToolbarItem(placement: .primaryAction) {
+                RigStopButton(summary: summary)
+            }
+        }
         ToolbarItem(placement: .primaryAction) {
             // Re-identified when the badge comes or goes too: the toolbar keeps an item's first width, which cut
             // "Needs you" to "Nee…" once a count appeared.
@@ -260,13 +265,15 @@ struct RigRow: View {
 
     var body: some View {
         let waiting = store.waiting(in: rig)
+        let line = rigLine(rig)
+        let text = opText ?? line.text
         Label {
             HStack {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(rig.name)
-                    Text("\(rig.runningCount)/\(rig.nodeCount) running")
+                    Text(text)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(line.tone == .attention && opText == nil ? Color.orange : .secondary)
                         .monospacedDigit()
                 }
                 Spacer()
@@ -279,13 +286,36 @@ struct RigRow: View {
                 }
             }
         } icon: {
-            Image(systemName: rig.status == .running ? "circle.hexagongrid.fill" : "circle.hexagongrid")
+            RigDot(tone: line.tone)
         }
         .help(waiting.summary)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "\(rig.name), \(rig.status.rawValue), \(rig.runningCount) of \(rig.nodeCount) seats running"
-                + (waiting.isEmpty ? "" : ", \(waiting.summary)"))
+        .accessibilityLabel("\(rig.name), \(text)" + (waiting.isEmpty ? "" : ", \(waiting.summary)"))
+    }
+
+    private var opText: String? {
+        switch store.rigOps[rig.id] {
+        case .starting?: "starting…"
+        case .stopping?: "stopping…"
+        case nil: nil
+        }
+    }
+}
+
+/// A rig's state in its sidebar row. Orange, as on a down seat: something to look at, not a question waiting.
+struct RigDot: View {
+    let tone: RigLine.Tone
+
+    var body: some View {
+        Group {
+            switch tone {
+            case .running: Circle().fill(.green)
+            case .attention: Circle().fill(.orange)
+            case .stopped: Circle().strokeBorder(.secondary, lineWidth: 1.5)
+            }
+        }
+        .frame(width: 9, height: 9)
+        .accessibilityHidden(true)
     }
 }
 
@@ -371,11 +401,11 @@ struct RigDetail: View {
                     }
                 }
                 .environment(rig)
-                // Offline, the last data stays on screen, dimmed, with when it was current.
-                .opacity(store.isUp ? 1 : 0.55)
-                .safeAreaInset(edge: .top, spacing: 0) { StatusBanners(rig: rig) }
+                // Offline or stopped, the last data stays on screen, dimmed: readable, but nothing is live.
+                .opacity(store.isUp && !(isStopped(summary) && rig.op == nil) ? 1 : 0.55)
+                .safeAreaInset(edge: .top, spacing: 0) { StatusBanners(rig: rig, summary: summary) }
                 .navigationTitle(summary.name)
-                .navigationSubtitle(subtitle(rig))
+                .navigationSubtitle(subtitle(rig, summary))
                 .toolbar(removing: showsTitle ? nil : .title)
             } else if case .unreachable(let reason, _) = store.daemon {
                 // Named for what can fix it: start a local daemon, or check the address someone set.
@@ -406,8 +436,19 @@ struct RigDetail: View {
         }
     }
 
-    private func subtitle(_ rig: RigStore) -> String {
+    private func subtitle(_ rig: RigStore, _ summary: RigSummary) -> String {
         guard let graph = rig.graph else { return "" }
+        switch rig.op {
+        case .starting?:
+            let progress = startProgress(graph)
+            return "Starting · \(progress.up) of \(progress.total) up"
+        case .stopping?:
+            return "Stopping…"
+        case nil:
+            if isStopped(summary) {
+                return "Stopped · \(graph.seats.count) \(graph.seats.count == 1 ? "seat" : "seats")"
+            }
+        }
         let working = graph.seats.filter { SeatPhase($0) == .working }.count
         return
             "\(graph.seats.count) \(graph.seats.count == 1 ? "seat" : "seats") · \(working) working · \(store.isLive ? "live" : "polling")"
@@ -450,10 +491,21 @@ struct InspectorPanel: View {
 /// Daemon-down and untested-version notices above the current view.
 struct StatusBanners: View {
     let rig: RigStore
+    let summary: RigSummary
     @Environment(AppStore.self) private var store
 
     var body: some View {
         VStack(spacing: 0) {
+            if store.isUp, isStopped(summary), rig.op != .starting {
+                StoppedRigBanner(summary: summary)
+            } else if case .failed? = store.actions.status[AppStore.rigKey(summary.id)] {
+                // A start or stop that failed on a rig still up: say so above the view, as the CLI put it.
+                banner(tint: .orange, symbol: "power") {
+                    ActionStatusLine(key: AppStore.rigKey(summary.id))
+                    Spacer()
+                    Button("Dismiss") { store.actions.clear(AppStore.rigKey(summary.id)) }
+                }
+            }
             if case .unreachable(let reason, _) = store.daemon {
                 banner(tint: .attention, symbol: "bolt.horizontal.circle") {
                     Text("Daemon stopped. Showing data from \(stale), read-only.")

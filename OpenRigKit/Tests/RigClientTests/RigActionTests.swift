@@ -103,6 +103,23 @@ import Testing
             ])
     }
 
+    @Test func rigLifecycle() {
+        #expect(RigAction.rigUp(rig: "kernel").arguments == ["up", "kernel", "--existing", "--yes", "--json"])
+        #expect(RigAction.rigDown(rig: "kernel").arguments == ["down", "kernel", "--snapshot", "--yes", "--json"])
+        #expect(RigAction.rigDown(rig: "kernel").displayCommand == "rig down kernel --snapshot --yes --json")
+    }
+
+    @Test func seatRepair() {
+        #expect(
+            RigAction.launchSeat(rig: "kernel", logicalId: "dev.b2").arguments == [
+                "launch", "kernel", "dev.b2", "--json",
+            ])
+        #expect(
+            RigAction.freshSeat(session: "dev-b2@kernel", reason: "OpenRig.app: start fresh").arguments == [
+                "seat", "launch", "dev-b2@kernel", "--fresh", "--reason", "OpenRig.app: start fresh", "--json",
+            ])
+    }
+
     @Test func startDaemonHasNoJSONFlag() {
         #expect(RigAction.startDaemon.arguments == ["daemon", "start"], "rig daemon start doesn't take --json")
     }

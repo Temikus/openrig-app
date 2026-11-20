@@ -27,6 +27,10 @@ enum ViewMode: String, CaseIterable, Identifiable {
     }
 }
 
+enum RigOp: Equatable {
+    case starting, stopping
+}
+
 /// Daemon status, the rig list, and the store for the selected rig.
 /// Event-stream messages are refresh signals: the stores refetch state over HTTP.
 @MainActor @Observable
@@ -83,6 +87,7 @@ final class AppStore {
             rig = selectedRigID.map { id in
                 RigStore(rigID: id, rigName: rigs.first { $0.id == id }?.name ?? id, client: client, tmux: tmux())
             }
+            rig?.op = selectedRigID.flatMap { rigOps[$0] }
             if let name = rig?.rigName { settings.lastRigName = name }
             rig?.me = me
             Task { await rig?.refresh() }
@@ -218,6 +223,7 @@ final class AppStore {
         if let id = selectedRigID {
             rig = RigStore(rigID: id, rigName: rig?.rigName ?? id, client: client, tmux: tmux())
             rig?.me = me
+            rig?.op = rigOps[id]
         }
         daemon = .connecting
         Task {
@@ -317,6 +323,40 @@ final class AppStore {
     var daemonAddress: String {
         let url = endpoint.baseURL
         return [url.host(percentEncoded: false), url.port.map(String.init)].compactMap { $0 }.joined(separator: ":")
+    }
+
+    /// Rigs with a `rig up` or `rig down` in flight. Kept here, not on RigStore, so it survives switching rigs.
+    private(set) var rigOps: [RigSummary.ID: RigOp] = [:]
+    /// Bumped by Rig › Stop Rig… to open the toolbar's stop popover.
+    private(set) var stopRequests = 0
+
+    func requestStop() { stopRequests += 1 }
+
+    /// The ActionStore key for a rig's start or stop, so its result shows next to the control.
+    static func rigKey(_ id: RigSummary.ID) -> String { "rig:\(id)" }
+
+    /// `rig up <rig> --existing`. Seats light up on the canvas as their startup events arrive.
+    func startRig(_ summary: RigSummary) async {
+        await run(.starting, on: summary, .rigUp(rig: summary.name), success: "\(summary.name) started")
+    }
+
+    /// `rig down <rig>`, after the person confirmed in the stop popover.
+    func stopRig(_ summary: RigSummary) async {
+        await run(.stopping, on: summary, .rigDown(rig: summary.name), success: "\(summary.name) stopped")
+    }
+
+    private func run(_ op: RigOp, on summary: RigSummary, _ action: RigAction, success: String) async {
+        guard rigOps[summary.id] == nil else { return }
+        setOp(op, for: summary.id)
+        announce(op == .starting ? "Starting \(summary.name)" : "Stopping \(summary.name)")
+        await actions.perform(action, key: Self.rigKey(summary.id), success: success)
+        setOp(nil, for: summary.id)
+        await refreshNow()
+    }
+
+    private func setOp(_ op: RigOp?, for id: RigSummary.ID) {
+        rigOps[id] = op
+        if rig?.rigID == id { rig?.op = op }
     }
 
     /// `rig daemon start`, then a fresh look once it answers.

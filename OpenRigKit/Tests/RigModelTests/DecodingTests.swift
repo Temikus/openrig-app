@@ -31,6 +31,8 @@ func fixture<T: Decodable>(_ name: String, as type: T.Type = T.self) throws -> T
         #expect(denkeeper.status == .running)
         #expect(denkeeper.nodeCount == 7)
         #expect(denkeeper.runningCount == 7)
+        #expect(denkeeper.lifecycle == .running)
+        #expect(denkeeper.latestSnapshot == "1m ago")
     }
 
     @Test func missingCountsDefaultToZero() throws {

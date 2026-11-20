@@ -1,4 +1,5 @@
 import AppKit
+import RigDomain
 import SwiftUI
 
 /// What the menu bar can do in the frontmost main window; each view publishes its part as a focused scene value.
@@ -61,6 +62,14 @@ struct OpenRigCommands: Commands {
                 .keyboardShortcut("k")
                 .disabled(window == nil)
             Divider()
+            Button("Start Rig") {
+                if let rig = store.selectedRig { Task { await store.startRig(rig) } }
+            }
+            .disabled(!canStart)
+            // Opens the toolbar's confirmation, which names who is mid-turn.
+            Button("Stop Rig…") { store.requestStop() }
+                .disabled(!canStop)
+            Divider()
             Button("Refresh") { Task { await store.refreshNow() } }
                 .keyboardShortcut("r")
             Button("Start Daemon") { Task { await store.startDaemon() } }
@@ -101,5 +110,16 @@ struct OpenRigCommands: Commands {
             // With no rig there's no board to focus, and the request would linger for a later visit.
             .disabled(store.rig == nil)
         }
+    }
+
+    private var canStart: Bool {
+        guard let rig = store.selectedRig, store.isUp, store.rigOps[rig.id] == nil else { return false }
+        return isStopped(rig)
+    }
+
+    /// Needs a main window: the confirmation is the toolbar button's popover.
+    private var canStop: Bool {
+        guard let rig = store.selectedRig, store.isUp, store.rigOps[rig.id] == nil, window != nil else { return false }
+        return !isStopped(rig)
     }
 }

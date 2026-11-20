@@ -1,40 +1,59 @@
-import AppKit
+import RigClient
 import RigDomain
 import RigModel
 import SwiftUI
 
-/// What a down seat means and how to bring it back. The app doesn't restore seats itself:
-/// `rig up --existing` restores the whole rig, so the user previews it first.
+/// What a down seat means and how to bring it back, on the seat itself. Both commands touch only this seat:
+/// `rig launch` leaves running seats alone, and `rig seat launch --fresh` leaves sibling seats attached.
 struct DownSeatNotice: View {
     let seat: Seat
     let presence: SeatPresence
     @Environment(RigStore.self) private var rig
+    @Environment(AppStore.self) private var store
+    @Environment(ActionStore.self) private var actions
+    @State private var confirmingFresh = false
 
-    private var command: String { "rig up \(rig.rigName) --existing --plan" }
+    private var key: String { "seat-launch:\(seat.id)" }
+    private var resume: RigAction { .launchSeat(rig: rig.rigName, logicalId: seat.logicalId) }
+    private var fresh: RigAction? {
+        seat.sessionName.map { .freshSeat(session: $0, reason: "OpenRig.app: start \(seat.displayName) fresh") }
+    }
+    private var rigStopped: Bool { store.selectedRig.map(isStopped) ?? false }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(headline).font(.callout)
             if !seat.currentQItems.isEmpty {
                 Text("Its in-progress work is stalled until it's back.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-            HStack(spacing: 6) {
-                Text(command)
-                    .font(.caption.monospaced())
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
-                Button("Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(command, forType: .string)
+            if rigStopped {
+                Text("The whole rig is stopped. Start Rig brings every seat back.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: 8) {
+                    Button("Resume Seat") { Task { await actions.perform(resume, key: key, success: "Seat launched") } }
+                        .help(resume.displayCommand)
+                    Button("Start Fresh…") { confirmingFresh = true }
+                        .help(fresh?.displayCommand ?? "This seat has no session name")
+                        .disabled(fresh == nil)
                 }
-                .controlSize(.small)
-                .help("Previews a restore of the rig's seats; drop --plan to run it")
+                .disabled(actions.isRunning(key) || actions.offline)
+                ActionStatusLine(key: key)
             }
-            .padding(6)
-            .background(.background, in: .rect(cornerRadius: 6))
+        }
+        .confirmationDialog(
+            "Start \(seat.displayName) with a blank conversation?", isPresented: $confirmingFresh,
+            titleVisibility: .visible
+        ) {
+            Button("Start Fresh") {
+                guard let fresh else { return }
+                Task { await actions.perform(fresh, key: key, success: "Seat started fresh") }
+            }
+        } message: {
+            Text("Its current conversation isn't resumed. Use this when Resume Seat can't bring it back.")
         }
     }
 

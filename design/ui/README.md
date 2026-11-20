@@ -9,5 +9,6 @@ A 2x PNG of every artboard in the Paper file "OpenRig — Canvas prototype" (fil
 | `3-wiring-explorations/` | Wiring explorations: four wire styles for the canvas |
 | `4-settings-window/` | Settings window: the four tabs and the States board |
 | `5-style-guide/` | Style guide |
+| `6-rig-controls/` | Rig controls · options (2026-11-20): status, stop, stopped rig, start progress, a seat down. The picked variant on each board is marked "picked" |
 
 `tokens.css` holds the file's tokens. In Paper, font tokens don't resolve inside `font-family`, so boards set the family by name.
