@@ -191,9 +191,16 @@ struct QueueTaskForm: View {
             HStack {
                 ActionStatusLine(key: key)
                 Spacer()
+                // Held open a second on success: closing at once took the "Queued" line with it.
                 CommitButton(
                     title: "Queue for \(destination.map(rig.displayName(session:)) ?? "…")", action: action, key: key,
-                    success: "Queued", after: done)
+                    success: "Queued",
+                    after: {
+                        Task {
+                            try? await Task.sleep(for: .seconds(1))
+                            done()
+                        }
+                    })
             }
         }
         .formStyle(.grouped)
@@ -215,12 +222,27 @@ enum ActionPanel: String, Identifiable {
     case handOff = "Hand off", block = "Block on", close = "Close", nudge = "Nudge", note = "Note"
     case deadline = "New deadline"
     var id: Self { self }
+
+    /// The panel's ActionStore key prefix, as each panel builds it ("handoff:<id>").
+    var keyPrefix: String {
+        switch self {
+        case .resolve: "resolve"
+        case .handOff: "handoff"
+        case .block: "block"
+        case .close: "close"
+        case .nudge: "nudge"
+        case .note: "note"
+        case .deadline: "deadline"
+        }
+    }
 }
 
 struct QItemActions: View {
     let item: QItem
     @Environment(RigStore.self) private var rig
     @State private var panel: ActionPanel?
+    /// The panel that last closed on success: its result line shows here, since the panel took its own with it.
+    @State private var finished: ActionPanel?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -246,20 +268,31 @@ struct QItemActions: View {
             if let panel {
                 Group {
                     switch panel {
-                    case .resolve: ResolvePanel(item: item) { self.panel = nil }
-                    case .handOff: HandOffPanel(item: item) { self.panel = nil }
-                    case .block: BlockPanel(item: item) { self.panel = nil }
-                    case .close: ClosePanel(item: item) { self.panel = nil }
-                    case .nudge: NudgePanel(item: item) { self.panel = nil }
-                    case .note: NotePanel(item: item) { self.panel = nil }
-                    case .deadline: DeadlinePanel(item: item) { self.panel = nil }
+                    case .resolve: ResolvePanel(item: item) { close(panel) }
+                    case .handOff: HandOffPanel(item: item) { close(panel) }
+                    case .block: BlockPanel(item: item) { close(panel) }
+                    case .close: ClosePanel(item: item) { close(panel) }
+                    case .nudge: NudgePanel(item: item) { close(panel) }
+                    case .note: NotePanel(item: item) { close(panel) }
+                    case .deadline: DeadlinePanel(item: item) { close(panel) }
                     }
                 }
                 .padding(12)
                 .background(.quaternary.opacity(0.4), in: .rect(cornerRadius: 10))
+            } else if let finished {
+                ActionStatusLine(key: "\(finished.keyPrefix):\(item.id)")
             }
         }
-        .onChange(of: item.id) { panel = nil }
+        .onChange(of: item.id) {
+            panel = nil
+            finished = nil
+        }
+        .onChange(of: panel) { if panel != nil { finished = nil } }
+    }
+
+    private func close(_ done: ActionPanel) {
+        finished = done
+        panel = nil
     }
 
     private var isForYou: Bool { forYou(item, me: rig.me) != nil }
