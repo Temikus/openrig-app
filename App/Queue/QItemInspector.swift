@@ -98,8 +98,10 @@ struct QItemInspector: View {
                 if let body = item.body, !body.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Body").font(.headline)
-                        Text(body)
-                            .font(.callout.monospaced())
+                        // Prose, not code: reflowed and in the body font, so it doesn't wrap twice into 35-column
+                        // lines. Inline Markdown (`code`, **bold**, links) still renders.
+                        Text(markdown(reflowedProse(body)))
+                            .font(.callout)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(10)
@@ -171,4 +173,9 @@ struct ChainOfRecordView: View {
             }
         }
     }
+}
+
+private func markdown(_ text: String) -> AttributedString {
+    let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+    return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
 }
