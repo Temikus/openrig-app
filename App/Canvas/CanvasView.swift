@@ -13,6 +13,8 @@ struct CanvasView: View {
     @State private var visible: CGRect = .zero
     /// Until the user zooms by hand, the canvas keeps fitting the window.
     @State private var userZoomed = false
+    @State private var pointerOver = false
+    @Environment(\.appearsActive) private var appearsActive
     /// Zoom to Fit was asked for, so refits may shrink the whole rig into view.
     @State private var fitsWhole = false
 
@@ -34,6 +36,11 @@ struct CanvasView: View {
                     .onTapGesture { selection.clear() }
             }
             .scrollPosition($scroll)
+            // Seats hold still under the pointer (RigStore.canvasHovered), only in an active window: behind another
+            // app nobody is about to click, and the hold would never lift.
+            .onHover { pointerOver = $0 }
+            .onChange(of: pointerOver && appearsActive, initial: true) { _, hold in rig.canvasHovered = hold }
+            .onDisappear { rig.canvasHovered = false }
             .onScrollGeometryChange(for: CGRect.self) { geo in
                 // The canvas runs under the floating sidebar and inspector; only the inset part is visible.
                 let i = geo.contentInsets
@@ -136,6 +143,8 @@ struct CanvasContent: View {
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
     @State private var hoveredSeat: String?
+    /// The seat VoiceOver is on, which holds the layout as the pointer does.
+    @AccessibilityFocusState private var voiceOverSeat: String?
 
     private var commonModel: String? {
         let counts = Dictionary(grouping: graph.seats.compactMap(\.model), by: { $0 }).mapValues(\.count)
@@ -183,10 +192,15 @@ struct CanvasContent: View {
                         }
                     }
                     .offset(x: frame.minX, y: frame.minY)
+                    // A held layout lets a prompt card grow over the seat below it: draw it on top.
+                    .zIndex(prompt == nil ? 0 : 1)
                     .accessibilitySortPriority(order[seat.id] ?? 0)
+                    .accessibilityFocused($voiceOverSeat, equals: seat.id)
                 }
             }
         }
+        .onChange(of: voiceOverSeat != nil) { _, on in rig.canvasVoiceOver = on }
+        .onDisappear { rig.canvasVoiceOver = false }
     }
 
     /// VoiceOver order: each pod's heading, then its seats top to bottom, pods left to right; wire chips (priority 0)

@@ -179,6 +179,19 @@ final class RigStore {
     func reportHeight(_ height: CGFloat, for seat: Seat.ID) {
         guard abs((seatSizes[seat]?.height ?? -1) - height) > 0.5 else { return }
         seatSizes[seat] = CGSize(width: LayoutMetrics().seatWidth, height: height)
+        if holdsLayout { heightsPending = true } else { recompute() }
+    }
+
+    /// The pointer is over the canvas, or VoiceOver is on a seat: a card growing for a prompt (or shrinking once it's
+    /// answered) doesn't move the seats around it until both leave. Graph changes still lay out at once.
+    var canvasHovered = false { didSet { releaseHeldLayout() } }
+    var canvasVoiceOver = false { didSet { releaseHeldLayout() } }
+    private var holdsLayout: Bool { canvasHovered || canvasVoiceOver }
+    @ObservationIgnored private var heightsPending = false
+
+    private func releaseHeldLayout() {
+        guard !holdsLayout, heightsPending else { return }
+        heightsPending = false
         recompute()
     }
 
@@ -198,6 +211,7 @@ final class RigStore {
 
     private func recompute() {
         guard let graph else { return }
+        heightsPending = false
         routeCache = [:]
         layout = layoutRig(layoutInput(for: graph, seatSizes: seatSizes))
     }
