@@ -447,3 +447,18 @@ Picked in Paper, page "Rig controls · options" (`design/ui/6-rig-controls/`).
   - Pointer and keyboard paths: Esc closing the popover, and Return not stopping.
   - A failed start or stop banner.
 - **Existing crash, not from this work:** the window aborts with "more Update Constraints passes than views" when `OPENRIG_DEBUG_SIZE` resizes it with the inspector open. Reports from 15:53, 17:17 and 17:27 predate this work.
+
+#### Design review of the rig controls, 2026-11-20
+
+The full panel was run on this diff; the run is in `design/reviews/2026-11-20-rig-controls/` (`review.md`, `progress.md`). It confirmed 16 findings and downgraded 5; all 13 resulting fixes are done:
+- A stopped rig isn't dimmed (its text fell to 2.7:1). Its seats read "stopped" with a hollow ring, not the crash ✕.
+- The light-mode text colour for "look at this" (`Color.lookText`).
+- attention_required reads "needs you · N seats" in coral, matching the seat. `generation_mismatch` reads "no report since restart".
+- One power item in every state (Stop Rig… / Start Rig) in its own glass group. Stop Rig… goes through the focused window.
+- Keys: ⇧⌘U Start Rig, ⇧⌘D Stop Rig…, ⌘↩ Stop N Seats.
+- "<rig> is up" is announced. Stale success lines clear. A failed start or stop leads with "Couldn't …" and offers Try Again.
+- The subtitle matches the sidebar. A busy ring in the sidebar. Resume Seat leads over Start Fresh. Commands are shown without `--json --yes`.
+
+**Seen during capture:**
+- Once, a background copy hung at 100% CPU after `OPENRIG_DEBUG_SIZE` resized it from 900×600 to 1440×860 on a stopped rig. It didn't recur in two retries.
+- It looks related to the existing constraint-loop abort listed above.
