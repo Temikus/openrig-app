@@ -280,25 +280,35 @@ struct DaemonStatusFooter: View {
                 .accessibilityAddTraits(.isStaticText)
                 .accessibilityLabel(
                     "Daemon \(health.semver ?? ""), \(health.isHealthy ? "running" : "running with problems")"
-                        + (store.isLive ? "" : ", polling"))
+                        + (store.isLive ? "" : ", polling")
+                )
+                .help(footerHelp)
             case .unreachable(_, let since):
                 HStack(spacing: 6) {
                     Image(systemName: "xmark.octagon.fill").foregroundStyle(Color.attention)
-                    Text("Daemon stopped · since \(since, style: .time)")
+                    if store.canStartDaemon {
+                        Text("Daemon stopped · since \(since, style: .time)")
+                    } else {
+                        Text("Can't reach \(store.daemonAddress)")
+                    }
                 }
                 .accessibilityElement(children: .combine)
+                .help(footerHelp)
                 Spacer(minLength: 4)
-                Button("Start") { Task { await store.startDaemon() } }
-                    .controlSize(.small)
-                    .disabled(store.actions.isRunning("daemon"))
-                    .help("rig daemon start")
+                if store.canStartDaemon {
+                    Button("Start") { Task { await store.startDaemon() } }
+                        .controlSize(.small)
+                        .disabled(store.actions.isRunning("daemon"))
+                        .help("rig daemon start")
+                } else {
+                    ConnectionSettingsButton(title: "Settings…").controlSize(.small)
+                }
             }
             Spacer(minLength: 0)
         }
         .font(.caption)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .help(footerHelp)
     }
 
     private var footerHelp: String {
@@ -337,12 +347,27 @@ struct RigDetail: View {
                 .navigationSubtitle(subtitle(rig))
                 .toolbar(removing: showsTitle ? nil : .title)
             } else if case .unreachable(let reason, _) = store.daemon {
+                // Named for what can fix it: start a local daemon, or check the address someone set.
                 ContentUnavailableView {
-                    Label("Daemon not reachable", systemImage: "bolt.horizontal.circle")
+                    Label(
+                        store.canStartDaemon ? "Daemon not running" : "Can't reach the daemon",
+                        systemImage: "bolt.horizontal.circle")
                 } description: {
-                    Text(reason)
+                    Text("\(store.daemonAddress): \(reason)")
                 } actions: {
-                    Button("Retry") { Task { await store.refreshNow() } }
+                    HStack {
+                        if store.canStartDaemon {
+                            Button("Start Daemon") { Task { await store.startDaemon() } }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(store.actions.isRunning("daemon"))
+                                .help("rig daemon start")
+                        }
+                        Button("Retry") { Task { await store.refreshNow() } }
+                        ConnectionSettingsButton(title: "Connection Settings…")
+                    }
+                    // The view gives every action the same width; that truncated "Connection Settings…".
+                    .fixedSize()
+                    ActionStatusLine(key: "daemon")
                 }
             } else {
                 ContentUnavailableView("Select a rig", systemImage: "circle.hexagongrid")
@@ -436,5 +461,19 @@ struct StatusBanners: View {
         .padding(.vertical, 8)
         .background(tint.opacity(0.12))
         .overlay(alignment: .bottom) { Divider() }
+    }
+}
+
+/// Opens Settings on the Connection tab, where the daemon's address and token are.
+struct ConnectionSettingsButton: View {
+    let title: String
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Button(title) {
+            // SettingsView keeps its tab in this key (@AppStorage), so set it before the window opens.
+            UserDefaults.standard.set(SettingsView.Pane.connection.rawValue, forKey: "settingsPane")
+            openSettings()
+        }
     }
 }

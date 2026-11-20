@@ -52,6 +52,8 @@ struct OpenRigCommands: Commands {
             Divider()
             Button("Refresh") { Task { await store.refreshNow() } }
                 .keyboardShortcut("r")
+            Button("Start Daemon") { Task { await store.startDaemon() } }
+                .disabled(!store.isUnreachable || !store.canStartDaemon || store.actions.isRunning("daemon"))
         }
         CommandGroup(before: .toolbar) {
             ForEach(Array(ViewMode.allCases.enumerated()), id: \.element) { index, mode in

@@ -300,6 +300,25 @@ final class AppStore {
         }
     }
 
+    /// Start can help only when the address was found automatically (daemon.json or the default port). An address
+    /// set in Settings or OPENRIG_URL may be another machine or port, where `rig daemon start` changes nothing.
+    var canStartDaemon: Bool {
+        switch endpoint.source {
+        case .stateFile, .fallback: true
+        case .custom, .environment: false
+        }
+    }
+
+    var isUnreachable: Bool {
+        if case .unreachable = daemon { true } else { false }
+    }
+
+    /// host:port, as people type it in Settings › Connection.
+    var daemonAddress: String {
+        let url = endpoint.baseURL
+        return [url.host(percentEncoded: false), url.port.map(String.init)].compactMap { $0 }.joined(separator: ":")
+    }
+
     /// `rig daemon start`, then a fresh look once it answers.
     func startDaemon() async {
         if await actions.perform(.startDaemon, key: "daemon", success: "Daemon started", allowOffline: true) {
