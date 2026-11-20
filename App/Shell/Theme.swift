@@ -6,7 +6,8 @@ extension Color {
     static let attention = Color(
         nsColor: NSColor(name: "attention") { appearance in
             appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-                ? NSColor(srgbRed: 0.88, green: 0.46, blue: 0.39, alpha: 1)
+                // Bright enough for 4.5:1 as caption text on the coral-tinted tile and card headers.
+                ? NSColor(srgbRed: 0.93, green: 0.53, blue: 0.46, alpha: 1)
                 : NSColor(srgbRed: 0.78, green: 0.25, blue: 0.20, alpha: 1)
         })
 
@@ -24,6 +25,9 @@ extension Color {
                 ? .systemGreen
                 : NSColor(srgbRed: 0.09, green: 0.48, blue: 0.20, alpha: 1)
         })
+
+    /// Captions on prompt cards ("wants to run"): `.secondary` fell to about 3.2:1 on the coral tint behind them.
+    static let promptCaption = Color.primary.opacity(0.75)
 
     /// Terminal tile body, the same in both appearances: panes are drawn light-on-dark.
     static let terminalBody = Color(white: 0.08)

@@ -31,9 +31,9 @@ struct PermissionControl: View {
                 if let screen {
                     Text(screen.description.map { "\(screen.title): \($0)" } ?? screen.title)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.promptCaption)
                 } else {
-                    Text("wants to run").font(.caption).foregroundStyle(.secondary)
+                    Text("wants to run").font(.caption).foregroundStyle(Color.promptCaption)
                 }
                 // Never truncated: the risky part of a command is often at the end. A tinted block, not a
                 // bordered one, so it doesn't read as a text field.
@@ -231,7 +231,7 @@ struct NeedsYouRow: View {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.circle.fill").foregroundStyle(Color.attention)
                     Text(rig.seat(prompt.seatID)?.displayName ?? prompt.session).font(.callout.weight(.semibold))
-                    Text("asks to run").foregroundStyle(.secondary)
+                    Text("asks to run").foregroundStyle(Color.promptCaption)
                     Spacer()
                     if let linked {
                         Button(shortQItemID(linked.id)) { selection.select(qitem: linked.id) }
@@ -539,6 +539,10 @@ struct PillButtonStyle: ButtonStyle {
             .padding(.vertical, 4)
             .foregroundStyle(foreground)
             .background(background, in: .capsule)
+            .overlay {
+                // Coral marks the answer in the border; coral text on its own tint stayed near 3:1.
+                if kind == .attention { Capsule().strokeBorder(Color.attention, lineWidth: 1) }
+            }
             .opacity(isEnabled ? (configuration.isPressed ? 0.75 : 1) : 0.4)
             .contentShape(.capsule)
     }
@@ -546,7 +550,7 @@ struct PillButtonStyle: ButtonStyle {
     private var foreground: Color {
         switch kind {
         case .primary: Color(nsColor: .windowBackgroundColor)
-        case .attention: .attention
+        case .attention: .primary
         case .danger: .white
         case .plain: .primary
         }
@@ -555,7 +559,7 @@ struct PillButtonStyle: ButtonStyle {
     private var background: Color {
         switch kind {
         case .primary: .primary
-        case .attention: Color.attention.opacity(0.14)
+        case .attention: Color.attention.opacity(0.18)
         case .danger: .attention
         case .plain: Color.primary.opacity(0.08)
         }
