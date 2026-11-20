@@ -98,7 +98,9 @@ struct TerminalsView: View {
             frozen = nil
         }
         .onChange(of: rig.prompts.map(\.seatID)) { _, seats in
-            if let focused = terminals.focusedSeatID, seats.contains(focused) { terminals.pauseForPrompt(on: focused) }
+            if let focused = terminals.focusedSeatID, seats.contains(focused) {
+                terminals.pauseForPrompt(on: focused, name: rig.seat(focused)?.displayName ?? "The seat")
+            }
         }
         .onChange(of: terminals.focusedSeatID != nil || holdsOrder) { _, hold in
             guard let graph = rig.graph else { return }
@@ -261,7 +263,7 @@ struct TerminalsView: View {
                 ForEach(slots[start..<min(start + cols, slots.count)], id: \.seat.id) { slot in
                     Group {
                         if slot.isPlaceholder {
-                            PlaceholderTile(seat: slot.seat)
+                            PlaceholderTile(seat: slot.seat, focused: terminals.focusedSeatID == slot.seat.id)
                         } else {
                             TerminalTile(seat: slot.seat, large: isLarge, voiceOverTile: $voiceOverTile)
                         }
@@ -369,13 +371,19 @@ private struct Slot {
 /// Holds a small tile's place while its seat is focused in the large row, so nothing below moves.
 private struct PlaceholderTile: View {
     let seat: Seat
+    /// Moved up because it is focused; otherwise because it needs you.
+    let focused: Bool
 
     var body: some View {
         RoundedRectangle(cornerRadius: 10)
             .strokeBorder(Color(nsColor: .separatorColor), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
             .overlay {
-                Text("\(seat.displayName) · focused").font(.callout).foregroundStyle(.secondary)
+                Text("\(seat.displayName) · \(focused ? "focused above" : "needs you, moved up")")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
+            // The seat itself is read where it moved to; the placeholder only marks the gap.
+            .accessibilityHidden(true)
     }
 }
 
@@ -636,7 +644,7 @@ struct TerminalTile: View {
                     // typing stops before Enter could answer it.
                     .onChange(of: PromptScreen(lines: snap.lines) != nil) { _, prompted in
                         // Only as a prompt appears: ⌘T after that is a deliberate choice to answer in the pane.
-                        if prompted { terminals.pauseForPrompt(on: seat.id) }
+                        if prompted { terminals.pauseForPrompt(on: seat.id, name: seat.displayName) }
                     }
                 } else {
                     // The tail of the agent's transcript (not Claude Code's input box), as many rows as fit;

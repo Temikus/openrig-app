@@ -36,6 +36,7 @@ struct OpenRigCommands: Commands {
 
     var body: some Commands {
         SidebarCommands()
+        ToolbarCommands()
         InspectorCommands()
         // ⌘N queues a task, as the toolbar says; a second window is the rarer need.
         CommandGroup(replacing: .newItem) {

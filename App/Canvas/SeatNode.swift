@@ -128,7 +128,6 @@ struct SeatNode: View {
                 RoundedRectangle(cornerRadius: 13).strokeBorder(Color.primary, lineWidth: 2).padding(-3)
             }
         }
-        .opacity(seat.activity?.stale == true && phase != .needsYou ? 0.85 : 1)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(seat.displayName)
     }
@@ -176,7 +175,8 @@ struct SeatNode: View {
             parts.append(reason.replacingOccurrences(of: "_", with: " "))
         }
         if let age = compactAge(since: seat.activity?.since, now: now) { parts.append(age) }
-        if seat.activity?.stale == true && phase == .unknown { parts.append("stale") }
+        // The word is the only sign: the card is no longer dimmed (the dot grid showed through it).
+        if seat.activity?.stale == true && phase != .needsYou { parts.append("stale") }
         return parts.joined(separator: " · ")
     }
 

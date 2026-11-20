@@ -133,10 +133,12 @@ final class TerminalStore {
     }
 
     /// Stops Type mode because `seat` is asking for permission, so no key answers it.
-    func pauseForPrompt(on seat: Seat.ID) {
+    func pauseForPrompt(on seat: Seat.ID, name: String) {
         guard typing, focusedSeatID == seat else { return }
         typing = false
         pausedForPrompt = seat
+        // Keys stop reaching the pane; say so, since the tile's caption may not be where VoiceOver is.
+        announce("Typing paused: \(name) is asking for permission", urgent: true)
     }
 
     func release() {

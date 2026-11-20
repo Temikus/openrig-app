@@ -7,6 +7,9 @@ import UserNotifications
 @MainActor
 final class Banners: NSObject, UNUserNotificationCenterDelegate {
     private var tracker = NoticeTracker()
+    /// For VoiceOver, every kind: the Settings switches are about banners, and turning one off shouldn't leave a
+    /// VoiceOver user hearing nothing.
+    private var speech = NoticeTracker()
     private weak var store: AppStore?
     private var asked = false
 
@@ -34,12 +37,13 @@ final class Banners: NSObject, UNUserNotificationCenterDelegate {
         var enabled = settings.bannerKinds
         if enabled.contains(.permission) { enabled.insert(.otherRig) } else { enabled.remove(.otherRig) }
 
+        // In front, banners may be held and VoiceOver users would hear nothing.
+        let spoken = speech.update(current, enabled: Set(NoticeKind.allCases))
+        if NSApp.isActive, !spoken.isEmpty {
+            announce(spoken.map { "\($0.title). \($0.body)" }.joined(separator: " "), urgent: true)
+        }
         let fresh = tracker.update(current, enabled: enabled)
         guard !fresh.isEmpty else { return }
-        // In front, banners may be held and VoiceOver users would hear nothing.
-        if NSApp.isActive {
-            announce(fresh.map { "\($0.title). \($0.body)" }.joined(separator: " "), urgent: true)
-        }
         if settings.bannersOnlyInBackground, NSApp.isActive, store.windowInFront {
             Self.debugLog("held: window in front (\(fresh.count))")
             return
