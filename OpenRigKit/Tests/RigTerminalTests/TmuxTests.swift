@@ -221,4 +221,27 @@ final class Received: @unchecked Sendable {
         #expect(snap(rows: 40, cursorY: 3).panOffset(clientRows: 10) == 2)
         #expect(snap(rows: 40, cursorY: 0).panOffset(clientRows: 10) == 0)
     }
+
+    /// A full-screen app that hides its cursor parks it in a corner (`rig`'s operator TUI: bottom right of a 120-row
+    /// pane). Its menus are at the top, so show the top rather than the parked cursor.
+    @Test func aFullScreenAppWithAHiddenCursorShowsTheTop() {
+        var tui = snap(rows: 120, cursorY: 119)
+        tui.alternateScreen = true
+        tui.cursorVisible = false
+        #expect(tui.panOffset(clientRows: 40) == 0)
+        // An editor on the alternate screen shows its cursor: keep following it.
+        tui.cursorVisible = true
+        #expect(tui.panOffset(clientRows: 40) == 80)
+    }
+
+    @Test func parsesTheScreenAndCursorFlags() {
+        let output = "@@openrig-pane %7 200 120 199 119 1 1 0\nline\n"
+        let snap = PaneCapture.parse(output)["%7"]
+        #expect(snap?.alternateScreen == true)
+        #expect(snap?.cursorVisible == false)
+        // Older marker lines without the flags read as the main screen with a visible cursor.
+        let old = PaneCapture.parse("@@openrig-pane %7 200 120 199 119 1\n")["%7"]
+        #expect(old?.alternateScreen == false)
+        #expect(old?.cursorVisible == true)
+    }
 }

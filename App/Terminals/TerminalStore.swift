@@ -84,8 +84,11 @@ final class TerminalStore {
         // The client gets the pane's size plus the status bar, so the pane shows whole.
         let cols = snap?.cols ?? 80
         let rows = (snap?.rows ?? 24) + (snap?.statusRows ?? 0)
-        attach = controller.focus(session: session, cols: cols, rows: rows)
-        attachSize = attach.map { GridSize(cols: $0.size.cols, rows: $0.size.rows) }
+        let next = controller.focus(session: session, cols: cols, rows: rows)
+        // The same client keeps its grid: resetting it here would cancel a resize still in flight, and with the
+        // tile's target unchanged nothing would refit it, leaving the view taller than the tile.
+        if next !== attach { attachSize = GridSize(cols: next.size.cols, rows: next.size.rows) }
+        attach = next
         focusedSeatID = seat.id
     }
 
@@ -102,6 +105,8 @@ final class TerminalStore {
             attach.size = (size.cols, size.rows)
             try? await Task.sleep(for: .milliseconds(120))
             await tmux?.redraw(clientPID: attach.pid)
+            // A resize returns tmux's view to the top; the header would still say "rows above".
+            if self.panned > 0 { self.pan(self.panned) }
         }
     }
 

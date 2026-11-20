@@ -9,6 +9,9 @@ public struct PaneSnapshot: Sendable, Equatable {
     public var cursorY: Int
     /// Rows tmux's status bar adds to an attached client (0 when the bar is off).
     public var statusRows: Int = 0
+    /// A full-screen app (vim, a TUI) is drawing on the alternate screen.
+    public var alternateScreen = false
+    public var cursorVisible = true
     /// Screen lines, top to bottom.
     public var lines: [String]
     public var capturedAt: Date
@@ -27,10 +30,11 @@ public struct PaneSnapshot: Sendable, Equatable {
 
     /// How far to pan a client `clientRows` tall so it shows where the person types. tmux follows only a visible
     /// cursor, and Claude Code hides its own, so a short client would show the pane's top: show the bottom when the
-    /// cursor is in it, else put the cursor one row from the top.
+    /// cursor is in it, else put the cursor one row from the top. A full-screen app with a hidden cursor parks it
+    /// anywhere (often the bottom corner) and keeps its menus at the top, so it shows the top.
     public func panOffset(clientRows: Int) -> Int {
         let hidden = rows - clientRows
-        guard hidden > 0 else { return 0 }
+        guard hidden > 0, !(alternateScreen && !cursorVisible) else { return 0 }
         return min(hidden, max(0, cursorY - 1))
     }
 
@@ -110,7 +114,8 @@ public enum PaneCapture {
             if i > 0 { args.append(";") }
             args += [
                 "display-message", "-p", "-t", pane,
-                "\(marker) #{pane_id} #{pane_width} #{pane_height} #{cursor_x} #{cursor_y} #{?#{==:#{status},off},0,1}",
+                "\(marker) #{pane_id} #{pane_width} #{pane_height} #{cursor_x} #{cursor_y} #{?#{==:#{status},off},0,1}"
+                    + " #{alternate_on} #{cursor_flag}",
                 ";", "capture-pane", "-p", "-e", "-t", pane,
             ]
         }
@@ -137,6 +142,8 @@ public enum PaneCapture {
                 current = PaneSnapshot(
                     pane: f[0], cols: cols, rows: rows, cursorX: x, cursorY: y, lines: [], capturedAt: capturedAt)
                 current?.statusRows = f.count > 5 ? Int(f[5]) ?? 0 : 0
+                current?.alternateScreen = f.count > 6 && f[6] == "1"
+                current?.cursorVisible = f.count > 7 ? f[7] != "0" : true
             } else {
                 current?.lines.append(String(line))
             }
