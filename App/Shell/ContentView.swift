@@ -5,7 +5,11 @@ import SwiftUI
 struct ContentView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.appearsActive) private var appearsActive
-    @State private var showsInspector = true
+    /// What the person asked for; `showsInspector` is that, held back while the detail has no room for it.
+    @State private var wantsInspector = true
+    @State private var showsInspector = false
+    /// Unknown until the first layout, when a restored window may be too narrow for the inspector.
+    @State private var detailWidth: CGFloat?
     @State private var showsQueueTask = false
     /// Bumped by Rig › Needs You… to open the toolbar button's list.
     @State private var needsYouRequests = 0
@@ -21,16 +25,17 @@ struct ContentView: View {
             // The toolbar belongs to the detail column, so its trailing items end at the inspector's edge
             // instead of straddling it; the inspector's toggle sits over the inspector while it shows.
             RigDetail(showsTitle: fit != .tight)
-                .onGeometryChange(for: ToolbarFit.self) {
-                    ToolbarFit(detailWidth: $0.size.width)
-                } action: {
-                    fit = $0
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.width
+                } action: { width in
+                    fit = ToolbarFit(detailWidth: width)
+                    detailWidth = width
                 }
                 .toolbar { detailToolbar }
         }
-        .inspector(isPresented: $showsInspector) {
+        .inspector(isPresented: inspectorBinding) {
             InspectorPanel()
-                .inspectorColumnWidth(min: 260, ideal: 320, max: 420)
+                .inspectorColumnWidth(min: 260, ideal: InspectorRoom.ideal, max: 420)
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) { inspectorToggle }
                 }
@@ -38,10 +43,12 @@ struct ContentView: View {
         .environment(store.selection)
         .environment(store.actions)
         .onChange(of: store.viewMode, initial: true) { old, new in
-            if old != new { store.inspectorByMode[old] = showsInspector }
-            showsInspector = store.inspectorByMode[new] ?? true
+            if old != new { store.inspectorByMode[old] = wantsInspector }
+            wantsInspector = store.inspectorByMode[new] ?? true
         }
-        .onChange(of: store.inspectorRequests) { showsInspector = true }
+        .onChange(of: store.inspectorRequests) { requestInspector() }
+        .onChange(of: wantsInspector) { updateInspector() }
+        .onChange(of: detailWidth) { updateInspector() }
         .focusedSceneValue(
             \.windowActions,
             WindowActions(
@@ -103,9 +110,44 @@ struct ContentView: View {
     }
 
     private var inspectorToggle: some View {
-        Button("Inspector", systemImage: "sidebar.right") { showsInspector.toggle() }
+        Button("Inspector", systemImage: "sidebar.right") { inspectorBinding.wrappedValue.toggle() }
             .help(showsInspector ? "Hide Inspector (⌃⌘I)" : "Show Inspector (⌃⌘I)")
     }
+
+    /// The toggle, ⌃⌘I and the system's own close all come through here.
+    private var inspectorBinding: Binding<Bool> {
+        Binding(get: { showsInspector }, set: { $0 ? requestInspector() : (wantsInspector = false) })
+    }
+
+    private func requestInspector() {
+        wantsInspector = true
+        guard !showsInspector, let detailWidth, !InspectorRoom.canOpen(detailWidth: detailWidth) else { return }
+        // Asked for in a narrow window: widen it, as Xcode does, and show the inspector once there is room.
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow, let screen = window.screen?.visibleFrame else { return }
+        var frame = window.frame
+        frame.size.width = min(frame.width + InspectorRoom.needed - detailWidth, screen.width)
+        frame.origin.x = min(frame.minX, screen.maxX - frame.width)
+        window.setFrame(frame, display: true, animate: true)
+    }
+
+    private func updateInspector() {
+        // Only opening waits for room. Hiding it as the window narrows leaves the split view stuck wider than the window.
+        let shows = wantsInspector && (showsInspector || detailWidth.map(InspectorRoom.canOpen) == true)
+        if showsInspector != shows { showsInspector = shows }
+    }
+}
+
+/// Whether the inspector can open beside the detail column.
+///
+/// Hazard: a window restored narrower than sidebar + inspector ideal + the split view's detail minimum (about 330 pt)
+/// with the inspector shown makes SwiftUI loop on constraints and abort ("more Update Constraints in Window passes
+/// than there are views"), on every launch. So the inspector opens only after the first layout, and only with room.
+enum InspectorRoom {
+    static let ideal: CGFloat = 320
+    /// Detail width, without the inspector, needed to open it: the inspector's ideal plus room for the detail.
+    static let needed: CGFloat = ideal + 340
+
+    static func canOpen(detailWidth: CGFloat) -> Bool { detailWidth >= needed }
 }
 
 /// How much of the toolbar fits over the detail column; the inspector's toolbar sits over the inspector.
