@@ -420,7 +420,7 @@ The review and fix log are in `design/reviews/2026-11-20-full/` (`review.md`, `p
   34–41. Also from use: Type mode shows the top of full-screen apps and keeps its pan through resizes.
 - **Not seen live:** Increase Contrast variants; drafts surviving a dismissal (needs typing into a live app); result
   lines after a commit; ⌘[ (⌘] checked).
-- **Decided 2026-11-20** (options drawn in Paper, page "Review 2026-11-20 · decisions"):
+- **Decided and done 2026-11-20** (options drawn in Paper, page "Review 2026-11-20 · decisions"; commits cf87e8e..07c306c):
   - 13: freeze the canvas layout while the pointer or VoiceOver is on it; the grown card may overlap the seat below.
   - 23: moving work (in-flight and next-hop wires, In progress) turns green; orange means only "look at this".
   - 27: keep "qitem" (the CLI's word); one word for the blocked state, no "unpark".
