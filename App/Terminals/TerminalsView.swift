@@ -600,7 +600,7 @@ struct TerminalTile: View {
             // A dead pane's last snapshot would look live; say what happened instead.
             Text(phase == .down(.lost) ? "The tmux session is gone." : "No session running.")
                 .font(.callout)
-                .foregroundStyle(Color(white: 0.65))
+                .foregroundStyle(Color.tileSecondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let snap = terminals.snapshot(seat) {
             let inner = CGSize(width: bodySize.width - 24, height: bodySize.height - 12)
@@ -664,7 +664,7 @@ struct TerminalTile: View {
         } else {
             Text(seat.tmuxPane == nil ? "No tmux pane bound to this seat." : "Waiting for tmux…")
                 .font(.callout)
-                .foregroundStyle(Color(white: 0.65))
+                .foregroundStyle(Color.tileSecondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
