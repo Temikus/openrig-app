@@ -460,5 +460,11 @@ The full panel was run on this diff; the run is in `design/reviews/2026-11-20-ri
 - The subtitle matches the sidebar. A busy ring in the sidebar. Resume Seat leads over Start Fresh. Commands are shown without `--json --yes`.
 
 **Seen during capture:**
-- Once, a background copy hung at 100% CPU after `OPENRIG_DEBUG_SIZE` resized it from 900×600 to 1440×860 on a stopped rig. It didn't recur in two retries.
-- It looks related to the existing constraint-loop abort listed above.
+- Twice a background copy sat at 100% CPU after an `OPENRIG_DEBUG_SIZE` resize on a stopped rig. One stopped answering AX for 50 s. The other read 100% at 5 s and was killed before it could be told apart from startup. A third launch at 900×600 was clean.
+- **Open bug, bisected 2026-11-21: the stopped rig's canvas spins and aborts, from `daed41f`.** A plain launch reproduces it, with no debug hooks, when the saved state is a stopped rig on Canvas in a 900×600 window. The copy spins at 100% CPU and aborts about 13 s later with the "Update Constraints" exception listed above (`SplitViewChildController … didUpdateMinSize`).
+  - Stopped throwaway rig, `OPENRIG_DEBUG_OPEN=<rig>/canvas`, started from a saved 900×600 frame: `3efb5e1`, before the rig controls, was fine 4 of 4. `daed41f`, `876516e` and `b50ae9f` each spun 4 of 4.
+  - On the same build and window, kernel's canvas (running) and the stopped rig's Queue view settled within 2 s.
+  - While it spins, the window's width jumps (900 → 1220 → 900 → 976) as the inspector opens. The detail column is measured mid-animation (0 to 670).
+  - Not the cause on its own, tried one change at a time. With the stopped banner removed, 1 of 3 still spun. With a floor that never exceeds the window's width, 6 of 6 spun. With a constant 820 minimum width, 5 of 5 spun.
+  - The earlier verdict on this line, that the debug hook's `setFrame` was the cause, was wrong. The hook only kept the restored view on screen for 3 s before switching to Terminals. Moving the frame off (0, 0) didn't help (4 of 5 spun).
+  - Next: bisect `daed41f`'s app hunks against `3efb5e1`.
