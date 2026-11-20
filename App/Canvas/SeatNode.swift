@@ -105,6 +105,9 @@ struct SeatNode: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // On the button, not the node: a label on the node is inherited by the prompt's buttons inside it.
+            .accessibilityLabel("\(seat.displayName), \(phase.label)")
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
             if let prompt {
                 Divider()
                 // Inline permission card, so the prompt can be answered from the canvas.
@@ -126,6 +129,8 @@ struct SeatNode: View {
             }
         }
         .opacity(seat.activity?.stale == true && phase != .needsYou ? 0.85 : 1)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(seat.displayName)
     }
 
     private var header: some View {

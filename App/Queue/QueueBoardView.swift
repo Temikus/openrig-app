@@ -206,6 +206,9 @@ struct BoardColumn: View {
         .frame(width: width)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(.quaternary.opacity(0.35), in: .rect(cornerRadius: 12))
+        // Column by column for VoiceOver, not across the board's rows.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(title), \(items.count)")
     }
 
     private func header(_ title: String, _ count: Int) -> some View {
@@ -280,6 +283,7 @@ struct QItemCard: View {
         .buttonStyle(.plain)
         .help(item.id)
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     @ViewBuilder private var blockerLine: some View {

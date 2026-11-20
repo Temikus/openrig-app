@@ -111,6 +111,9 @@ struct PermissionControl: View {
             }
             ActionStatusLine(key: key)
         }
+        // The buttons are the same on every prompt; the group says whose prompt they answer.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(rig.seat(prompt.seatID)?.displayName ?? "A seat") asks to run \(prompt.command)")
         .task(id: prompt) {
             changed = false
             redirecting = false

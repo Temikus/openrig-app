@@ -472,6 +472,9 @@ struct TerminalTile: View {
                     .padding(-3)
             }
         }
+        // One VoiceOver group per tile, so the grid reads tile by tile and each answer bar sits under its seat.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(seat.displayName), \(phase.label)")
         .onChange(of: focused) { composing = false }
     }
 

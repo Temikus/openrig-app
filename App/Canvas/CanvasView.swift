@@ -170,7 +170,6 @@ struct CanvasContent: View {
                         }
                     }
                     .offset(x: frame.minX, y: frame.minY)
-                    .accessibilityLabel("\(seat.displayName), \(SeatPhase(seat).label)")
                     .accessibilitySortPriority(order[seat.id] ?? 0)
                 }
             }
