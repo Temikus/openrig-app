@@ -6,6 +6,8 @@ public struct RigLine: Equatable, Sendable {
         case running
         /// Something is down that nobody stopped on purpose: look at this.
         case attention
+        /// A seat is waiting on the person, as a seat's "needs you".
+        case needsYou
         case stopped
     }
 
@@ -25,7 +27,9 @@ public func rigLine(_ rig: RigSummary) -> RigLine {
     case .degraded:
         return RigLine(tone: .attention, text: "degraded · \(partial)")
     case .attentionRequired:
-        return RigLine(tone: .attention, text: "needs attention · \(partial)")
+        // The seats that need the person, not the running count: "2 of 2" read as both needing attention.
+        let n = rig.attentionCount
+        return RigLine(tone: .needsYou, text: n > 0 ? "needs you · \(n) \(n == 1 ? "seat" : "seats")" : "needs you")
     case .recoverable:
         return RigLine(tone: .attention, text: "stopped unexpectedly · \(seats)")
     case .stopped:
@@ -70,4 +74,14 @@ public func stopRisk(_ graph: RigGraph) -> StopRisk {
     let live = graph.seats.filter { presence($0) == .live || presence($0) == .starting }
     let working = live.filter { $0.activity?.state == .running }
     return StopRisk(working: working, idle: live.count - working.count)
+}
+
+/// An activity reason in words a person can act on; the daemon's own snake_case otherwise.
+public func plainReason(_ reason: String) -> String {
+    switch reason {
+    // The seat's newest report is from before its restart; it clears when the new session reports.
+    case "generation_mismatch": "no report since restart"
+    case "session_missing": "session missing"
+    default: reason.replacingOccurrences(of: "_", with: " ")
+    }
 }

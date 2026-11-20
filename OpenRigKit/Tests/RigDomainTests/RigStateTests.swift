@@ -20,8 +20,12 @@ import Testing
                     latestSnapshot: snapshot))
         }
         #expect(line(.degraded, running: 6) == RigLine(tone: .attention, text: "degraded · 6 of 7 seats"))
+        #expect(line(.attentionRequired, running: 7) == RigLine(tone: .needsYou, text: "needs you"))
+        let one = RigSummary(
+            id: "r", name: "r", lifecycle: .attentionRequired, nodeCount: 2, runningCount: 2, attentionCount: 1)
         #expect(
-            line(.attentionRequired, running: 7) == RigLine(tone: .attention, text: "needs attention · 7 of 7 seats"))
+            rigLine(one) == RigLine(tone: .needsYou, text: "needs you · 1 seat"),
+            "counts seats needing you, not seats up")
         #expect(line(.recoverable, running: 0) == RigLine(tone: .attention, text: "stopped unexpectedly · 7 seats"))
         #expect(
             line(.stopped, running: 0, snapshot: "2h ago") == RigLine(tone: .stopped, text: "stopped · snapshot 2h ago")
@@ -36,6 +40,13 @@ import Testing
         #expect(isStopped(RigSummary(id: "r", name: "r", status: .stopped, nodeCount: 3)))
         #expect(!isStopped(RigSummary(id: "r", name: "r", status: .partial, nodeCount: 3, runningCount: 1)))
         #expect(!isStopped(RigSummary(id: "r", name: "r", status: .running, nodeCount: 3, runningCount: 3)))
+    }
+}
+
+@Suite struct PlainReasonTests {
+    @Test func reasons() {
+        #expect(plainReason("generation_mismatch") == "no report since restart")
+        #expect(plainReason("idle_status_bar") == "idle status bar")
     }
 }
 

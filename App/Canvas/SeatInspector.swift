@@ -111,7 +111,7 @@ struct SeatInspector: View {
     private var activityText: String {
         let phase = SeatPhase(seat)
         var text = phase.label
-        if let reason = seat.activity?.reason { text += " (\(reason.replacingOccurrences(of: "_", with: " ")))" }
+        if let reason = seat.activity?.reason { text += " (\(plainReason(reason)))" }
         if let age = compactAge(since: seat.activity?.since, now: .now) { text += " · \(age)" }
         return text
     }

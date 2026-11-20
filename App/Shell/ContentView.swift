@@ -273,7 +273,7 @@ struct RigRow: View {
                     Text(rig.name)
                     Text(text)
                         .font(.caption)
-                        .foregroundStyle(line.tone == .attention && opText == nil ? Color.lookText : .secondary)
+                        .foregroundStyle(captionColor(line.tone))
                         .monospacedDigit()
                 }
                 Spacer()
@@ -293,6 +293,15 @@ struct RigRow: View {
         .accessibilityLabel("\(rig.name), \(text)" + (waiting.isEmpty ? "" : ", \(waiting.summary)"))
     }
 
+    private func captionColor(_ tone: RigLine.Tone) -> Color {
+        guard opText == nil else { return .secondary }
+        switch tone {
+        case .attention: return .lookText
+        case .needsYou: return .attention
+        case .running, .stopped: return .secondary
+        }
+    }
+
     private var opText: String? {
         switch store.rigOps[rig.id] {
         case .starting?: "starting…"
@@ -302,7 +311,8 @@ struct RigRow: View {
     }
 }
 
-/// A rig's state in its sidebar row. Orange, as on a down seat: something to look at, not a question waiting.
+/// A rig's state in its sidebar row. Orange, as on a down seat: something to look at. Coral, as on a seat: it
+/// needs you.
 struct RigDot: View {
     let tone: RigLine.Tone
 
@@ -311,6 +321,7 @@ struct RigDot: View {
             switch tone {
             case .running: Circle().fill(.green)
             case .attention: Circle().fill(.orange)
+            case .needsYou: Circle().fill(Color.attention)
             case .stopped: Circle().strokeBorder(.secondary, lineWidth: 1.5)
             }
         }

@@ -209,7 +209,7 @@ struct SeatNode: View {
             return parts.joined(separator: " · ")
         }
         if phase == .needsYou, let reason = seat.activity?.reason {
-            parts.append(reason.replacingOccurrences(of: "_", with: " "))
+            parts.append(plainReason(reason))
         }
         if let age = compactAge(since: seat.activity?.since, now: now) { parts.append(age) }
         // The word is the only sign: the card is no longer dimmed (the dot grid showed through it).
