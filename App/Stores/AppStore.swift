@@ -150,6 +150,19 @@ final class AppStore {
         await banners?.check()
     }
 
+    /// Shows a seat of the selected rig, picked from a Needs-you row: its tile on Terminals, else the seat in the
+    /// inspector, which opens if it was hidden. A selection alone changed nothing visible on Terminals.
+    func reveal(seat: Seat, in store: RigStore) {
+        selection.select(seat: seat, in: store)
+        if viewMode == .terminals { store.terminals.focus(seat) } else { inspectorRequests += 1 }
+    }
+
+    /// Shows a row of the selected rig in the inspector, which opens if it was hidden.
+    func reveal(qitem id: QItem.ID) {
+        selection.select(qitem: id)
+        inspectorRequests += 1
+    }
+
     /// Opens the app where a banner points.
     func show(_ target: NoticeTarget) {
         showMainWindow()

@@ -246,8 +246,11 @@ struct PermissionControl: View {
 /// One Needs-you entry: a prompt with its control, or a held row that opens in the inspector.
 struct NeedsYouRow: View {
     let entry: NeedsYouEntry
+    /// Closes the list once a row has taken the person somewhere.
+    var opened: () -> Void = {}
     @Environment(RigStore.self) private var rig
     @Environment(SelectionStore.self) private var selection
+    @Environment(AppStore.self) private var app
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -255,11 +258,18 @@ struct NeedsYouRow: View {
             case .prompt(let prompt, let linked):
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.circle.fill").foregroundStyle(Color.attention)
-                    Text(rig.seat(prompt.seatID)?.displayName ?? prompt.session).font(.callout.weight(.semibold))
+                    if let seat = rig.seat(prompt.seatID) {
+                        Button(seat.displayName) { reveal(seat) }
+                            .buttonStyle(.link)
+                            .font(.callout.weight(.semibold))
+                            .help("Show \(seat.displayName)")
+                    } else {
+                        Text(prompt.session).font(.callout.weight(.semibold))
+                    }
                     Text("asks to run").foregroundStyle(Color.promptCaption)
                     Spacer()
                     if let linked {
-                        Button(shortQItemID(linked.id)) { selection.select(qitem: linked.id) }
+                        Button(shortQItemID(linked.id)) { reveal(qitem: linked.id) }
                             .buttonStyle(.link)
                             .font(.caption.monospaced())
                             .help(linked.summary)
@@ -274,7 +284,7 @@ struct NeedsYouRow: View {
                 PermissionControl(prompt: prompt, linked: linked, compact: true)
             case .seat(let seat, let presence):
                 Button {
-                    selection.select(seat: seat, in: rig)
+                    reveal(seat)
                 } label: {
                     HStack(spacing: 6) {
                         StatusDot(phase: .down(presence))
@@ -292,7 +302,7 @@ struct NeedsYouRow: View {
                 .buttonStyle(.plain)
             case .qitem(let item):
                 Button {
-                    selection.select(qitem: item.id)
+                    reveal(qitem: item.id)
                 } label: {
                     HStack(spacing: 6) {
                         let kind = forYou(item, me: rig.me)
@@ -323,6 +333,16 @@ struct NeedsYouRow: View {
                 RoundedRectangle(cornerRadius: 10).strokeBorder(Color.accentColor, lineWidth: 2)
             }
         }
+    }
+
+    private func reveal(_ seat: Seat) {
+        app.reveal(seat: seat, in: rig)
+        opened()
+    }
+
+    private func reveal(qitem id: QItem.ID) {
+        app.reveal(qitem: id)
+        opened()
     }
 
     private var tint: Color {
@@ -459,7 +479,7 @@ struct NeedsYouList: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
-                        ForEach(entries) { NeedsYouRow(entry: $0) }
+                        ForEach(entries) { NeedsYouRow(entry: $0, opened: opened) }
                         // One group per rig, under its name, in the order their first row needs you.
                         let rigs = (elsewhere.compactMap { rigName(ofSession: $0.source) } + attention.map(\.rig))
                             .reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
