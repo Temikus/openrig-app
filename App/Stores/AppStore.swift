@@ -330,9 +330,15 @@ final class AppStore {
     /// The ActionStore key for a rig's start or stop, so its result shows next to the control.
     static func rigKey(_ id: RigSummary.ID) -> String { "rig:\(id)" }
 
+    /// The last start or stop that failed, per rig, so the failure banner can name it and try it again.
+    private(set) var failedOps: [RigSummary.ID: RigOp] = [:]
+    /// Rigs started from here that aren't fully up yet; "<rig> is up" is announced when they are.
+    @ObservationIgnored private var awaitingUp: Set<RigSummary.ID> = []
+
     /// `rig up <rig> --existing`. Seats light up on the canvas as their startup events arrive.
     func startRig(_ summary: RigSummary) async {
-        await run(.starting, on: summary, .rigUp(rig: summary.name), success: "\(summary.name) started")
+        // `rig up` returns before the harnesses are ready, so this says seats are starting, not that the rig is up.
+        await run(.starting, on: summary, .rigUp(rig: summary.name), success: "Starting \(summary.name)'s seats")
     }
 
     /// `rig down <rig>`, after the person confirmed in the stop popover.
@@ -344,9 +350,41 @@ final class AppStore {
         guard rigOps[summary.id] == nil else { return }
         setOp(op, for: summary.id)
         announce(op == .starting ? "Starting \(summary.name)" : "Stopping \(summary.name)")
-        await actions.perform(action, key: Self.rigKey(summary.id), success: success)
+        let ok = await actions.perform(action, key: Self.rigKey(summary.id), success: success)
+        failedOps[summary.id] = ok ? nil : op
+        if ok && op == .starting { awaitingUp.insert(summary.id) }
         setOp(nil, for: summary.id)
         await refreshNow()
+    }
+
+    /// Retries the start or stop that failed.
+    func retry(_ summary: RigSummary) async {
+        switch failedOps[summary.id] {
+        case .starting?: await startRig(summary)
+        case .stopping?: await stopRig(summary)
+        case nil: break
+        }
+    }
+
+    /// Clears a failed start or stop and its message.
+    func dismissFailure(_ id: RigSummary.ID) {
+        failedOps[id] = nil
+        actions.clear(Self.rigKey(id))
+    }
+
+    /// After each rig list refresh: a start's "is up", and results that no longer describe the rig.
+    private func noteLifecycleChanges(from old: [RigSummary]) {
+        for rig in rigs {
+            if awaitingUp.contains(rig.id), rig.nodeCount > 0, rig.runningCount == rig.nodeCount {
+                awaitingUp.remove(rig.id)
+                announce("\(rig.name) is up, \(rig.nodeCount) \(rig.nodeCount == 1 ? "seat" : "seats")")
+            }
+            // A success line outlives its moment once the rig changes state on its own (a crash, a CLI stop).
+            guard rigOps[rig.id] == nil, let before = old.first(where: { $0.id == rig.id }),
+                before.lifecycle != rig.lifecycle, case .succeeded? = actions.status[Self.rigKey(rig.id)]
+            else { continue }
+            actions.clear(Self.rigKey(rig.id))
+        }
     }
 
     private func setOp(_ op: RigOp?, for id: RigSummary.ID) {
@@ -424,7 +462,9 @@ final class AppStore {
         guard let rigs = try? await client.rigs() else { return }
         await refreshIdentity()
         await refreshRowsForMe()
+        let old = self.rigs
         self.rigs = rigs.filter { !$0.isArchived }
+        noteLifecycleChanges(from: old)
         if selectedRigID == nil || !self.rigs.contains(where: { $0.id == selectedRigID }) {
             let last = settings.reopenLastRig ? self.rigs.first { $0.name == settings.lastRigName } : nil
             selectedRigID = (last ?? self.rigs.first)?.id

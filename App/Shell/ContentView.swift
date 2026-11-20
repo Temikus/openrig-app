@@ -513,12 +513,19 @@ struct StatusBanners: View {
         VStack(spacing: 0) {
             if store.isUp, isStopped(summary) {
                 StoppedRigBanner(summary: summary)
-            } else if case .failed? = store.actions.status[AppStore.rigKey(summary.id)] {
-                // A start or stop that failed on a rig still up: say so above the view, as the CLI put it.
+            } else if let failed = store.failedOps[summary.id],
+                case .failed? = store.actions.status[AppStore.rigKey(summary.id)]
+            {
+                // A start or stop that failed on a rig still up: which one, the CLI's reason, and a retry.
                 banner(tint: .orange, symbol: "power") {
-                    ActionStatusLine(key: AppStore.rigKey(summary.id))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Couldn't \(failed == .starting ? "start" : "stop") \(summary.name).").font(.headline)
+                        ActionStatusLine(key: AppStore.rigKey(summary.id))
+                    }
                     Spacer()
-                    Button("Dismiss") { store.actions.clear(AppStore.rigKey(summary.id)) }
+                    Button("Try Again") { Task { await store.retry(summary) } }
+                        .disabled(store.rigOps[summary.id] != nil)
+                    Button("Dismiss") { store.dismissFailure(summary.id) }
                 }
             }
             if case .unreachable(let reason, _) = store.daemon {
