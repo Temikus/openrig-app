@@ -529,7 +529,7 @@ struct ResolvePanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let on = item.blockedOn {
-                Text("Waiting on \(on)").font(.caption).foregroundStyle(.secondary)
+                Text("Blocked on \(on)").font(.caption).foregroundStyle(.secondary)
             }
             TextField("Your decision", text: $decision, axis: .vertical).lineLimit(2...5)
                 .keepsDraft($decision, key, "decision")
@@ -537,7 +537,7 @@ struct ResolvePanel: View {
                 ActionStatusLine(key: key)
                 Spacer()
                 CommitButton(
-                    title: "Resolve and unpark",
+                    title: "Resolve and Unblock",
                     action: trimmed.isEmpty ? nil : .resolve(id: item.id, decision: trimmed),
                     key: key, success: "Resolved", after: done)
             }

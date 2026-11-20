@@ -67,11 +67,12 @@ final class ActionStore {
             status[key] = .failed("Not connected to the daemon yet.")
             return false
         }
+        // A result stays until the next action starts, so nobody misses it by looking away (no timeout).
+        status = status.filter { if case .succeeded = $0.value { false } else { true } }
         status[key] = .running
         do {
             try await http.answer(qitem: id, answer, as: actor)
             status[key] = .succeeded(success)
-            clearLater(key)
             return true
         } catch {
             status[key] = .failed(error.userMessage)
@@ -92,12 +93,12 @@ final class ActionStore {
             status[key] = .failed("rig not found. Pick it in Settings › Connection.")
             return false
         }
+        status = status.filter { if case .succeeded = $0.value { false } else { true } }
         status[key] = .running
         do {
             let result = try await cli.run(action)
             if result.succeeded {
                 status[key] = .succeeded(success)
-                clearLater(key)
                 return true
             }
             // `rig send` exits 1 when it can't confirm delivery: the keys may still have landed.
@@ -106,7 +107,6 @@ final class ActionStore {
             case .send, .answerPrompt:
                 if result.status == 1, Self.reportsSent(result) {
                     status[key] = .succeeded("\(success), not confirmed")
-                    clearLater(key)
                     return true
                 }
             default: break
@@ -119,13 +119,6 @@ final class ActionStore {
     }
 
     func clear(_ key: String) { status[key] = nil }
-
-    private func clearLater(_ key: String) {
-        Task {
-            try? await Task.sleep(for: .seconds(4))
-            if case .succeeded = status[key] { status[key] = nil }
-        }
-    }
 
     static func reportsSent(_ result: CLIResult) -> Bool {
         struct Envelope: Decodable {

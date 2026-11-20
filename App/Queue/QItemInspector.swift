@@ -68,7 +68,7 @@ struct QItemInspector: View {
                     if let created = item.created { row("Created", relative(created)) }
                     if let updated = item.updated { row("Updated", relative(updated)) }
                     if let blocked = item.blockedOn {
-                        // A link, and the same short id the card's "held on" uses.
+                        // A link, and the same short id the card's "on q-…" link uses.
                         GridRow {
                             Text("Blocked on").foregroundStyle(.secondary)
                             Button(shortQItemID(blocked)) { selection.select(qitem: blocked) }

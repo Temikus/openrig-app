@@ -339,7 +339,7 @@ struct QItemCard: View {
             .foregroundStyle(Color.attention)
             .lineLimit(1)
         case .blocked(on: .qitem(let id)):
-            Button("held on \(shortQItemID(id))", systemImage: "link") { selection.select(qitem: id) }
+            Button("on \(shortQItemID(id))", systemImage: "link") { selection.select(qitem: id) }
                 .buttonStyle(.link)
                 .font(.caption)
                 // Nested in the card's own button: a target of at least 24 pt, so a near miss doesn't pick the card.
@@ -418,7 +418,8 @@ struct StatusTag: View {
         case .pending: "Pending"
         case .inProgress: "In progress"
         case .blocked(on: .outside): "Needs you"
-        case .blocked(on: .qitem): "Held"
+        // One word for the state, as the column and the inspector say.
+        case .blocked(on: .qitem): "Blocked"
         case .closed(let reason): reason.map { "Closed · \($0)" } ?? "Closed"
         case .handedOff: "Handed off"
         case .unknown(let raw): raw

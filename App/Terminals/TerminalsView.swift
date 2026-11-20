@@ -679,13 +679,8 @@ struct TerminalTile: View {
                 focusedBar
             } else if composing {
                 HStack(alignment: .top, spacing: 8) {
-                    MessageComposer(seat: seat, inline: true, autofocus: true) {
-                        // Long enough to read "Sent", then back to one line.
-                        Task {
-                            try? await Task.sleep(for: .seconds(1.5))
-                            composing = false
-                        }
-                    }
+                    // Stays open after sending, so "Sent" stays readable until you close it or act again.
+                    MessageComposer(seat: seat, inline: true, autofocus: true)
                     Button("Close", systemImage: "xmark") { composing = false }
                         .labelStyle(.iconOnly)
                         .buttonStyle(.borderless)

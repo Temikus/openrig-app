@@ -420,14 +420,12 @@ The review and fix log are in `design/reviews/2026-11-20-full/` (`review.md`, `p
   34–41. Also from use: Type mode shows the top of full-screen apps and keeps its pan through resizes.
 - **Not seen live:** Increase Contrast variants; drafts surviving a dismissal (needs typing into a live app); result
   lines after a commit; ⌘[ (⌘] checked).
-- **Open, for a decision:**
-  - 13: a new prompt moves the seats around it. Hold the layout while hovered (the card then overlaps the seat below)
-    or float the control as an overlay.
-  - 19: Go to… (⌘K) palette for rigs, seats and tasks: a new feature.
-  - 23: orange means both "in flight" and "warning"; moving activity to green changes the legend and design.
-  - 26: app icon.
-  - 27: "qitem", "unpark", Held/Blocked in UI copy: product vocabulary.
-  - 29 (AX-08-01): success lines still auto-hide.
-  - 33: Help › OpenRig Help needs a docs URL.
-  - PC-09-01: shrinking the window with the inspector open still clips the sidebar (hiding it mid-resize left the split
-    view stuck wider than the window).
+- **Decided 2026-11-20** (options drawn in Paper, page "Review 2026-11-20 · decisions"):
+  - 13: freeze the canvas layout while the pointer or VoiceOver is on it; the grown card may overlap the seat below.
+  - 23: moving work (in-flight and next-hop wires, In progress) turns green; orange means only "look at this".
+  - 27: keep "qitem" (the CLI's word); one word for the blocked state, no "unpark".
+  - 29: success lines stay until the next action.
+  - 19: a ⌘K Go to… palette for rigs, seats and tasks.
+  - 26: a drafted icon from the rig mark, replaceable later.
+  - 33: Help › OpenRig Help (⌘?) opens openrig.dev.
+  - PC-09-01: the window's minimum width grows while the inspector is open.

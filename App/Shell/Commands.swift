@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// What the menu bar can do in the frontmost main window; each view publishes its part as a focused scene value.
@@ -42,6 +43,11 @@ struct OpenRigCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("New Window") { openWindow(id: OpenRigApp.mainWindow) }
                 .keyboardShortcut("n", modifiers: [.command, .option])
+        }
+        // No help book: the docs live on the web.
+        CommandGroup(replacing: .help) {
+            Button("OpenRig Help") { NSWorkspace.shared.open(URL(string: "https://openrig.dev")!) }
+                .keyboardShortcut("?", modifiers: .command)
         }
         CommandMenu("Rig") {
             Button("Queue Task…") { window?.queueTask?() }
