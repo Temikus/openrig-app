@@ -32,6 +32,13 @@ final class ActionStore {
     }
     /// Set while the daemon is unreachable: writes would fail, so their buttons disable.
     var offline = false
+    /// Text typed into composers and forms, by "<action key>|<field>". It outlives the popover, panel or tile that
+    /// showed it and goes when that action succeeds.
+    var drafts: [String: String] = [:]
+
+    func clearDrafts(for key: String) {
+        drafts = drafts.filter { !$0.key.hasPrefix(key + "|") }
+    }
 
     init(cli: RigCLI? = nil) {
         self.cli = cli

@@ -44,13 +44,36 @@ struct CommitButton: View {
         Button(title) {
             guard let action else { return }
             Task {
-                if await actions.perform(action, key: key, success: success) { after() }
+                if await actions.perform(action, key: key, success: success) {
+                    actions.clearDrafts(for: key)
+                    after()
+                }
             }
         }
         .buttonStyle(.borderedProminent)
         .disabled(action == nil || actions.isRunning(key) || actions.offline)
         .keyboardShortcut(.return, modifiers: .command)
         .help(action?.displayCommand ?? "Fill in the required fields")
+    }
+}
+
+extension View {
+    /// Keeps `text` in `ActionStore.drafts` under "<key>|<field>": restored when the view comes back, so closing a
+    /// popover, panel or tile doesn't throw away what was typed.
+    func keepsDraft(_ text: Binding<String>, _ key: String, _ field: String) -> some View {
+        modifier(KeepsDraft(text: text, key: "\(key)|\(field)"))
+    }
+}
+
+private struct KeepsDraft: ViewModifier {
+    @Binding var text: String
+    let key: String
+    @Environment(ActionStore.self) private var actions
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { if text.isEmpty, let draft = actions.drafts[key] { text = draft } }
+            .onChange(of: text) { actions.drafts[key] = text.isEmpty ? nil : text }
     }
 }
 
@@ -108,6 +131,7 @@ struct MessageComposer: View {
         )
         .focused($fieldFocused)
         .disabled(isDown)
+        .keepsDraft($text, key, "text")
     }
 
     private var sendButton: some View {
@@ -145,7 +169,7 @@ struct QueueTaskForm: View {
     @State private var detail = ""
     @State private var priority = Priority.routine
 
-    private let key = "create"
+    private var key: String { "create:\(rig.rigName)" }
 
     var body: some View {
         Form {
@@ -156,8 +180,10 @@ struct QueueTaskForm: View {
                 }
             }
             TextField("Summary", text: $summary, prompt: Text("One line the owner and the board will show"))
+                .keepsDraft($summary, key, "summary")
             TextField("Details", text: $detail, prompt: Text("Optional; the summary is used if empty"), axis: .vertical)
                 .lineLimit(3...8)
+                .keepsDraft($detail, key, "detail")
             Picker("Priority", selection: $priority) {
                 ForEach(Priority.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
             }
@@ -285,9 +311,10 @@ struct HandOffPanel: View {
                         .selectionDisabled(!c.allowed)
                 }
             }
-            TextField("Summary for the new owner", text: $summary)
+            TextField("Summary for the new owner", text: $summary).keepsDraft($summary, key, "summary")
             TextField("Details (optional)", text: $detail, axis: .vertical).lineLimit(2...6)
-            TextField("Also tell them (optional rig send)", text: $alsoTell)
+                .keepsDraft($detail, key, "detail")
+            TextField("Also tell them (optional rig send)", text: $alsoTell).keepsDraft($alsoTell, key, "tell")
             MidTurnWarning(item: item, text: "Their row closes now; they see the handoff after this turn.")
             HStack {
                 ActionStatusLine(key: key)
@@ -357,7 +384,7 @@ struct BlockPanel: View {
             }
             .pickerStyle(.segmented)
             if onPerson {
-                TextField("What decision is owed (required)", text: $summary)
+                TextField("What decision is owed (required)", text: $summary).keepsDraft($summary, key, "summary")
             }
             MidTurnWarning(item: item, text: "Their row parks now; they see it after this turn.")
             HStack {
@@ -410,7 +437,7 @@ struct ClosePanel: View {
                     }
                 }
             }
-            TextField("Resolution (shown on the row)", text: $resolution)
+            TextField("Resolution (shown on the row)", text: $resolution).keepsDraft($resolution, key, "resolution")
             HStack {
                 ActionStatusLine(key: key)
                 Spacer()
@@ -439,7 +466,7 @@ struct NudgePanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Message", text: $text, axis: .vertical).lineLimit(2...5)
+            TextField("Message", text: $text, axis: .vertical).lineLimit(2...5).keepsDraft($text, key, "text")
             HStack {
                 ActionStatusLine(key: key)
                 Spacer()
@@ -472,6 +499,7 @@ struct ResolvePanel: View {
                 Text("Waiting on \(on)").font(.caption).foregroundStyle(.secondary)
             }
             TextField("Your decision", text: $decision, axis: .vertical).lineLimit(2...5)
+                .keepsDraft($decision, key, "decision")
             HStack {
                 ActionStatusLine(key: key)
                 Spacer()
@@ -494,6 +522,7 @@ struct NotePanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             TextField("Note for the audit log", text: $text, axis: .vertical).lineLimit(2...5)
+                .keepsDraft($text, key, "text")
             HStack {
                 ActionStatusLine(key: key)
                 Spacer()
