@@ -14,6 +14,10 @@ struct ContentView: View {
     /// Bumped by Rig › Needs You… to open the toolbar button's list.
     @State private var needsYouRequests = 0
     @State private var fit = ToolbarFit.full
+    /// The window's width beside the detail column (sidebar and inspector) while the inspector shows, so the window
+    /// can't shrink until the panes overflow it and the sidebar is cut off.
+    @State private var besideDetail: CGFloat?
+    @State private var totalWidth: CGFloat?
     private var narrow: Bool { fit != .full }
 
     var body: some View {
@@ -40,6 +44,15 @@ struct ContentView: View {
                     ToolbarItem(placement: .primaryAction) { inspectorToggle }
                 }
         }
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            totalWidth = $0
+        }
+        .frame(minWidth: max(820, besideDetail.map { $0 + InspectorRoom.detailMinimum } ?? 0))
+        .onChange(of: totalWidth) { measureBesideDetail() }
+        .onChange(of: detailWidth) { measureBesideDetail() }
+        .onChange(of: showsInspector) { measureBesideDetail() }
         .environment(store.selection)
         .environment(store.actions)
         .onChange(of: store.viewMode, initial: true) { old, new in
@@ -133,6 +146,16 @@ struct ContentView: View {
         window.setFrame(frame, display: true, animate: true)
     }
 
+    private func measureBesideDetail() {
+        guard showsInspector, let totalWidth, let detailWidth else {
+            besideDetail = nil
+            return
+        }
+        // Steady while the window resizes (the detail takes the change); it moves when a pane is resized or opens.
+        let beside = (totalWidth - detailWidth).rounded()
+        if abs(beside - (besideDetail ?? 0)) > 1 { besideDetail = beside }
+    }
+
     private func updateInspector() {
         // Only opening waits for room. Hiding it as the window narrows leaves the split view stuck wider than the window.
         let shows = wantsInspector && (showsInspector || detailWidth.map(InspectorRoom.canOpen) == true)
@@ -147,8 +170,10 @@ struct ContentView: View {
 /// than there are views"), on every launch. So the inspector opens only after the first layout, and only with room.
 enum InspectorRoom {
     static let ideal: CGFloat = 320
+    /// The narrowest the detail column gets beside the inspector, about the split view's own minimum.
+    static let detailMinimum: CGFloat = 340
     /// Detail width, without the inspector, needed to open it: the inspector's ideal plus room for the detail.
-    static let needed: CGFloat = ideal + 340
+    static let needed: CGFloat = ideal + detailMinimum
 
     static func canOpen(detailWidth: CGFloat) -> Bool { detailWidth >= needed }
 }
