@@ -13,6 +13,8 @@ struct CanvasView: View {
     @State private var visible: CGRect = .zero
     /// Until the user zooms by hand, the canvas keeps fitting the window.
     @State private var userZoomed = false
+    /// Zoom to Fit was asked for, so refits may shrink the whole rig into view.
+    @State private var fitsWhole = false
 
     var body: some View {
         if let graph = rig.graph, let layout = rig.layout {
@@ -54,6 +56,7 @@ struct CanvasView: View {
                     zoomIn: { setZoom(zoom + 0.1) }, zoomOut: { setZoom(zoom - 0.1) },
                     fit: {
                         userZoomed = false
+                        fitsWhole = true
                         fit(layout)
                     })
             )
@@ -65,6 +68,7 @@ struct CanvasView: View {
                         pinchStart = start
                         zoom = clampZoom(start * value.magnification)
                         userZoomed = true
+                        fitsWhole = false
                     }
                     .onEnded { _ in pinchStart = nil }
             )
@@ -74,6 +78,7 @@ struct CanvasView: View {
                     zoom: Binding(get: { zoom }, set: setZoom),
                     fit: {
                         userZoomed = false
+                        fitsWhole = true
                         fit(layout)
                     }
                 )
@@ -102,14 +107,17 @@ struct CanvasView: View {
     private func setZoom(_ value: CGFloat) {
         zoom = clampZoom(value)
         userZoomed = true
+        fitsWhole = false
     }
 
+    /// Fits the rig to the window. Only after Zoom to Fit does it shrink below 100%: fitting on its own, a seven-seat
+    /// rig drew its captions at about 7.6 pt, so the canvas scrolls instead.
     private func fit(_ layout: CanvasLayout) {
         guard visible.width > 0, visible.height > 0 else { return }
         // The visible rect's size is the viewport's, whatever the zoom. Leave room for the legend.
         let scale = min(visible.width / layout.bounds.width, (visible.height - 60) / layout.bounds.height)
         // A 4% margin keeps fitted content clear of the scrollers' threshold.
-        zoom = clampZoom(min(scale * 0.96, 1.25))
+        zoom = clampZoom(max(min(scale * 0.96, 1.25), fitsWhole ? 0 : 1))
         scroll.scrollTo(edge: .top)
     }
 }

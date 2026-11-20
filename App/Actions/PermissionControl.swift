@@ -73,32 +73,23 @@ struct PermissionControl: View {
                 }
             } else {
                 HStack(spacing: 6) {
-                    Button("Allow once", action: allowOnce)
-                        .buttonStyle(PillButtonStyle(kind: .primary))
-                        .disabled(actions.isRunning(key) || actions.offline || screen?.allowOnceKey == nil)
-                        .help(
-                            screen?.allowOnceKey == nil
-                                ? "Can't read a plain Yes on screen; answer in the terminal" : "")
-                    Button("No, redirect…") { redirecting = true }
-                        .buttonStyle(PillButtonStyle(kind: .attention))
-                        .disabled(actions.isRunning(key))
-                    Menu {
-                        Button("View terminal") { viewTerminal() }
-                        // The prompt's own "don't ask again" option; Claude Code saves the rule. Its exact wording
-                        // is the label, so the user sees what scope they're granting.
-                        Button(screen?.rememberLabel ?? "Always allow…", action: remember)
-                            .disabled(screen?.rememberOption == nil || actions.offline || actions.isRunning(key))
-                    } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.caption.weight(.semibold))
-                            .frame(width: 24, height: 24)
-                            .background(.quaternary, in: .circle)
+                    // Allow once and its menu, then the opposite answer well apart. Where one line doesn't fit (a
+                    // canvas card), the answers stack instead of truncating to "Allow o…".
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 6) {
+                            allowButton
+                            moreMenu
+                            redirectButton.padding(.leading, 10)
+                        }
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 6) {
+                                allowButton
+                                moreMenu
+                            }
+                            redirectButton
+                        }
                     }
-                    .menuStyle(.button)
-                    .buttonStyle(.plain)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
-                    .accessibilityLabel("More answers")
+                    .layoutPriority(1)
                     if let hint {
                         Spacer(minLength: 8)
                         // When the pane can't be read, say why Allow once is off instead of inviting a click.
@@ -119,6 +110,40 @@ struct PermissionControl: View {
             redirecting = false
             screen = await rig.promptScreen(for: prompt.seatID)
         }
+    }
+
+    private var allowButton: some View {
+        Button("Allow once", action: allowOnce)
+            .buttonStyle(PillButtonStyle(kind: .primary))
+            .disabled(actions.isRunning(key) || actions.offline || screen?.allowOnceKey == nil)
+            .help(screen?.allowOnceKey == nil ? "Can't read a plain Yes on screen; answer in the terminal" : "")
+    }
+
+    private var redirectButton: some View {
+        Button("No, redirect…") { redirecting = true }
+            .buttonStyle(PillButtonStyle(kind: .attention))
+            .disabled(actions.isRunning(key))
+    }
+
+    private var moreMenu: some View {
+        Menu {
+            Button("View terminal") { viewTerminal() }
+            // The prompt's own "don't ask again" option; Claude Code saves the rule. Its exact wording
+            // is the label, so the user sees what scope they're granting.
+            Button(screen?.rememberLabel ?? "Always allow…", action: remember)
+                .disabled(screen?.rememberOption == nil || actions.offline || actions.isRunning(key))
+        } label: {
+            Image(systemName: "chevron.down")
+                .font(.caption.weight(.semibold))
+                .frame(width: 24, height: 24)
+                .background(.quaternary, in: .circle)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityLabel("More answers")
+        .help("More answers")
     }
 
     /// Re-reads the seat's prompt right before sending; answers only if it is still this one.
