@@ -19,11 +19,15 @@ struct QueueBoardView: View {
     /// The board's width; four columns share it.
     @State private var visibleWidth: CGFloat = 1000
     @FocusState private var searching: Bool
+    /// The board takes arrow keys: ↑↓ within a column, ←→ across, moving the selection.
+    @FocusState private var boardFocused: Bool
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             let now = context.date
             let columns = board(rig.items, filter: filter, now: now)
+            let cardIDs = [columns.pending, columns.inProgress, columns.blocked, columns.closed + columns.handedOff]
+                .map { $0.map(\.id) }
             VStack(alignment: .leading, spacing: 0) {
                 // Scrolls rather than squeezes: fixed-size controls here would otherwise set the detail
                 // column's minimum width, which the split view can't satisfy beside the inspector.
@@ -42,8 +46,13 @@ struct QueueBoardView: View {
                     }
                     .padding(.trailing, BoardSearchField.width + 28)
                     .overlay(alignment: .bottomTrailing) {
-                        BoardSearchField(text: $filter.search, focused: $searching)
-                            .padding(.trailing, 16)
+                        // Return picks the first match and hands the arrow keys to the board.
+                        BoardSearchField(text: $filter.search, focused: $searching) {
+                            guard let first = boardMove(cardIDs, from: nil, .down) else { return }
+                            selection.select(qitem: first)
+                            boardFocused = true
+                        }
+                        .padding(.trailing, 16)
                     }
                     // No preferred width of its own: the split view sizes the detail column toward its content's ideal
                     // width when the window resizes, and a wide filter row would squeeze the sidebar for it.
@@ -72,6 +81,20 @@ struct QueueBoardView: View {
                                 ?? (filter.scope == .active ? "Switch to Today to see closed work." : nil))
                     }
                     .padding(16)
+                }
+                .focusable()
+                .focused($boardFocused)
+                // The selected card's ring shows where the keys are; a ring round the whole board would add nothing.
+                .focusEffectDisabled()
+                .onMoveCommand { direction in
+                    let move: BoardDirection =
+                        switch direction {
+                        case .up: .up
+                        case .down: .down
+                        case .left: .left
+                        default: .right
+                        }
+                    if let next = boardMove(cardIDs, from: selection.qitemID, move) { selection.select(qitem: next) }
                 }
                 // The split view already places this beside the sidebar and inspector. Its safe-area insets
                 // still report both, so subtracting them would count them twice.
@@ -140,6 +163,7 @@ struct BoardSearchField: View {
     static let width: CGFloat = 200
     @Binding var text: String
     var focused: FocusState<Bool>.Binding
+    var onSubmit: () -> Void = {}
 
     var body: some View {
         HStack(spacing: 6) {
@@ -147,6 +171,7 @@ struct BoardSearchField: View {
             TextField("Search queue", text: $text)
                 .textFieldStyle(.plain)
                 .focused(focused)
+                .onSubmit(onSubmit)
                 // Escape clears; on an empty field it leaves it, as macOS search fields do.
                 .onExitCommand {
                     if text.isEmpty { focused.wrappedValue = false } else { text = "" }
@@ -175,6 +200,7 @@ struct BoardSearchField: View {
 
 struct BoardColumn: View {
     @Environment(\.boardColumnWidth) private var width
+    @Environment(SelectionStore.self) private var selection
     let title: String
     let items: [QItem]
     let now: Date
@@ -185,22 +211,30 @@ struct BoardColumn: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             header(title, items.count)
-            ScrollView(.vertical) {
-                LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(items) { QItemCard(item: $0, now: now) }
-                    if let secondTitle, !secondItems.isEmpty {
-                        header(secondTitle, secondItems.count).padding(.top, 8)
-                        ForEach(secondItems) { QItemCard(item: $0, now: now) }
+            ScrollViewReader { proxy in
+                ScrollView(.vertical) {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(items) { QItemCard(item: $0, now: now) }
+                        if let secondTitle, !secondItems.isEmpty {
+                            header(secondTitle, secondItems.count).padding(.top, 8)
+                            ForEach(secondItems) { QItemCard(item: $0, now: now) }
+                        }
+                        if items.isEmpty && secondItems.isEmpty {
+                            Text(emptyHint ?? "Nothing here.")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .padding(.vertical, 8)
+                        }
                     }
-                    if items.isEmpty && secondItems.isEmpty {
-                        Text(emptyHint ?? "Nothing here.")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .padding(.vertical, 8)
+                }
+                .scrollIndicators(.never)
+                // Arrow keys can move the selection past the column's visible end.
+                .onChange(of: selection.qitemID) { _, id in
+                    if let id, (items + secondItems).contains(where: { $0.id == id }) {
+                        withAnimation { proxy.scrollTo(id) }
                     }
                 }
             }
-            .scrollIndicators(.never)
         }
         .padding(10)
         .frame(width: width)

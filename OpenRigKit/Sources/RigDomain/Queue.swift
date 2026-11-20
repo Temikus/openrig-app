@@ -306,3 +306,25 @@ public func board(_ items: [QItem], filter: BoardFilter, now: Date, calendar: Ca
     }
     return out
 }
+
+public enum BoardDirection: Sendable { case up, down, left, right }
+
+/// The card an arrow key moves to on the board, given each column's card ids top to bottom. Up and down stay in the
+/// column; left and right skip empty columns and keep the row where they can. With nothing (or something no longer
+/// shown) selected, the first card.
+public func boardMove<ID: Equatable>(_ columns: [[ID]], from current: ID?, _ direction: BoardDirection) -> ID? {
+    let first = columns.first { !$0.isEmpty }?.first
+    guard let current, let col = columns.firstIndex(where: { $0.contains(current) }),
+        let row = columns[col].firstIndex(of: current)
+    else { return first }
+    switch direction {
+    case .up: return columns[col][max(row - 1, 0)]
+    case .down: return columns[col][min(row + 1, columns[col].count - 1)]
+    case .left, .right:
+        let step = direction == .left ? -1 : 1
+        var next = col + step
+        while columns.indices.contains(next), columns[next].isEmpty { next += step }
+        guard columns.indices.contains(next) else { return current }
+        return columns[next][min(row, columns[next].count - 1)]
+    }
+}
