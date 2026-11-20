@@ -85,7 +85,10 @@ struct CanvasView: View {
                 .padding(.bottom, 16)
             }
             .overlay(alignment: .bottomTrailing) {
-                if visible.width >= 720 {
+                // Only when part of the rig is out of view: over a rig that fits, it only covered seats.
+                let overflows =
+                    layout.bounds.width * zoom > visible.width + 1 || layout.bounds.height * zoom > visible.height + 1
+                if visible.width >= 720, overflows {
                     Minimap(graph: graph, layout: layout, zoom: zoom, visible: visible) { point in
                         scroll.scrollTo(
                             point: CGPoint(
