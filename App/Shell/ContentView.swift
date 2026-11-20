@@ -85,7 +85,10 @@ struct ContentView: View {
         // If tight and still short, the picker overflows first: ⌘1–3 still switch views, and Needs you stays in sight.
         .keptVisible(fit != .tight)
         ToolbarItem(placement: .primaryAction) {
-            NeedsYouButton(compact: narrow, requests: needsYouRequests).id(narrow)
+            // Re-identified when the badge comes or goes too: the toolbar keeps an item's first width, which cut
+            // "Needs you" to "Nee…" once a count appeared.
+            let badged = store.waitingEverywhere.urgent + store.waitingEverywhere.fyis > 0
+            NeedsYouButton(compact: narrow, requests: needsYouRequests).id("\(narrow)-\(badged)")
         }
         .keptVisible()
         ToolbarItem(placement: .primaryAction) {
