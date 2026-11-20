@@ -64,7 +64,7 @@ struct StopRigConfirmation: View {
             Text("OpenRig takes a snapshot first, so Start Rig resumes each seat's conversation.")
                 .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(action.displayCommand)
+            Text(action.userCommand)
                 .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
@@ -77,7 +77,7 @@ struct StopRigConfirmation: View {
                     Task { await store.stopRig(summary) }
                 }
                 .keyboardShortcut(.return, modifiers: .command)
-                .help("\(action.displayCommand) (⌘↩)")
+                .help("\(action.userCommand) (⌘↩)")
             }
         }
         .padding(16)
@@ -124,7 +124,7 @@ struct StoppedRigBanner: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .disabled(store.rigOps[summary.id] != nil || !store.isUp)
-            .help("\(action.displayCommand) (⇧⌘U)")
+            .help("\(action.userCommand) (⇧⌘U)")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

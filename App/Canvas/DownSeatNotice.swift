@@ -34,10 +34,14 @@ struct DownSeatNotice: View {
                     .foregroundStyle(.secondary)
             } else {
                 HStack(spacing: 8) {
-                    Button("Resume Seat") { Task { await actions.perform(resume, key: key, success: "Seat launched") } }
-                        .help(resume.displayCommand)
+                    // The usual fix, so it leads; Start Fresh is the fallback (design 5A).
+                    Button("Resume Seat") {
+                        Task { await actions.perform(resume, key: key, success: "\(seat.displayName) launched") }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .help(resume.userCommand)
                     Button("Start Fresh…") { confirmingFresh = true }
-                        .help(fresh?.displayCommand ?? "This seat has no session name")
+                        .help(fresh?.userCommand ?? "This seat has no session name")
                         .disabled(fresh == nil)
                 }
                 .disabled(actions.isRunning(key) || actions.offline)
@@ -50,7 +54,7 @@ struct DownSeatNotice: View {
         ) {
             Button("Start Fresh") {
                 guard let fresh else { return }
-                Task { await actions.perform(fresh, key: key, success: "Seat started fresh") }
+                Task { await actions.perform(fresh, key: key, success: "\(seat.displayName) started fresh") }
             }
         } message: {
             Text("Its current conversation isn't resumed. Use this when Resume Seat can't bring it back.")

@@ -107,6 +107,8 @@ import Testing
         #expect(RigAction.rigUp(rig: "kernel").arguments == ["up", "kernel", "--existing", "--yes", "--json"])
         #expect(RigAction.rigDown(rig: "kernel").arguments == ["down", "kernel", "--snapshot", "--yes", "--json"])
         #expect(RigAction.rigDown(rig: "kernel").displayCommand == "rig down kernel --snapshot --yes --json")
+        #expect(RigAction.rigDown(rig: "kernel").userCommand == "rig down kernel --snapshot")
+        #expect(RigAction.rigUp(rig: "kernel").userCommand == "rig up kernel --existing")
     }
 
     @Test func seatRepair() {

@@ -291,7 +291,7 @@ struct RigRow: View {
                 }
             }
         } icon: {
-            RigDot(tone: line.tone)
+            RigDot(tone: line.tone, busy: store.rigOps[rig.id])
         }
         .help(waiting.summary)
         .accessibilityElement(children: .combine)
@@ -320,18 +320,28 @@ struct RigRow: View {
 /// needs you.
 struct RigDot: View {
     let tone: RigLine.Tone
+    /// A start or stop in flight: a ring, as on a starting seat.
+    var busy: RigOp?
 
     var body: some View {
         Group {
-            switch tone {
-            case .running: Circle().fill(.green)
-            case .attention: Circle().fill(.orange)
-            case .needsYou: Circle().fill(Color.attention)
-            case .stopped: Circle().strokeBorder(.secondary, lineWidth: 1.5)
+            if let busy {
+                Circle().strokeBorder(busy == .starting ? Color.green : .secondary, lineWidth: 1.5)
+            } else {
+                dot
             }
         }
         .frame(width: 9, height: 9)
         .accessibilityHidden(true)
+    }
+
+    @ViewBuilder private var dot: some View {
+        switch tone {
+        case .running: Circle().fill(.green)
+        case .attention: Circle().fill(.orange)
+        case .needsYou: Circle().fill(Color.attention)
+        case .stopped: Circle().strokeBorder(.secondary, lineWidth: 1.5)
+        }
     }
 }
 
@@ -455,14 +465,22 @@ struct RigDetail: View {
 
     private func subtitle(_ rig: RigStore, _ summary: RigSummary) -> String {
         guard let graph = rig.graph else { return "" }
-        // `rig up` returns before the harnesses are ready, so pending seats keep the progress showing.
-        if rig.op == .starting || graph.seats.contains(where: { presence($0) == .starting }) {
+        // `rig up` returns before the harnesses are ready, so pending seats keep the progress showing. One seat
+        // relaunching (Resume Seat, Start Fresh) is named; a rig-wide count would read as the whole rig starting.
+        let starting = graph.seats.filter { presence($0) == .starting }
+        if rig.op == nil, starting.count == 1, let seat = starting.first { return "Starting \(seat.displayName)" }
+        if rig.op == .starting || !starting.isEmpty {
             let progress = startProgress(graph)
             return "Starting · \(progress.up) of \(progress.total) up"
         }
         if rig.op == .stopping { return "Stopping…" }
         if isStopped(summary) {
             return "Stopped · \(graph.seats.count) \(graph.seats.count == 1 ? "seat" : "seats")"
+        }
+        // Degraded or waiting on the person: say what the sidebar says.
+        let line = rigLine(summary)
+        if line.tone == .attention || line.tone == .needsYou {
+            return "\(line.text.prefix(1).uppercased())\(line.text.dropFirst()) · \(store.isLive ? "live" : "polling")"
         }
         let working = graph.seats.filter { SeatPhase($0) == .working }.count
         return

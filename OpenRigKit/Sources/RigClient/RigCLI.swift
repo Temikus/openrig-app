@@ -103,6 +103,11 @@ public enum RigAction: Sendable, Equatable {
     public var displayCommand: String {
         (["rig"] + arguments).map(shellQuote).joined(separator: " ")
     }
+
+    /// The command without the flags only the app needs (`--json` for parsing, `--yes` for confirming in its own UI).
+    public var userCommand: String {
+        (["rig"] + arguments.filter { $0 != "--json" && $0 != "--yes" }).map(shellQuote).joined(separator: " ")
+    }
 }
 
 func shellQuote(_ s: String) -> String {
