@@ -86,7 +86,7 @@ struct ContentView: View {
                 ForEach(ViewMode.allCases) { mode in
                     Label {
                         // The shortcut, as in the design; dimmed where the control keeps text styling.
-                        Text(mode.title) + Text("  \(mode.shortcutHint)").foregroundStyle(.secondary)
+                        Text("\(mode.title)  \(Text(mode.shortcutHint).foregroundStyle(.secondary))")
                     } icon: {
                         Image(systemName: mode.systemImage)
                     }
