@@ -19,6 +19,7 @@ It talks to the local `rig` daemon. Reads use the daemon's HTTP API; actions run
 
 ```sh
 just run      # generate the Xcode project, build, and launch
+just install  # build Release and copy it to /Applications
 just test     # package tests (live-daemon tests skip if no daemon answers)
 just lint     # swift format lint
 just --list   # everything else

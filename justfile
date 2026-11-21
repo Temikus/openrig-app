@@ -18,9 +18,23 @@ gen:
     xcodegen generate --quiet
 
 # Build the app (Debug, ad-hoc signed). Extra xcodebuild flags pass through.
-build *flags: gen
-    xcodebuild {{ flags }} -project OpenRig.xcodeproj -scheme OpenRig -configuration Debug \
+build *flags: (_xcodebuild "Debug" flags)
+
+_xcodebuild config *flags: gen
+    xcodebuild {{ flags }} -project OpenRig.xcodeproj -scheme OpenRig -configuration {{ config }} \
         -destination "generic/platform=macOS" -derivedDataPath {{ quote(derived) }} -quiet build
+
+# Build a Release copy and install it to /Applications (quit the installed copy first)
+install *flags: (_xcodebuild "Release" flags)
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dest=/Applications/OpenRig.app
+    if pgrep -f "^$dest/Contents/MacOS/OpenRig" >/dev/null; then
+      echo "Quit $dest first; it is running." >&2; exit 1
+    fi
+    rm -rf "$dest"
+    ditto {{ quote(derived / "Build/Products/Release/OpenRig.app") }} "$dest"
+    echo "Installed $dest"
 
 # Run package tests; live-daemon tests skip themselves when no daemon answers
 test:
