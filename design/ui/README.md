@@ -1,6 +1,6 @@
 # Design backup
 
-A 2x PNG of every artboard in the Paper file "OpenRig — Canvas prototype" (file `01M7P253KBMTNSBCBX3V1CRWRB`), exported 2026-11-19, plus its design tokens. The Paper file is the source; this is a snapshot.
+A 2x PNG of every artboard in the Paper file "OpenRig — Canvas prototype" (file `01M7P253KBMTNSBCBX3V1CRWRB`), exported 2026-11-19 (`7-review-decisions/` on 2026-11-21), plus its design tokens. The Paper file is the source; this is a snapshot.
 
 | Folder | Paper page |
 |---|---|
@@ -10,5 +10,6 @@ A 2x PNG of every artboard in the Paper file "OpenRig — Canvas prototype" (fil
 | `4-settings-window/` | Settings window: the four tabs and the States board |
 | `5-style-guide/` | Style guide |
 | `6-rig-controls/` | Rig controls · options (2026-11-20): status, stop, stopped rig, start progress, a seat down. The picked variant on each board is marked "picked" |
+| `7-review-decisions/` | Review 2026-11-20 · decisions: canvas jump on a prompt, what orange means, queue wording, how long Sent stays, Go to by name, app icon, Help menu, shrinking with the inspector open |
 
 `tokens.css` holds the file's tokens. In Paper, font tokens don't resolve inside `font-family`, so boards set the family by name.

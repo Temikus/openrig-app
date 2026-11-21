@@ -15,3 +15,8 @@ DerivedData/
 .claude/agent-memory/
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
+
+# Local-only: design review runs captured from live rigs, and background research
+design/reviews/
+reports/
+research_notes/
