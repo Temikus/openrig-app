@@ -231,17 +231,12 @@ extension LabelStyle where Self == AdaptiveLabelStyle {
 
 extension ToolbarContent {
     /// Stays in the toolbar when the window is too narrow for every item; others go to the overflow menu first.
-    /// `visibilityPriority` ships only in the Xcode 27 SDK (Swift 6.4); Xcode 26 builds keep every item at default priority.
     @ToolbarContentBuilder func keptVisible(_ kept: Bool = true) -> some ToolbarContent {
-        #if compiler(>=6.4)
-            if #available(macOS 26.1, *) {
-                visibilityPriority(kept ? .high : .automatic)
-            } else {
-                self
-            }
-        #else
+        if #available(macOS 26.1, *) {
+            visibilityPriority(kept ? .high : .automatic)
+        } else {
             self
-        #endif
+        }
     }
 }
 

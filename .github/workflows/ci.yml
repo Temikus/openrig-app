@@ -10,7 +10,8 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-26
+    # Xcode 27 preview image: Xcode 26.6 crashes compiling the app (Swift 6.3.3 IRGen).
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v5
       - name: Install tools

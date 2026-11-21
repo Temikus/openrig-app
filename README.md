@@ -11,7 +11,7 @@ It talks to the local `rig` daemon. Reads use the daemon's HTTP API; actions run
 
 ## Requirements
 
-- macOS 26 and Xcode 26 or later
+- macOS 26 or later to run; Xcode 27 or later to build
 - [`just`](https://github.com/casey/just) and [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install just xcodegen`
 - OpenRig 0.7.x with the daemon running (`rig daemon start`)
 
