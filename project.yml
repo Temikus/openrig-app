@@ -3,7 +3,7 @@ name: OpenRig
 options:
   bundleIdPrefix: dev.openrig
   deploymentTarget:
-    macOS: "26.0"
+    macOS: "27.0"
   createIntermediateGroups: true
 packages:
   OpenRigKit:

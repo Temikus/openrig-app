@@ -231,12 +231,8 @@ extension LabelStyle where Self == AdaptiveLabelStyle {
 
 extension ToolbarContent {
     /// Stays in the toolbar when the window is too narrow for every item; others go to the overflow menu first.
-    @ToolbarContentBuilder func keptVisible(_ kept: Bool = true) -> some ToolbarContent {
-        if #available(macOS 26.1, *) {
-            visibilityPriority(kept ? .high : .automatic)
-        } else {
-            self
-        }
+    func keptVisible(_ kept: Bool = true) -> some ToolbarContent {
+        visibilityPriority(kept ? .high : .automatic)
     }
 }
 

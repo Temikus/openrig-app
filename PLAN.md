@@ -178,7 +178,7 @@ A pure function, `route(layout, requests) -> [Wire]`.
 - "Queue task" is `.glassProminent` and opens a popover with the seat prefilled from selection.
 - The right panel is the native `.inspector`.
 - Glass stays on chrome only. Cards, columns and tiles are opaque content.
-- Target macOS 26; gate anything from 27.
+- Target macOS 27.
 
 ### Canvas view
 - Pod groups, seat nodes with state line, qitem line and an inline permission card, the legend, zoom controls and a minimap.
@@ -248,7 +248,7 @@ Pin exact versions in `Package.swift` and commit `Package.resolved`. Current ver
 `gen`, `build`, `test` (package tests), `test-live` (opt-in, mutating; added in M4), `lint`, `format`, `run`, `record-fixtures`, `clean`. Lint uses `swift format` from the toolchain; SwiftLint was dropped to avoid an extra install.
 
 ### CI
-- GitHub Actions on a macOS 26 runner with Xcode 26 selected.
+- GitHub Actions on the `xcode-27` runner image (macOS 27, its default Xcode 27). Xcode 26.6 crashes compiling the app.
 - Steps: install just and xcodegen; `just lint`; `just test`; `just build` ad-hoc signed.
 - Daemon-dependent tests skip themselves through a Swift Testing condition trait. The tmux integration tests run in CI after `brew install tmux`.
 - README carries build-status and Apache-2.0 badges, no coverage badge. `LICENSE` is Apache-2.0.
