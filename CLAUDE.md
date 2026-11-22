@@ -68,3 +68,10 @@ Address the process by pid, never by name: the person's copy has the same name. 
 ### What this cannot check
 
 Real pointer, keyboard and focus behaviour: typing into a tile (Type mode), Tab order by real key presses, drag, hover. Do not fall back to taking the pointer. Say what is unverified and ask the person, who can test it or lend the screen.
+
+## Diagnosing a crash or a spin
+
+- Read the exception text first. The crash report leaves it out; the system log keeps it, with AppKit's layout-pass trace: `/usr/bin/log show --start "<time>" --end "<time>" --predicate 'process == "OpenRig"'`. Use the full path: `log` is a zsh builtin.
+- Compare the log's stack with a known bug's before calling them the same.
+- A background copy never drives the Touch Bar, so it survives layout loops that abort the person's copy. Watch its CPU (`ps -o %cpu= -p "$PID"`) and take a `sample "$PID" 3` while it is high.
+- Resize without the pointer: `osascript -e "$P to set size of window 1 to {900, 600}"`. `OPENRIG_DEBUG_WIDTHS=<file>` traces the pane widths.

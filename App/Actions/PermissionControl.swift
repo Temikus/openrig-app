@@ -370,7 +370,6 @@ struct NeedsYouButton: View {
         /// The toolbar rebuilds this button (e.g. on a rig switch); the debug hook runs once per launch.
         @MainActor private static var debugOpened = false
     #endif
-    var compact = false
     /// Rig › Needs You… bumps this to open the list.
     var requests = 0
     @Environment(AppStore.self) private var app
@@ -390,7 +389,6 @@ struct NeedsYouButton: View {
         } label: {
             HStack(spacing: 6) {
                 bell(urgent: urgent, any: any)
-                if !compact { Text("Needs you") }
                 if urgent > 0 {
                     CountBadge(count: urgent)
                 } else if fyi > 0 {

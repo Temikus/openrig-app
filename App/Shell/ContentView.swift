@@ -9,24 +9,33 @@ struct ContentView: View {
     @State private var wantsInspector = true
     @State private var showsInspector = false
     /// Unknown until the first layout, when a restored window may be too narrow for the inspector.
-    @State private var detailWidth: CGFloat?
+    /// Hazard: not observed. As @State it re-ran `body` and rebuilt the toolbar on every point of a column
+    /// animation, and the split view never settled (100% CPU after a sidebar toggle or a window resize).
+    @State private var measured = Measured()
+    private var detailWidth: CGFloat? { measured.detailWidth }
     @State private var showsQueueTask = false
     @State private var showsStopConfirmation = false
     @State private var showsGoTo = false
     /// Bumped by Rig › Needs You… to open the toolbar button's list.
     @State private var needsYouRequests = 0
-    @State private var fit = ToolbarFit.full
-    /// The window's width beside the detail column (sidebar and inspector) while the inspector shows, so the window
-    /// can't shrink until the panes overflow it and the sidebar is cut off.
-    @State private var besideDetail: CGFloat?
-    @State private var totalWidth: CGFloat?
-    private var narrow: Bool { fit != .full }
+    @State private var fit = ToolbarFit.regular
+    /// The side panes' own widths, so the window can't shrink until the panes overflow it and the sidebar is cut off.
+    /// Hazard: measure each pane itself. Window width minus detail width read the two a frame apart during a resize,
+    /// overstated the minimum, and the window grew and re-measured until AppKit aborted the layout loop.
+    @State private var sidebarWidth: CGFloat = 0
+    @State private var inspectorWidth: CGFloat = 0
 
     var body: some View {
         @Bindable var store = store
         NavigationSplitView {
             RigSidebar()
                 .navigationSplitViewColumnWidth(min: 200, ideal: 230)
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.width.rounded()
+                } action: {
+                    sidebarWidth = $0
+                    debugWidths("sidebar \($0)")
+                }
         } detail: {
             // The toolbar belongs to the detail column, so its trailing items end at the inspector's edge
             // instead of straddling it; the inspector's toggle sits over the inspector while it shows.
@@ -34,27 +43,32 @@ struct ContentView: View {
                 .onGeometryChange(for: CGFloat.self) {
                     $0.size.width
                 } action: { width in
-                    fit = ToolbarFit(detailWidth: width)
-                    detailWidth = width
+                    // A column animation jitters the width by half a point each frame.
+                    guard abs(width - (measured.detailWidth ?? -1)) >= 1 else { return }
+                    measured.detailWidth = width
+                    let fits = ToolbarFit(detailWidth: width)
+                    // Mid-drag the toolbar only narrows: the change swaps its items with a fade, and a drag
+                    // back and forth over the threshold swapped them every time. It widens when the drag ends.
+                    if fit != fits, !(measured.liveResize && fits < fit) { fit = fits }
+                    updateInspector()
+                    debugWidths("detail \(width)")
                 }
                 .toolbar { detailToolbar }
         }
         .inspector(isPresented: inspectorBinding) {
             InspectorPanel()
                 .inspectorColumnWidth(min: 260, ideal: InspectorRoom.ideal, max: 420)
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.width.rounded()
+                } action: {
+                    inspectorWidth = $0
+                    debugWidths("inspector \($0)")
+                }
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) { inspectorToggle }
                 }
         }
-        .onGeometryChange(for: CGFloat.self) {
-            $0.size.width
-        } action: {
-            totalWidth = $0
-        }
-        .frame(minWidth: max(820, besideDetail.map { $0 + InspectorRoom.detailMinimum } ?? 0))
-        .onChange(of: totalWidth) { measureBesideDetail() }
-        .onChange(of: detailWidth) { measureBesideDetail() }
-        .onChange(of: showsInspector) { measureBesideDetail() }
+        .frame(minWidth: minimumWidth)
         .environment(store.selection)
         .environment(store.actions)
         .onChange(of: store.viewMode, initial: true) { old, new in
@@ -63,7 +77,13 @@ struct ContentView: View {
         }
         .onChange(of: store.inspectorRequests) { requestInspector() }
         .onChange(of: wantsInspector) { updateInspector() }
-        .onChange(of: detailWidth) { updateInspector() }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willStartLiveResizeNotification)) { _ in
+            measured.liveResize = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEndLiveResizeNotification)) { _ in
+            measured.liveResize = false
+            if let fits = detailWidth.map(ToolbarFit.init), fit != fits { fit = fits }
+        }
         .focusedSceneValue(
             \.windowActions,
             WindowActions(
@@ -84,22 +104,15 @@ struct ContentView: View {
         ToolbarItem(placement: fit == .tight ? .navigation : .principal) {
             Picker("View", selection: $store.viewMode) {
                 ForEach(ViewMode.allCases) { mode in
-                    Label {
-                        // The shortcut, as in the design; dimmed where the control keeps text styling.
-                        Text("\(mode.title)  \(Text(mode.shortcutHint).foregroundStyle(.secondary))")
-                    } icon: {
-                        Image(systemName: mode.systemImage)
-                    }
-                    .labelStyle(.adaptive(iconOnly: narrow))
-                    .help("\(mode.title) (\(mode.shortcutHint))")
-                    .tag(mode)
+                    // Icons at every width: a label that came and went with the width re-made the item, with a fade.
+                    Label(mode.title, systemImage: mode.systemImage)
+                        .labelStyle(.iconOnly)
+                        .help("\(mode.title) (\(mode.shortcutHint))")
+                        .tag(mode)
                 }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            // The toolbar keeps an item's first layout and priority: without a new identity, a window narrowed
-            // after launch keeps the wide labels and everything spills into the overflow menu.
-            .id(fit)
         }
         // If tight and still short, the picker overflows first: ⌘1–3 still switch views, and Needs you stays in sight.
         .keptVisible(fit != .tight)
@@ -111,20 +124,18 @@ struct ContentView: View {
             ToolbarSpacer(.fixed, placement: .primaryAction)
         }
         ToolbarItem(placement: .primaryAction) {
-            // Re-identified when the badge comes or goes too: the toolbar keeps an item's first width, which cut
-            // "Needs you" to "Nee…" once a count appeared.
+            // Re-identified when the badge comes or goes: the toolbar keeps an item's first width, which cut
+            // the button short once a count appeared.
             let badged = store.waitingEverywhere.urgent + store.waitingEverywhere.fyis > 0
-            NeedsYouButton(compact: narrow, requests: needsYouRequests).id("\(narrow)-\(badged)")
+            NeedsYouButton(requests: needsYouRequests).id(badged)
         }
         .keptVisible()
         ToolbarItem(placement: .primaryAction) {
             Button("Queue task", systemImage: "plus") { showsQueueTask = true }
-                .labelStyle(.adaptive(iconOnly: narrow, keepsIcon: true))
+                .labelStyle(.iconOnly)
                 .help("Queue task (⌘N)")
                 .buttonStyle(.glassProminent)
                 .disabled(store.rig == nil || !store.isUp)
-                // Outside the popover, so a width change while the form is open keeps the draft.
-                .id(narrow)
                 .popover(isPresented: $showsQueueTask, arrowEdge: .bottom) {
                     if let rig = store.rig {
                         QueueTaskForm(
@@ -159,14 +170,28 @@ struct ContentView: View {
         window.setFrame(frame, display: true, animate: true)
     }
 
-    private func measureBesideDetail() {
-        guard showsInspector, let totalWidth, let detailWidth else {
-            besideDetail = nil
-            return
-        }
-        // Steady while the window resizes (the detail takes the change); it moves when a pane is resized or opens.
-        let beside = (totalWidth - detailWidth).rounded()
-        if abs(beside - (besideDetail ?? 0)) > 1 { besideDetail = beside }
+    /// Grows while the inspector shows. Steady while the window resizes: the detail takes the change.
+    private var minimumWidth: CGFloat {
+        guard showsInspector, inspectorWidth > 0 else { return 820 }
+        return max(820, sidebarWidth + inspectorWidth + InspectorRoom.detailMinimum)
+    }
+
+    /// OPENRIG_DEBUG_WIDTHS=<file>: one line per width measurement, to find a resize feedback loop.
+    private func debugWidths(_ change: String) {
+        #if DEBUG
+            guard let path = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_WIDTHS"] else { return }
+            let w = { (v: CGFloat?) in v.map { "\(Int($0))" } ?? "-" }
+            let line =
+                "\(Date.now.timeIntervalSince1970) [\(change)] sidebar \(Int(sidebarWidth)) detail \(w(detailWidth))"
+                + " inspector \(Int(inspectorWidth)) \(showsInspector) min \(Int(minimumWidth)) fit \(fit)\n"
+            if let handle = FileHandle(forWritingAtPath: path) {
+                _ = try? handle.seekToEnd()
+                try? handle.write(contentsOf: Data(line.utf8))
+                try? handle.close()
+            } else {
+                try? line.write(toFile: path, atomically: true, encoding: .utf8)
+            }
+        #endif
     }
 
     private func updateInspector() {
@@ -174,6 +199,13 @@ struct ContentView: View {
         let shows = wantsInspector && (showsInspector || detailWidth.map(InspectorRoom.canOpen) == true)
         if showsInspector != shows { showsInspector = shows }
     }
+}
+
+/// Layout readings kept out of observed state.
+private final class Measured {
+    var detailWidth: CGFloat?
+    /// The person is dragging a window edge.
+    var liveResize = false
 }
 
 /// Whether the inspector can open beside the detail column.
@@ -192,40 +224,14 @@ enum InspectorRoom {
 }
 
 /// How much of the toolbar fits over the detail column; the inspector's toolbar sits over the inspector.
-enum ToolbarFit: Equatable {
-    /// Labels on every item.
-    case full
-    /// Icons only.
-    case compact
-    /// Icons, no rig title, and the view picker after the sidebar toggle; it overflows first if still short.
+/// Ordered widest first.
+enum ToolbarFit: Comparable {
+    case regular
+    /// No rig title, and the view picker after the sidebar toggle; it overflows first if still short.
     case tight
 
     init(detailWidth: CGFloat) {
-        self = detailWidth >= 880 ? .full : detailWidth >= 400 ? .compact : .tight
-    }
-}
-
-/// Title (with or without its icon), or icon only when space is short.
-struct AdaptiveLabelStyle: LabelStyle {
-    let iconOnly: Bool
-    /// Icon and title when wide, rather than title only.
-    var keepsIcon = false
-    func makeBody(configuration: Configuration) -> some View {
-        if iconOnly {
-            // The system style keeps the title as the spoken name; the bare icon was read as the SF Symbol's name.
-            Label(configuration).labelStyle(.iconOnly)
-        } else if keepsIcon {
-            // A toolbar shows any Label as its icon unless told otherwise.
-            Label(configuration).labelStyle(.titleAndIcon)
-        } else {
-            configuration.title
-        }
-    }
-}
-
-extension LabelStyle where Self == AdaptiveLabelStyle {
-    static func adaptive(iconOnly: Bool, keepsIcon: Bool = false) -> AdaptiveLabelStyle {
-        AdaptiveLabelStyle(iconOnly: iconOnly, keepsIcon: keepsIcon)
+        self = detailWidth >= 400 ? .regular : .tight
     }
 }
 

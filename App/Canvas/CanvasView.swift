@@ -53,7 +53,12 @@ struct CanvasView: View {
                 // which resizes the viewport, which would refit again, forever.
                 let resized =
                     abs(rect.width - visible.width) > 20 || abs(rect.height - visible.height) > 20
-                visible = rect
+                // A column animation jitters the width by half a point each frame. `visible` sizes the content,
+                // so following the jitter would lay the canvas out again every frame.
+                let moved =
+                    abs(rect.minX - visible.minX) >= 1 || abs(rect.minY - visible.minY) >= 1
+                    || abs(rect.width - visible.width) >= 1 || abs(rect.height - visible.height) >= 1
+                if moved { visible = rect }
                 if resized, !userZoomed { fit(layout) }
             }
             .defaultScrollAnchor(.center)
