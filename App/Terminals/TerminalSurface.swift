@@ -10,6 +10,8 @@ struct TerminalSurface: NSViewRepresentable {
         /// `transcriptOnly` leaves out Claude Code's input box (see `PaneSnapshot.transcriptEnd`).
         case snapshot(PaneSnapshot, lastRows: Int?, transcriptOnly: Bool = false)
         case attached(AttachSession)
+        /// The pane's scrollback, read-only, drawn at the pane's width.
+        case history(PaneHistory)
     }
 
     let source: Source
@@ -25,6 +27,10 @@ struct TerminalSurface: NSViewRepresentable {
     var accessibleName = ""
     /// Asks tmux to repaint a live client, after a font change cleared the view.
     var onRepaint: (() -> Void)?
+    /// A scroll up calls this. Over the live client it replaces SwiftTerm's arrow keys (see `TileTerminalView.route`).
+    var onScrollBack: (() -> Void)?
+    /// History: a scroll down past the last line calls this.
+    var onScrolledToEnd: (() -> Void)?
 
     static func font(_ size: CGFloat) -> NSFont { .monospacedSystemFont(ofSize: size, weight: .regular) }
 
@@ -105,6 +111,16 @@ struct TerminalSurface: NSViewRepresentable {
         view.interactive = interactive
         view.accessibleName = accessibleName
         view.accessibleText = accessibleText
+        view.onScrollBack = onScrollBack
+        view.onScrolledToEnd = onScrolledToEnd
+        // Only the typing tile takes the wheel; the others leave it to the grid.
+        let takesWheel = onScrollBack != nil || onScrolledToEnd != nil
+        if takesWheel, coordinator.wheelMonitor == nil {
+            coordinator.wheelMonitor = view.monitorWheel()
+        } else if !takesWheel, let monitor = coordinator.wheelMonitor {
+            NSEvent.removeMonitor(monitor)
+            coordinator.wheelMonitor = nil
+        }
 
         switch source {
         case .snapshot(let snap, let lastRows, let transcriptOnly):
@@ -116,6 +132,17 @@ struct TerminalSurface: NSViewRepresentable {
             }
         case .attached(let session):
             coordinator.bind(session)
+        case .history(let history):
+            coordinator.bind(nil)
+            let bytes = history.ansi()
+            if bytes != coordinator.lastFed {
+                let first = coordinator.lastFed.isEmpty
+                view.changeScrollback(history.lines.count + rows)
+                view.feed(byteArray: bytes[...])
+                coordinator.lastFed = bytes
+                // The bottom matches the live screen; start a little above it so the scroll shows.
+                if first { view.scrollUp(lines: 3) }
+            }
         }
 
         if startsTyping {
@@ -129,6 +156,8 @@ struct TerminalSurface: NSViewRepresentable {
 
     static func dismantleNSView(_ view: TileTerminalView, coordinator: Coordinator) {
         coordinator.bind(nil)
+        if let monitor = coordinator.wheelMonitor { NSEvent.removeMonitor(monitor) }
+        coordinator.wheelMonitor = nil
     }
 
     final class Coordinator: NSObject, TerminalViewDelegate {
@@ -136,6 +165,7 @@ struct TerminalSurface: NSViewRepresentable {
         var interactive = false
         var lastFed: [UInt8] = []
         var grid = (cols: 0, rows: 0)
+        var wheelMonitor: Any?
         private var session: AttachSession?
         private var token: Int?
 
@@ -189,7 +219,52 @@ final class TileTerminalView: TerminalView {
         }
     }
 
+    var onScrollBack: (() -> Void)?
+    var onScrolledToEnd: (() -> Void)?
+    /// A trackpad gesture began at the last line: only then does scrolling on down leave the history.
+    private var gestureBeganAtEnd = false
+
     override var canBecomeKeyView: Bool { interactive && super.canBecomeKeyView }
+
+    /// Takes wheel events over this view before SwiftTerm does. SwiftTerm's `scrollWheel` isn't open, so this is
+    /// a local monitor; it is removed when SwiftUI dismantles the view.
+    func monitorWheel() -> Any? {
+        NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            guard let self, let window, event.window === window, let content = window.contentView,
+                visibleRect.contains(convert(event.locationInWindow, from: nil)),
+                let hit = content.hitTest(content.convert(event.locationInWindow, from: nil)),
+                // SwiftUI drawn over this view (a tile's click layer) hit-tests to an ancestor; another NSView on top
+                // keeps the wheel.
+                hit.isDescendant(of: self) || isDescendant(of: hit)
+            else { return event }
+            return self.route(event) ? nil : event
+        }
+    }
+
+    /// Whether the wheel event was handled here. The live client is a tmux client on SwiftTerm's alternate
+    /// screen; without mouse reporting, SwiftTerm turns the wheel into Up and Down keys there, which Claude Code
+    /// reads as its input history.
+    private func route(_ event: NSEvent) -> Bool {
+        if let onScrollBack {
+            if event.scrollingDeltaY > 0 {
+                onScrollBack()
+                return true
+            }
+            // A snapshot lets the grid scroll down; the live client would send Down keys.
+            return interactive
+        }
+        guard let onScrolledToEnd else { return false }
+        let atEnd = scrollPosition >= 1 || !canScroll
+        if event.phase == .began { gestureBeganAtEnd = atEnd }
+        // Momentum after a flick to the bottom stops there rather than leaving.
+        if event.scrollingDeltaY < 0, atEnd, event.momentumPhase.isEmpty, event.phase.isEmpty || gestureBeganAtEnd {
+            onScrolledToEnd()
+        } else {
+            // Message mode lays the tile's click layer over this view, so AppKit would send the wheel to the grid.
+            scrollWheel(with: event)
+        }
+        return true
+    }
     override func isAccessibilityElement() -> Bool { interactive }
     override func accessibilityRole() -> NSAccessibility.Role? { .textArea }
     override func accessibilityLabel() -> String? { "\(accessibleName)'s terminal" }

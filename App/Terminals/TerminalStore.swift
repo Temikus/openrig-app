@@ -15,8 +15,14 @@ final class TerminalStore {
     private(set) var attachSize: GridSize?
     /// Keys go straight to tmux only in Type mode. It resets on Esc and on focus moves.
     var typing = false {
-        didSet { if typing { pausedForPrompt = nil } }
+        didSet {
+            if typing { pausedForPrompt = nil }
+            if typing != oldValue { history = nil }
+        }
     }
+    /// The focused pane's scrollback, shown after a scroll up over the focused tile in either mode.
+    private(set) var history: PaneHistory?
+    @ObservationIgnored private var loadingHistory = false
     /// Type mode stopped because the focused seat raised a permission prompt: Enter would have answered it.
     private(set) var pausedForPrompt: Seat.ID?
     /// How far the focused client is panned down from the pane's top, for the header's "rows above".
@@ -79,6 +85,7 @@ final class TerminalStore {
             typing = false
             pausedForPrompt = nil
             panned = 0
+            history = nil
         }
         let snap = snapshot(seat)
         // The client gets the pane's size plus the status bar, so the pane shows whole.
@@ -126,6 +133,24 @@ final class TerminalStore {
         }
     }
 
+    /// Shows the typed-into pane's scrollback. It is a copy, so the shared pane never enters copy mode.
+    func showHistory(_ seat: Seat) {
+        guard history == nil, !loadingHistory, focusedSeatID == seat.id, let pane = seat.tmuxPane, let tmux else {
+            return
+        }
+        loadingHistory = true
+        let wasTyping = typing
+        Task { @MainActor in
+            let captured = await tmux.history(pane: pane)
+            loadingHistory = false
+            guard typing == wasTyping, focusedSeatID == seat.id, let captured, !captured.lines.isEmpty else { return }
+            history = captured
+        }
+    }
+
+    /// Back to the live client or the snapshot, from the history.
+    func leaveHistory() { history = nil }
+
     /// Asks tmux to repaint the focused client, after its view was rebuilt or reset.
     func repaint() {
         guard let attach, let tmux else { return }
@@ -149,6 +174,7 @@ final class TerminalStore {
         typing = false
         pausedForPrompt = nil
         panned = 0
+        history = nil
     }
 }
 

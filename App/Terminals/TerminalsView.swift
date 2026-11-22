@@ -305,6 +305,13 @@ struct TerminalsView: View {
         let rig = self.rig
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             let command = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
+            // The key only leaves the history; it isn't typed into the pane, which the person can't see yet.
+            if terminals.history != nil, !event.modifierFlags.contains(.command), event.window === NSApp.mainWindow,
+                !(event.window?.firstResponder is NSText)
+            {
+                terminals.leaveHistory()
+                return nil
+            }
             // By character, as the menu's key equivalents match: key codes are US positions, so on other layouts
             // ⌘+ moved tiles (QWERTZ) and ⌘Y toggled typing (Dvorak). Escape has no character to match.
             let key: TerminalKey? =
@@ -520,10 +527,11 @@ struct TerminalTile: View {
             }
             .layoutPriority(-1)
             Spacer(minLength: 6)
-            if focused && terminals.typing {
+            if focused && (terminals.typing || terminals.history != nil) {
                 Label(
-                    terminals.panned > 0 ? "typing · \(terminals.panned) rows above" : "typing",
-                    systemImage: "keyboard"
+                    terminals.history != nil
+                        ? "history" : terminals.panned > 0 ? "typing · \(terminals.panned) rows above" : "typing",
+                    systemImage: terminals.history != nil ? "clock.arrow.circlepath" : "keyboard"
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
@@ -597,6 +605,15 @@ struct TerminalTile: View {
         return CGFloat(snap.cols) * TerminalSurface.advance(font, scale: displayScale) > width + 0.5
     }
 
+    private var historyHint: some View {
+        Text("History. Scroll to the bottom or press a key to go back.")
+            .font(.caption)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(.regularMaterial, in: .capsule)
+            .padding(.bottom, 6)
+    }
+
     @ViewBuilder private var screen: some View {
         if phase.isDown {
             // A dead pane's last snapshot would look live; say what happened instead.
@@ -634,12 +651,28 @@ struct TerminalTile: View {
                     let shown = fitsWhole ? paneRows : max(2, Int(inner.height / TerminalSurface.lineHeight(typeFont)))
                     let target = GridSize(cols: snap.cols, rows: shown)
                     let offset = snap.panOffset(clientRows: shown - snap.statusRows)
-                    TerminalSurface(
-                        source: .attached(attach), cols: size.cols, rows: size.rows, fontSize: typeFont,
-                        interactive: true, optionAsMeta: app.settings.optionAsMeta, accessibleText: snap.text(),
-                        accessibleName: seat.displayName, onRepaint: { terminals.repaint() }
-                    )
-                    .fixedSize()
+                    Group {
+                        if let history = terminals.history {
+                            // As many rows as the tile fits, not the client's grid, which lags a resize. tmux
+                            // isn't touched: the client stays attached and panned, and repaints when it comes back.
+                            TerminalSurface(
+                                source: .history(history), cols: snap.cols, rows: shown, fontSize: typeFont,
+                                interactive: false, onScrolledToEnd: { terminals.leaveHistory() }
+                            )
+                            .fixedSize()
+                            .overlay(alignment: .bottom) { historyHint }
+                        } else {
+                            // A full-screen app (vim, less) keeps SwiftTerm's arrow keys: it has no tmux history.
+                            TerminalSurface(
+                                source: .attached(attach), cols: size.cols, rows: size.rows, fontSize: typeFont,
+                                interactive: true, optionAsMeta: app.settings.optionAsMeta,
+                                accessibleText: snap.text(), accessibleName: seat.displayName,
+                                onRepaint: { terminals.repaint() },
+                                onScrollBack: snap.alternateScreen ? nil : { terminals.showHistory(seat) }
+                            )
+                            .fixedSize()
+                        }
+                    }
                     .onChange(of: target, initial: true) { if inner.width > 0 { terminals.fitAttach(target) } }
                     .onChange(of: offset, initial: true) { terminals.pan(offset) }
                     // The daemon reports prompts every few seconds; the pane shows one within a second. Either way
@@ -648,14 +681,23 @@ struct TerminalTile: View {
                         // Only as a prompt appears: ⌘T after that is a deliberate choice to answer in the pane.
                         if prompted { terminals.pauseForPrompt(on: seat.id, name: seat.displayName) }
                     }
+                } else if focused, let history = terminals.history {
+                    TerminalSurface(
+                        source: .history(history), cols: snap.cols, rows: fitRows, fontSize: font, interactive: false,
+                        onScrolledToEnd: { terminals.leaveHistory() }
+                    )
+                    .fixedSize()
+                    .allowsHitTesting(false)
+                    .overlay(alignment: .bottom) { historyHint }
                 } else {
-                    // The tail of the agent's transcript (not Claude Code's input box), as many rows as fit;
-                    // tiles never scroll. A focused tile shows this too until Type mode: snapshots refresh every
-                    // second and on every seat event.
+                    // The tail of the agent's transcript (not Claude Code's input box), as many rows as fit. A focused
+                    // tile shows this too until Type mode: snapshots refresh every second and on every seat event.
+                    // Only the focused tile scrolls back, into its history; the others leave the wheel to the grid.
                     let rows = max(1, min(snap.rows, fitRows, snap.transcriptEnd))
                     TerminalSurface(
                         source: .snapshot(snap, lastRows: rows, transcriptOnly: true), cols: snap.cols, rows: rows,
-                        fontSize: font, interactive: false
+                        fontSize: font, interactive: false,
+                        onScrollBack: focused && !snap.alternateScreen ? { terminals.showHistory(seat) } : nil
                     )
                     .fixedSize()
                     .allowsHitTesting(false)
@@ -738,10 +780,15 @@ struct TerminalTile: View {
                 modeButton("Type into Terminal", typing: true)
                 if terminals.typing {
                     Spacer(minLength: 12)
-                    Label("Keys go to \(seat.displayName) · \(stop)", systemImage: "keyboard")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    // In the history, the first key only goes back to the live client.
+                    Label(
+                        terminals.history != nil
+                            ? "Reading \(seat.displayName)'s history" : "Keys go to \(seat.displayName) · \(stop)",
+                        systemImage: terminals.history != nil ? "clock.arrow.circlepath" : "keyboard"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
                     Button("Done") { terminals.typing = false }
                         .controlSize(.small)
                         .padding(.leading, 8)

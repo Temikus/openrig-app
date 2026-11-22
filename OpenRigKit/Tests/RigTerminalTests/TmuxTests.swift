@@ -84,6 +84,31 @@ import Testing
     }
 }
 
+@Suite struct PaneHistoryTests {
+    @Test func captureDropsTheBlankRowsUnderTheText() {
+        let history = PaneHistory(captured: "one\n\ntwo\n\n\n")
+        #expect(history.lines == ["one", "", "two"])
+    }
+
+    @Test func olderLinesLandInScrollback() {
+        let history = PaneHistory(lines: (1...30).map { "line \($0)" })
+        let terminal = HeadlessTerminal(cols: 20, rows: 10)
+        terminal.feed(history.ansi())
+        #expect(terminal.text(row: 9) == "line 30", "the bottom shows the pane's last line")
+        #expect(terminal.terminal.buffer.yDisp == 20, "the other 20 lines are above, to scroll back to")
+        let first = terminal.terminal.getScrollInvariantLine(row: 0)?.translateToString(trimRight: true)
+        #expect(first == "line 1")
+    }
+
+    @Test func aFullWidthLineDoesNotAddABlankRow() {
+        let history = PaneHistory(lines: ["0123456789", "next"])
+        let terminal = HeadlessTerminal(cols: 10, rows: 2)
+        terminal.feed(history.ansi())
+        #expect(terminal.text(row: 0) == "0123456789")
+        #expect(terminal.text(row: 1) == "next")
+    }
+}
+
 /// A SwiftTerm terminal with no view, for checking what bytes render to.
 final class HeadlessTerminal: TerminalDelegate {
     var terminal: Terminal!
@@ -158,6 +183,20 @@ struct TmuxIntegrationTests {
         #expect(screen.text(row: 0).hasPrefix("RED "))
         let red = screen.terminal.getLine(row: 0)![0].attribute.fg
         #expect(red != Attribute.Color.defaultColor)
+        await cleanUp()
+    }
+
+    @Test func historyReachesPastTheScreen() async throws {
+        try await tmux.run([
+            "-f", "/dev/null", "new-session", "-d", "-s", "long@test", "-x", "40", "-y", "10", "seq 1 50; sleep 600",
+        ])
+        let pane = try await tmux.run(["display-message", "-p", "-t", "=long@test", "#{pane_id}"])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        try await waitFor { await tmux.history(pane: pane)?.lines.last == "50" }
+        let history = try #require(await tmux.history(pane: pane))
+        #expect(history.lines.first == "1", "lines scrolled off the 10-row screen are included")
+        #expect(history.lines.count == 50)
+        #expect(await tmux.history(pane: "%999") == nil)
         await cleanUp()
     }
 

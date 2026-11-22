@@ -551,7 +551,7 @@ final class AppStore {
     }
 
     #if DEBUG
-        /// OPENRIG_DEBUG_OPEN="<rig>[/<canvas|queue|terminals>][/<session or qitem id>][/typing]" opens that view at launch,
+        /// OPENRIG_DEBUG_OPEN="<rig>[/<canvas|queue|terminals>][/<session or qitem id>][/typing][/history]" opens that view at launch,
         /// for screenshots when the UI can't be clicked (a locked screen, CI).
         private func openDebugTarget() async {
             // OPENRIG_DEBUG_APPEARANCE=dark|light overrides the system appearance.
@@ -585,6 +585,11 @@ final class AppStore {
                 if viewMode == .terminals {
                     store.terminals.focus(seat)
                     store.terminals.typing = parts.count > 3 && parts[3] == "typing"
+                    // A scroll up over the focused tile, as a person would.
+                    if parts.last == "history" {
+                        try? await Task.sleep(for: .seconds(2))
+                        store.terminals.showHistory(seat)
+                    }
                 }
             } else if store.item(parts[2]) != nil {
                 selection.select(qitem: parts[2])
