@@ -64,10 +64,16 @@ public enum ForYou: Equatable, Sendable {
 public func forYou(_ item: QItem, me: String) -> ForYou? {
     guard item.destination == me || Human.isYou(item.destination) else { return nil }
     switch workStatus(item) {
-    case .pending, .inProgress: return item.humanIntent == "update" && !item.asksHuman ? .update : .decision
+    case .pending, .inProgress:
+        if isSweepFinding(item) { return .update }
+        return item.humanIntent == "update" && !item.asksHuman ? .update : .decision
     default: return nil
     }
 }
+
+/// A notice the daemon's stuck sweep filed about another row. It carries no intent, but there is nothing to
+/// approve: the person acts on the row it names, and the sweep closes the notice.
+public func isSweepFinding(_ item: QItem) -> Bool { item.tags.contains("stuck-sweep-finding") }
 
 /// Rows waiting on the person, oldest first: held rows, questions and decisions, then FYIs.
 public func needsYou(_ items: [QItem], me: String = Human.session) -> [QItem] {

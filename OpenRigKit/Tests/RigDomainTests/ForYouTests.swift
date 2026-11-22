@@ -39,6 +39,12 @@ import Testing
         #expect(forYou(row, me: "sam@external") == .decision)
     }
 
+    @Test func aSweepFindingIsNotADecision() {
+        var row = item("finding", .pending, from: "orch-lead@denkeeper", to: "sam@external")
+        row.tags = ["stuck-sweep-finding", "recovery-for:qitem-1"]
+        #expect(forYou(row, me: "sam@external") == .update)
+    }
+
     @Test func waitingCountsAsksPromptsAndFYIs() {
         let me = "sam@external"
         var fyi = item("fyi", .pending, from: "lead@kernel", to: me)

@@ -30,10 +30,15 @@ struct ForYouPanel: View {
     /// Tell only reaches a seat in this rig; anywhere else the answer is only recorded on the row.
     private var canTell: Bool { askerSeat != nil }
 
+    private var title: String {
+        if isSweepFinding(item) { return "A row has waited too long. Nothing to decide here" }
+        return kind == .decision ? "\(asker) asks you to decide" : "\(asker) sent you an update"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label {
-                Text(kind == .decision ? "\(asker) asks you to decide" : "\(asker) sent you an update")
+                Text(title)
             } icon: {
                 Image(systemName: kind == .decision ? "person.fill.questionmark" : "envelope")
                     .foregroundStyle(kind == .decision ? Color.attention : .secondary)
