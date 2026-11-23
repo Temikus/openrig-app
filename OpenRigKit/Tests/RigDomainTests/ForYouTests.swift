@@ -59,6 +59,14 @@ import Testing
         #expect(Waiting().isEmpty && Waiting().summary.isEmpty)
     }
 
+    /// The menu bar item draws only the count; VoiceOver hears what it means. FYIs alone stay quiet.
+    @Test func menuBarLabelSaysHowManyNeedYou() {
+        #expect(Waiting().menuBarLabel(appName: "OpenRig") == "OpenRig")
+        #expect(Waiting(fyis: 3).menuBarLabel(appName: "OpenRig") == "OpenRig")
+        #expect(Waiting(prompts: 1, fyis: 1).menuBarLabel(appName: "OpenRig") == "OpenRig, 1 needs you")
+        #expect(Waiting(asks: 1, prompts: 1).menuBarLabel(appName: "OpenRig Canary") == "OpenRig Canary, 2 need you")
+    }
+
     @Test func rowsFromOtherRigs() {
         let me = "sam@external"
         var fyi = item("fyi", .pending, from: "lead@kernel", to: me, updated: 1)

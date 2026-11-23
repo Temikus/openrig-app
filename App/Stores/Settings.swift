@@ -45,7 +45,8 @@ final class AppSettings {
     var openTo: OpenTo { didSet { save(openTo.rawValue, "openTo") } }
     var reopenLastRig: Bool { didSet { save(reopenLastRig, "reopenLastRig") } }
     var dockBadge: Bool { didSet { save(dockBadge, "dockBadge") } }
-    var menuBarItem: Bool { didSet { save(menuBarItem, "menuBarItem") } }
+    /// `MenuBarExtra(isInserted:)` writes its value back at launch. Saving only changes keeps "never set" unset.
+    var menuBarItem: Bool { didSet { if menuBarItem != oldValue { save(menuBarItem, "menuBarItem") } } }
     var appearance: Appearance { didSet { save(appearance.rawValue, "appearance") } }
     /// Written as the person moves around; read by "Open to" and "Reopen the last rig".
     var lastRigName: String? { didSet { save(lastRigName, "lastRigName") } }
@@ -83,7 +84,8 @@ final class AppSettings {
         openTo = defaults.string(forKey: "openTo").flatMap(OpenTo.init) ?? .canvas
         reopenLastRig = defaults.object(forKey: "reopenLastRig") as? Bool ?? true
         dockBadge = defaults.object(forKey: "dockBadge") as? Bool ?? true
-        menuBarItem = defaults.bool(forKey: "menuBarItem")
+        // Absent means on. `bool(forKey:)` also reads a `-menuBarItem NO` launch argument, which is a string.
+        menuBarItem = defaults.object(forKey: "menuBarItem") == nil || defaults.bool(forKey: "menuBarItem")
         appearance = defaults.string(forKey: "appearance").flatMap(Appearance.init) ?? .system
         lastRigName = defaults.string(forKey: "lastRigName")
         lastView = defaults.string(forKey: "lastView").flatMap(ViewMode.init) ?? .canvas

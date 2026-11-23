@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
+  <!-- AppIcon.icon's rig.svg at 16/700 pt per unit. Seats are radius 100 there, not 118, so they don't merge at 18 pt. -->
+  <g fill="#000000">
+    <circle cx="9" cy="9" r="2.29"/>
+    <circle cx="9" cy="3.29" r="2.29"/>
+    <circle cx="9" cy="14.71" r="2.29"/>
+    <circle cx="4.04" cy="6.14" r="2.29"/>
+    <circle cx="13.96" cy="6.14" r="2.29"/>
+    <circle cx="4.04" cy="11.86" r="2.29"/>
+    <circle cx="13.96" cy="11.86" r="2.29"/>
+  </g>
+</svg>
