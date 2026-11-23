@@ -45,6 +45,8 @@ func item(
         #expect(external == .blocked(on: .outside("external:person-decision-pr602")))
         #expect(external.needsYou)
         #expect(!workStatus(item("z", .blocked, blockedOn: "qitem-1")).needsYou)
+        // A person's session is outside, though it has no "external:" prefix.
+        #expect(Blocker(ref: "artem@external") == .outside("artem@external"))
     }
 
     @Test func closedAndUnknown() {

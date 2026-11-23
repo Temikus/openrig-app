@@ -68,12 +68,21 @@ struct QItemInspector: View {
                     if let created = item.created { row("Created", relative(created)) }
                     if let updated = item.updated { row("Updated", relative(updated)) }
                     if let blocked = item.blockedOn {
-                        // A link, and the same short id the card's "on q-…" link uses.
                         GridRow {
                             Text("Blocked on").foregroundStyle(.secondary)
-                            Button(shortQItemID(blocked)) { selection.select(qitem: blocked) }
-                                .buttonStyle(.link)
-                                .help(blocked)
+                            switch Blocker(ref: blocked) {
+                            case .qitem(let id):
+                                // A link, and the same short id the card's "on q-…" link uses.
+                                Button(shortQItemID(id)) { selection.select(qitem: id) }
+                                    .buttonStyle(.link)
+                                    .help(id)
+                            case .outside(let ref):
+                                // A person or event, not a row: shortQItemID would turn "artem@external" into "q-rnal".
+                                Text(ref == rig.me || Human.isYou(ref) ? "You" : ref)
+                                    .foregroundStyle(Color.attention)
+                                    .textSelection(.enabled)
+                                    .help(ref)
+                            }
                         }
                     }
                     if let hop = rig.nextHop(for: item.id) {

@@ -8,6 +8,11 @@ public enum Blocker: Equatable, Sendable {
     case qitem(String)
     /// Waiting on something outside the rig: a person, a PR decision, CI. The human has to act.
     case outside(String)
+
+    /// The daemon's `blockedOn`: a qitem id, or anything else (a person's session, `external:…`).
+    public init(ref: String) {
+        self = ref.hasPrefix("qitem-") ? .qitem(ref) : .outside(ref)
+    }
 }
 
 /// A qitem's state with the daemon's two handoff encodings folded into one.
@@ -36,8 +41,7 @@ public func workStatus(_ item: QItem) -> WorkStatus {
     case .pending: return .pending
     case .inProgress: return .inProgress
     case .blocked:
-        let ref = item.blockedOn ?? "unknown"
-        return .blocked(on: ref.hasPrefix("qitem-") ? .qitem(ref) : .outside(ref))
+        return .blocked(on: Blocker(ref: item.blockedOn ?? "unknown"))
     case .handedOff:
         return .handedOff(to: item.closureTarget ?? item.handedOffTo)
     case .done:
