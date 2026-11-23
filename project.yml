@@ -39,6 +39,9 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: OpenRig
+        # XcodeGen otherwise writes a literal 1.0 (1), ignoring the build settings below.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.developer-tools
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -52,8 +55,10 @@ targets:
         # Sandbox stays off: the app runs `rig` and `tmux` and reads ~/.openrig.
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_STYLE: Manual
-        CODE_SIGN_IDENTITY: "-"
-        DEVELOPMENT_TEAM: ""
+        # Ad-hoc unless scripts/dist.sh passes these. Overriding CODE_SIGN_IDENTITY on the
+        # xcodebuild command line breaks SwiftTerm's auto-signed build plugin.
+        CODE_SIGN_IDENTITY: "$(OPENRIG_SIGN_IDENTITY:default=-)"
+        DEVELOPMENT_TEAM: "$(OPENRIG_TEAM:default=)"
 schemes:
   OpenRig:
     build:

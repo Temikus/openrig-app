@@ -25,6 +25,12 @@ just lint     # swift format lint
 just --list   # everything else
 ```
 
+## Releasing
+
+`just release [patch|minor|major] ["notes"]` runs on a clean, pushed `main`. It tags the next version, builds a Developer ID-signed, notarised DMG, pushes the tag and publishes it as a [GitHub release](https://github.com/Temikus/openrig-app/releases). Without notes, GitHub generates them. The first release uses `MARKETING_VERSION` from `project.yml`.
+
+It needs a Developer ID Application certificate in the keychain, `gh auth login`, and a notarytool profile: `xcrun notarytool store-credentials openrig` (or set `OPENRIG_NOTARY_PROFILE`). `just dist` and `just dist-publish` run the build and publish steps on their own.
+
 The app finds the daemon the way the CLI does: `OPENRIG_URL`, then `$OPENRIG_HOME/daemon.json` (default `~/.openrig`), then `http://127.0.0.1:7433`.
 
 **Settings (⌘,)** can override that with a custom address, store an operator token in the Keychain, and point at a `rig`, `tmux` or `node` the app didn't find (common with nvm, asdf or mise). The same address and token reach the `rig` commands the app runs. Settings also covers who the app acts as, Open at login, the Dock badge and menu bar list, banners, and terminal typing.

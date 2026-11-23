@@ -36,6 +36,23 @@ install *flags: (_xcodebuild "Release" flags)
     ditto {{ quote(derived / "Build/Products/Release/OpenRig.app") }} "$dest"
     echo "Installed $dest"
 
+# Build a Developer ID-signed, notarised DMG in <build root>/dist (version from the latest v* tag)
+dist:
+    OPENRIG_BUILD_ROOT={{ quote(build_root) }} ./scripts/dist.sh
+
+# Push HEAD's v* tag and publish the DMG from `just dist` as a GitHub release
+dist-publish:
+    OPENRIG_BUILD_ROOT={{ quote(build_root) }} ./scripts/publish.sh
+
+# Tag the next version, then dist, push the tag and publish a GitHub release (asks first)
+[positional-arguments]
+release bump="patch" notes="":
+    ./scripts/release.sh "$@"
+
+# List GitHub releases
+releases:
+    gh release list
+
 # Run package tests; live-daemon tests skip themselves when no daemon answers
 test:
     swift test {{ spm }}
