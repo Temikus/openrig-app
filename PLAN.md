@@ -258,6 +258,7 @@ Pin exact versions in `Package.swift` and commit `Package.resolved`. Current ver
 ### Signing and sandbox
 - **App Sandbox off.** The app execs `/opt/homebrew/bin/rig` and `tmux`, opens the tmux unix socket, and reads `~/.openrig/daemon.json`.
 - **Hardened runtime on.** Ad-hoc signing for dev; Developer ID and notarisation later.
+- **Canary (2026-11-23).** `just install` builds `/Applications/OpenRig Canary.app` (`dev.openrig.OpenRig.canary`, yellow icon), so a local build can run beside the public release and look different. It has its own defaults, login item and notification permission; the Keychain token is shared, because the service name is fixed.
 - **Loopback HTTP.** Set `NSAllowsLocalNetworking` for `http://127.0.0.1`.
 - **PATH.** GUI apps do not inherit the shell PATH. Resolve `rig` and `tmux` from known locations plus a setting, and pass a PATH that includes Homebrew so the Node shebang resolves.
 - **Secrets.** Never read `~/.openrig/activity-endpoint.json` or other token files for display or logging; it holds a plaintext bearer next to `baseUrl`.

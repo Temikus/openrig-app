@@ -18,9 +18,13 @@ targets:
     platform: macOS
     sources:
       - path: App
-        excludes: ["AppIcon.icon"]
+        excludes: ["AppIcon.icon", "AppIconCanary.icon"]
       # An Icon Composer bundle: one resource, not a folder of loose files.
       - path: App/AppIcon.icon
+        type: file
+        buildPhase: resources
+      # `just install` builds OpenRig Canary with this one.
+      - path: App/AppIconCanary.icon
         type: file
         buildPhase: resources
     dependencies:
@@ -38,7 +42,9 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: OpenRig
+        # OPENRIG_* are set only by `just install`, which builds OpenRig Canary.
+        CFBundleDisplayName: $(OPENRIG_APP_NAME:default=OpenRig)
+        CFBundleName: $(OPENRIG_APP_NAME:default=OpenRig)
         # XcodeGen otherwise writes a literal 1.0 (1), ignoring the build settings below.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -47,9 +53,9 @@ targets:
           NSAllowsLocalNetworking: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.openrig.OpenRig
+        PRODUCT_BUNDLE_IDENTIFIER: "dev.openrig.OpenRig$(OPENRIG_ID_SUFFIX:default=)"
         MARKETING_VERSION: 0.1.0
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_APPICON_NAME: "$(OPENRIG_ICON:default=AppIcon)"
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "6.0"
         # Sandbox stays off: the app runs `rig` and `tmux` and reads ~/.openrig.

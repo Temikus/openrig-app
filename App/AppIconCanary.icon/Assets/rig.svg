@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- The rig mark: seven seats in a hexagon, as the sidebar's circle.hexagongrid. -->
+  <g fill="#FFFFFF">
+    <circle cx="512" cy="512" r="118"/>
+    <circle cx="512" cy="262" r="118"/>
+    <circle cx="512" cy="762" r="118"/>
+    <circle cx="295" cy="387" r="118"/>
+    <circle cx="729" cy="387" r="118"/>
+    <circle cx="295" cy="637" r="118"/>
+    <circle cx="729" cy="637" r="118"/>
+  </g>
+</svg>

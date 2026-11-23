@@ -20,15 +20,18 @@ gen:
 # Build the app (Debug, ad-hoc signed). Extra xcodebuild flags pass through.
 build *flags: (_xcodebuild "Debug" flags)
 
+# Builds for this Mac's architecture only; `just dist` builds the universal app.
+# ONLY_ACTIVE_ARCH keeps Release from adding the other architecture.
 _xcodebuild config *flags: gen
     xcodebuild {{ flags }} -project OpenRig.xcodeproj -scheme OpenRig -configuration {{ config }} \
-        -destination "generic/platform=macOS" -derivedDataPath {{ quote(derived) }} -quiet build
+        -destination "platform=macOS,arch=$(uname -m)" ONLY_ACTIVE_ARCH=YES \
+        -derivedDataPath {{ quote(derived) }} -quiet build
 
-# Build a Release copy and install it to /Applications (quit the installed copy first)
-install *flags: (_xcodebuild "Release" flags)
+# Build a Release copy as OpenRig Canary and install it beside the public app (quit the canary first)
+install *flags: (_xcodebuild "Release" "OPENRIG_ID_SUFFIX=.canary" "OPENRIG_ICON=AppIconCanary" "OPENRIG_APP_NAME='OpenRig Canary'" flags)
     #!/usr/bin/env bash
     set -euo pipefail
-    dest=/Applications/OpenRig.app
+    dest="/Applications/OpenRig Canary.app"
     if pgrep -f "^$dest/Contents/MacOS/OpenRig" >/dev/null; then
       echo "Quit $dest first; it is running." >&2; exit 1
     fi
