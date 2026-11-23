@@ -5,6 +5,9 @@ import Foundation
 /// after its seat's tmux session was killed. events.json is copied from rig 0.7.22's event log (`events` table), with
 /// `seq` and `createdAt` added as the stream adds them and summaries replaced. It has no `queue.unclaimed`: none was logged.
 /// transitions-canceled.json is one row's `/api/queue/<id>/transitions` from rig 0.7.22, with notes replaced.
+///
+/// Unverified: the app-*.json files are written from rig 0.7.21's core-app.md and its daemon source
+/// (routes/core-app.js, domain/core-app-job.js), not recorded. Replace them with recordings when a credential may be issued.
 public enum RigFixtures {
     public static func data(_ name: String) throws -> Data {
         guard let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures") else {

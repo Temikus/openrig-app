@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "sources": [
+    { "source": "queue", "state": "unavailable", "detail": "Queue source unavailable; absence does not establish resolution." }
+  ],
+  "requests": [],
+  "readAt": "2026-11-23T10:30:00.000Z",
+  "cursor": "ZXBvY2g6MTIz"
+}

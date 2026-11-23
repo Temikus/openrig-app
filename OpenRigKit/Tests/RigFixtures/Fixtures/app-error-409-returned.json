@@ -1,0 +1,10 @@
+{
+  "error": "answer_already_returned",
+  "retrySameSubmission": false,
+  "replyQitemId": "qitem-20261123103104-e41b",
+  "currentRevision": "dr1-2c3d4e5f60718293a4b5c6d7",
+  "links": {
+    "self": "/api/apps/v1/requests/qitem-20261123101500-6a1f?actor=human-example%40external",
+    "result": "/api/apps/v1/requests/qitem-20261123101500-6a1f/result?actor=human-example%40external"
+  }
+}
