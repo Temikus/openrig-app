@@ -11,8 +11,10 @@ The person uses this laptop while you work. Never take the pointer, the keyboard
 ### 1. Launch your own copy in the background
 
 ```bash
+: "${OPENRIG_BUILD_ROOT:?set it to ~/Library/Caches/openrig-app/seats/<your member id>}"
 just build -skipPackagePluginValidation OPENRIG_ID_SUFFIX=.agent
-APP="${OPENRIG_BUILD_ROOT:-$HOME/Library/Caches/openrig-app}/DerivedData/Build/Products/Debug/OpenRig.app"
+APP="$OPENRIG_BUILD_ROOT/DerivedData/Build/Products/Debug/OpenRig.app"
+[ "$(defaults read "$APP/Contents/Info" CFBundleIdentifier)" = dev.openrig.OpenRig.agent ] || { echo "not the .agent build" >&2; exit 1; }
 BIN="OpenRig.app/Contents/MacOS/OpenRig"
 before=$(pgrep -f "$BIN")
 open -g -n --env OPENRIG_DEBUG_OPEN=kernel/queue --env OPENRIG_DEBUG_SIZE=900x600 "$APP" \
@@ -25,8 +27,9 @@ done
 
 - `-g` keeps the app behind the person's windows. `-n` starts a new copy.
 - `OPENRIG_ID_SUFFIX=.agent` gives your copy its own bundle id and settings (`dev.openrig.OpenRig.agent`). The person's copy uses `dev.openrig.OpenRig`: never write to it.
-- To build in your own folder, set `OPENRIG_BUILD_ROOT`. The justfile and `APP` both read it.
+- `OPENRIG_BUILD_ROOT` is your own build folder, so you never launch or overwrite the person's build. The justfile and `APP` both read it. `just --set build_root` does not set it.
 - `-menuBarItem NO` keeps your copy out of the person's menu bar. `-bannerKinds '()'` stops it posting banners. A new bundle id would otherwise ask for notification permission on the person's screen.
+- `-bannerKinds '()'` also silences `OPENRIG_DEBUG_BANNERS` and `OPENRIG_DEBUG_PROMPT_AFTER`. Leave it out only to test banners. That copy then asks for notification permission on the person's screen, so ask the lead first.
 - A copy may already be running. It is the person's: do not drive, relaunch or quit it.
 - Set the state you need with `OPENRIG_DEBUG_*` hooks at launch, not with clicks.
 - When done, `kill "$PID"`. Never `pkill` or `killall` OpenRig.
