@@ -3,7 +3,8 @@ import PackageDescription
 
 let package = Package(
     name: "OpenRigKit",
-    platforms: [.macOS(.v27)],
+    // iOS: the phone remote links RigModel, RigClient, RigDomain and RigCanvasLayout. RigTerminal is Mac only.
+    platforms: [.macOS(.v27), .iOS(.v26)],
     products: [
         .library(name: "RigModel", targets: ["RigModel"]),
         .library(name: "RigClient", targets: ["RigClient"]),
