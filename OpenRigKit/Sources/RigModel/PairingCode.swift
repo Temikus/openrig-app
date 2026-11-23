@@ -78,9 +78,13 @@ public struct PairingCode: Sendable, Equatable {
     }
 }
 
-extension PairingCode: CustomStringConvertible, CustomDebugStringConvertible {
+/// Leaves the token out of `print`, `debugPrint` and `dump`.
+extension PairingCode: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public var description: String { "PairingCode(\(actor) at \(host):\(port), credential \(credentialID))" }
     public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["host": host, "port": port, "actor": actor, "credentialID": credentialID])
+    }
 }
 
 public enum PairingCodeError: Error, Sendable, Equatable {

@@ -74,8 +74,8 @@ public struct AppRequest: Decodable, Sendable, Equatable, Identifiable {
     public var body: String?
     public var humanDetail: String?
     public var questions: [HumanQuestion]
-    /// Question id → option id, for the answers recorded so far.
-    public var humanAnswers: [String: String]
+    /// Question id → the answer recorded so far.
+    public var humanAnswers: [String: AppHumanAnswer]
     /// False when the contract can't answer this ask; `unsupportedReason` says why.
     public var isAnswerable: Bool
     public var unsupportedReason: String?
@@ -100,10 +100,35 @@ public struct AppRequest: Decodable, Sendable, Equatable, Identifiable {
         body = c.lenient(String.self, .body)
         humanDetail = c.lenient(String.self, .humanDetail)
         questions = c.lenient([HumanQuestion].self, .questions) ?? []
-        humanAnswers = c.lenient([String: String].self, .humanAnswers) ?? [:]
+        // Each value on its own: one odd value must not drop the others.
+        humanAnswers = (c.lenient([String: JSONValue].self, .humanAnswers) ?? [:]).compactMapValues(AppHumanAnswer.init)
         isAnswerable = c.lenient(JSONValue.self, .answer).map { $0 != .null } ?? false
         unsupportedReason = c.lenient(String.self, .unsupportedReason)
         occupantAuthorityUnknown = c.lenient(String.self, .occupantAuthority) == "unknown"
+    }
+}
+
+/// One recorded answer. The daemon stores a choice as the option id and a typed reply as
+/// `{kind: "typed-reply", text, placement, unansweredCount}`.
+public enum AppHumanAnswer: Sendable, Equatable {
+    case option(String)
+    case typedReply(String)
+    /// A shape this kit doesn't know. The daemon still counts the question as answered.
+    case unrecognized
+
+    /// Nil only for null, which the daemon treats as no answer.
+    init?(_ value: JSONValue) {
+        switch value {
+        case .null: return nil
+        case .string(let id): self = .option(id)
+        case .object(let fields):
+            if case .string(let text) = fields["text"], fields["kind"] == .string("typed-reply") {
+                self = .typedReply(text)
+            } else {
+                self = .unrecognized
+            }
+        default: self = .unrecognized
+        }
     }
 }
 
@@ -255,7 +280,8 @@ public struct AppAnswerReceipt: Decodable, Sendable, Equatable {
         public var state: String
         /// `recorded` (a partial choice) or `answered`.
         public var outcome: String?
-        public var unanswered: [String]
+        /// The text of the questions still open, not their ids. For ids, read the request's `unansweredQuestions`.
+        public var unansweredText: [String]
         public var message: String?
         public var replyQitemId: String?
         public var conflictCode: String?
@@ -268,7 +294,7 @@ public struct AppAnswerReceipt: Decodable, Sendable, Equatable {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             state = c.lenient(String.self, .state) ?? "unknown"
             outcome = c.lenient(String.self, .outcome)
-            unanswered = c.lenient([String].self, .unanswered) ?? []
+            unansweredText = c.lenient([String].self, .unanswered) ?? []
             message = c.lenient(String.self, .message)
             replyQitemId = c.lenient(String.self, .replyQitemId)
             conflictCode = c.lenient(String.self, .conflictCode)
@@ -293,7 +319,7 @@ public struct AppAnswerReceipt: Decodable, Sendable, Equatable {
     public var fate: AppAnswerFate {
         switch submission.state {
         case "committed":
-            if submission.outcome == "recorded" { return .partial(unanswered: submission.unanswered) }
+            if submission.outcome == "recorded" { return .partial(unansweredText: submission.unansweredText) }
             guard let reply = submission.replyQitemId else { return .answeredInPlace(message: submission.message) }
             return submission.message?.hasPrefix("Already answered") == true
                 ? .alreadyAnswered(reply: reply) : .returned(reply: reply)
@@ -306,8 +332,8 @@ public struct AppAnswerReceipt: Decodable, Sendable, Equatable {
 }
 
 public enum AppAnswerFate: Sendable, Equatable {
-    /// One choice saved; these questions are still open.
-    case partial(unanswered: [String])
+    /// One choice saved; the questions with this text are still open.
+    case partial(unansweredText: [String])
     /// Returned to the asker as this new row.
     case returned(reply: String)
     /// Someone answered first; `reply` is that original return. Nothing new was sent.
@@ -347,7 +373,9 @@ public struct AppCredential: Decodable, Sendable, Equatable, Identifiable {
     }
 }
 
-extension AppCredential: CustomStringConvertible, CustomDebugStringConvertible {
+/// Leaves the token out of `print`, `debugPrint` and `dump`.
+extension AppCredential: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public var description: String { "AppCredential(\(id), \(appID), \(actors.joined(separator: ", ")))" }
     public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: ["id": id, "appID": appID, "actors": actors]) }
 }

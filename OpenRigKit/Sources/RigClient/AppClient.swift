@@ -80,6 +80,7 @@ public struct AppClient: Sendable {
     }
 
     /// Submits, resending the same id and the same bytes while `retrySameSubmission` allows. Throws the last error.
+    /// A cancel stops it before the next attempt; the saved id and binding can be resent later.
     public func answer(
         id: String, _ binding: AppAnswerBinding, attempts: Int = 3, retryDelay: Duration = .seconds(1)
     ) async throws(AppError) -> AppAnswerReceipt {
@@ -88,9 +89,9 @@ public struct AppClient: Sendable {
         while true {
             do {
                 return try await send("POST", "answers/\(id)", actor: false, body: body)
-            } catch  where error.retrySameSubmission && attempt < attempts {
+            } catch let failure where failure.retrySameSubmission && attempt < attempts && !Task.isCancelled {
                 attempt += 1
-                try? await Task.sleep(for: retryDelay)
+                do { try await Task.sleep(for: retryDelay) } catch { throw failure }
             }
         }
     }
@@ -200,8 +201,9 @@ private struct AppRefusal: Decodable {
     var retrySameSubmission: Bool?
 }
 
-extension AppClient: CustomStringConvertible, CustomDebugStringConvertible {
-    /// Leaves the token out, so a logged client doesn't leak it.
+/// Leaves the token out of `print`, `debugPrint` and `dump`, so a logged client doesn't leak it.
+extension AppClient: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public var description: String { "AppClient(\(actor) at \(baseURL.absoluteString))" }
     public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: ["baseURL": baseURL, "actor": actor]) }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import RigFixtures
 import Testing
 
 @testable import RigModel
@@ -63,6 +64,28 @@ import Testing
         #expect(credential.token.hasPrefix("orapp_"))
         #expect(!String(describing: credential).contains(credential.token))
         #expect(!String(reflecting: credential).contains(credential.token))
+        var dumped = ""
+        dump(credential, to: &dumped)
+        #expect(!dumped.contains(credential.token))
+    }
+
+    /// A typed reply is stored as an object, a button choice as a string. Both count as answered.
+    @Test func typedReplyAndChoiceBothSurvive() throws {
+        let request: AppRequest = try fixture("app-request-typed-reply")
+        #expect(request.humanAnswers["reach"] == .option("tailscale"))
+        #expect(request.humanAnswers["notify"] == .typedReply("Reply text."))
+        #expect(request.unansweredQuestions.map(\.id) == ["simulator"])
+    }
+
+    /// The daemon counts any non-null value as answered, so an unknown shape must too: else a typed reply would be
+    /// filed under a question the daemon thinks is answered.
+    @Test func unknownAnswerShapeStillCountsAsAnswered() throws {
+        var json = try String(decoding: RigFixtures.data("app-request-typed-reply"), as: UTF8.self)
+        json = json.replacingOccurrences(of: #""reach": "tailscale""#, with: #""reach": {"kind": "voice-note"}"#)
+        let request = try JSONDecoder().decode(AppRequest.self, from: Data(json.utf8))
+        #expect(request.humanAnswers["reach"] == .unrecognized)
+        #expect(request.humanAnswers["notify"] == .typedReply("Reply text."))
+        #expect(request.unansweredQuestions.map(\.id) == ["simulator"])
     }
 }
 
@@ -75,7 +98,8 @@ import Testing
 
     @Test func partialChoiceWaitsForTheRest() throws {
         let receipt: AppAnswerReceipt = try fixture("app-receipt-recorded")
-        #expect(receipt.fate == .partial(unanswered: ["notify"]))
+        // The daemon sends the open questions' text, not their ids.
+        #expect(receipt.fate == .partial(unansweredText: ["Question two?"]))
         #expect(receipt.replayed)
     }
 

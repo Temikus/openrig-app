@@ -89,6 +89,9 @@ import Testing
         let original = try code()
         #expect(!String(describing: original).contains(token))
         #expect(!String(reflecting: original).contains(token))
+        var dumped = ""
+        dump(original, to: &dumped)
+        #expect(!dumped.contains(token))
     }
 }
 

@@ -126,6 +126,15 @@ final class ScriptedProtocol: URLProtocol, @unchecked Sendable {
         await #expect(throws: AppError.unsupportedDaemon) { try await script.client().capabilities() }
     }
 
+    @Test func clientHidesItsToken() {
+        let client = AppClient(baseURL: URL(string: "http://100.64.0.1:7433")!, token: "orapp_secret", actor: "a@b")
+        var dumped = ""
+        dump(client, to: &dumped)
+        for text in [String(describing: client), String(reflecting: client), dumped] {
+            #expect(!text.contains("orapp_secret"))
+        }
+    }
+
     @Test func unauthorizedMeansUnpaired() async {
         let script = Script([.status(401, Data(#"{"error":"unauthorized"}"#.utf8))])
         await #expect(throws: AppError.unpaired) { try await script.client().needsMe() }
@@ -179,6 +188,20 @@ final class ScriptedProtocol: URLProtocol, @unchecked Sendable {
             (error as? AppError)?.retrySameSubmission == true
         }
         #expect(script.requests.count == 3)
+    }
+
+    /// Cancelling during the wait before a retry ends the call at once, with the error that caused the wait.
+    @Test(.timeLimit(.minutes(1))) func cancelStopsRetrying() async throws {
+        let script = Script([.drop, .status(200, try appFixture("app-receipt-returned"))])
+        let client = script.client()
+        let binding = try binding()
+        let call = Task { try await client.answer(id: "a_7Qm2xVb9Lk3pR8sT", binding, retryDelay: .seconds(30)) }
+        while script.requests.isEmpty { try await Task.sleep(for: .milliseconds(10)) }
+        let started = ContinuousClock.now
+        call.cancel()
+        await #expect(throws: AppError.self) { try await call.value }
+        #expect(ContinuousClock.now - started < .seconds(5))
+        #expect(script.requests.count == 1)
     }
 
     @Test func receiptIsReadByID() async throws {
