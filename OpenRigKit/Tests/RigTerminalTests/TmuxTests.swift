@@ -230,6 +230,30 @@ struct TmuxIntegrationTests {
         try await waitFor { try await count("two@test") == 0 }
         await cleanUp()
     }
+
+    /// An app opened from Finder or the Dock has no LANG or LC_*. A tmux client without a UTF-8 locale
+    /// sends `_` for every non-ASCII character.
+    @Test func attachShowsSymbolsWithoutALocale() async throws {
+        let line = "❯ ⏵⏵ ← ─"
+        try await tmux.run([
+            "-f", "/dev/null", "new-session", "-d", "-s", "utf8@test", "-x", "40", "-y", "10",
+            "printf '\(line)\\n'; sleep 600",
+        ])
+        var environment = ProcessInfo.processInfo.environment
+        for key in environment.keys where key == "LANG" || key.hasPrefix("LC_") { environment[key] = nil }
+        let attach = AttachSession(tmux: tmux, session: "utf8@test", cols: 40, rows: 10, environment: environment)
+        let received = Received()
+        attach.subscribe { received.append($0) }
+        func firstRow() -> String {
+            let screen = HeadlessTerminal(cols: 40, rows: 10)
+            screen.feed(received.bytes)
+            return screen.text(row: 0)
+        }
+        try await waitFor { !firstRow().isEmpty }
+        #expect(firstRow() == line)
+        attach.close()
+        await cleanUp()
+    }
 }
 
 final class Received: @unchecked Sendable {

@@ -106,7 +106,9 @@ public struct Tmux: Sendable {
 
     /// Arguments that attach a client to one seat's session. `ignore-size` keeps this client from
     /// resizing a pane other terminals are showing (PLAN.md risk 4); the view scales to the pane instead.
+    /// `-u`: the client's terminal is SwiftTerm, which reads UTF-8. Without it, a client with no UTF-8 locale
+    /// (an app opened from Finder has none) sends `_` for every non-ASCII character.
     public func attachArgs(session: String) -> [String] {
-        socketArgs + ["attach-session", "-f", "ignore-size", "-t", "=\(session)"]
+        ["-u"] + socketArgs + ["attach-session", "-f", "ignore-size", "-t", "=\(session)"]
     }
 }
