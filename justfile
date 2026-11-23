@@ -27,6 +27,12 @@ _xcodebuild config *flags: gen
         -destination "platform=macOS,arch=$(uname -m)" ONLY_ACTIVE_ARCH=YES \
         -derivedDataPath {{ quote(derived) }} -quiet build
 
+# Build the iOS remote app for any simulator. Extra xcodebuild flags pass through.
+# The OpenRigRemote scheme, not the package: RigTerminal doesn't build for iOS.
+build-ios *flags: gen
+    xcodebuild {{ flags }} -project OpenRig.xcodeproj -scheme OpenRigRemote -configuration Debug \
+        -destination "generic/platform=iOS Simulator" -derivedDataPath {{ quote(derived) }} -quiet build
+
 alias install := install-canary
 
 # Build a Release copy as OpenRig Canary and install it beside the public app (quit the canary first)
@@ -98,11 +104,11 @@ test-lifecycle rig:
 
 # Check formatting
 lint:
-    swift format lint --strict --recursive OpenRigKit/Package.swift OpenRigKit/Sources OpenRigKit/Tests App
+    swift format lint --strict --recursive OpenRigKit/Package.swift OpenRigKit/Sources OpenRigKit/Tests App Remote
 
 # Fix formatting in place
 format:
-    swift format --in-place --recursive OpenRigKit/Package.swift OpenRigKit/Sources OpenRigKit/Tests App
+    swift format --in-place --recursive OpenRigKit/Package.swift OpenRigKit/Sources OpenRigKit/Tests App Remote
 
 # Build and launch the app
 run: build
@@ -132,4 +138,4 @@ record-fixtures:
 
 # Remove build output
 clean:
-    rm -rf {{ quote(build_root) }} OpenRig.xcodeproj App/Info.plist
+    rm -rf {{ quote(build_root) }} OpenRig.xcodeproj App/Info.plist Remote/Info.plist

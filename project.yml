@@ -4,6 +4,7 @@ options:
   bundleIdPrefix: dev.openrig
   deploymentTarget:
     macOS: "27.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 packages:
   OpenRigKit:
@@ -65,10 +66,66 @@ targets:
         # xcodebuild command line breaks SwiftTerm's auto-signed build plugin.
         CODE_SIGN_IDENTITY: "$(OPENRIG_SIGN_IDENTITY:default=-)"
         DEVELOPMENT_TEAM: "$(OPENRIG_TEAM:default=)"
+  # The iPhone remote. It links only the kit's cross-platform libraries.
+  OpenRigRemote:
+    type: application
+    platform: iOS
+    sources:
+      - path: Remote
+      # The Mac app's Icon Composer bundle, shared rather than copied.
+      - path: App/AppIcon.icon
+        type: file
+        buildPhase: resources
+    dependencies:
+      - package: OpenRigKit
+        product: RigModel
+      - package: OpenRigKit
+        product: RigClient
+      - package: OpenRigKit
+        product: RigDomain
+    info:
+      path: Remote/Info.plist
+      properties:
+        CFBundleDisplayName: OpenRig
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        # The daemon serves plain HTTP. iOS 17+ blocks HTTP to IP addresses unless an exception names them.
+        # Allowed: the tailnet (CGNAT range and MagicDNS names), and loopback for the simulator, which
+        # reaches the Mac's daemon there. Every other host keeps full ATS.
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            100.64.0.0/10:
+              NSExceptionAllowsInsecureHTTPLoads: true
+            ts.net:
+              NSIncludesSubdomains: true
+              NSExceptionAllowsInsecureHTTPLoads: true
+            127.0.0.1:
+              NSExceptionAllowsInsecureHTTPLoads: true
+            localhost:
+              NSExceptionAllowsInsecureHTTPLoads: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.openrig.Remote
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        # Set to install on a phone; simulator builds need no team.
+        DEVELOPMENT_TEAM: "$(OPENRIG_TEAM:default=)"
 schemes:
   OpenRig:
     build:
       targets:
         OpenRig: all
+    run:
+      config: Debug
+  OpenRigRemote:
+    build:
+      targets:
+        OpenRigRemote: all
     run:
       config: Debug
