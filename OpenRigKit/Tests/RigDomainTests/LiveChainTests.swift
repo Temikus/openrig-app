@@ -17,17 +17,27 @@ struct LiveChainTests {
             let rows = try await client.queue(rigName: rig.name)
             let index = ChainIndex(rows)
             // The three rows with the longest recorded chains in this rig.
-            let tails = rows.filter { ($0.chainOfRecord?.count ?? 0) > 0 }
-                .sorted { $0.chainOfRecord!.count > $1.chainOfRecord!.count }
+            let tails = rows.filter { !qitemIDs($0.chainOfRecord).isEmpty }
+                .sorted { qitemIDs($0.chainOfRecord).count > qitemIDs($1.chainOfRecord).count }
                 .prefix(3)
             for tail in tails {
                 let shown = try await client.qitem(id: tail.id)
                 let chain = index.chain(for: tail.id)
-                #expect(Array(chain.ids.prefix(chain.focusIndex)) == shown.chainOfRecord, "\(rig.name) \(tail.id)")
+                #expect(
+                    Array(chain.ids.prefix(chain.focusIndex)) == qitemIDs(shown.chainOfRecord), "\(rig.name) \(tail.id)"
+                )
                 checked += 1
             }
         }
         if checked == 0 { print("LiveChainTests: no handoff chains on this daemon; nothing compared") }
+    }
+}
+
+/// The daemon also records reroutes in `chainOfRecord` (`fallback-from:<session>` when a seat is removed).
+/// Chains link qitems only.
+private func qitemIDs(_ record: [String]?) -> [String] {
+    (record ?? []).filter {
+        if case .qitem = Blocker(ref: $0) { true } else { false }
     }
 }
 

@@ -37,11 +37,14 @@ public final class AttachSession: LocalProcessDelegate, @unchecked Sendable {
         lock.withLock { _ = subscribers.removeValue(forKey: token) }
     }
 
-    public init(tmux: Tmux, session: String, cols: Int = 80, rows: Int = 24) {
+    public init(
+        tmux: Tmux, session: String, cols: Int = 80, rows: Int = 24,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) {
         self.session = session
         self.size = (cols, rows)
         process = LocalProcess(delegate: self)
-        var environment = ProcessInfo.processInfo.environment
+        var environment = environment
         environment["TERM"] = "xterm-256color"
         environment.removeValue(forKey: "TMUX")  // never nest inside the app's own tmux, if any
         process.startProcess(
