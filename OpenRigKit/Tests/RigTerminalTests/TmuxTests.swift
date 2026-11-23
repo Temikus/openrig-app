@@ -231,8 +231,7 @@ struct TmuxIntegrationTests {
         await cleanUp()
     }
 
-    /// An app opened from Finder or the Dock has no LANG or LC_*. A tmux client without a UTF-8 locale
-    /// sends `_` for every non-ASCII character.
+    /// Regression: see `Tmux.attachArgs`.
     @Test func attachShowsSymbolsWithoutALocale() async throws {
         let line = "❯ ⏵⏵ ← ─"
         try await tmux.run([
@@ -249,7 +248,7 @@ struct TmuxIntegrationTests {
             screen.feed(received.bytes)
             return screen.text(row: 0)
         }
-        try await waitFor { !firstRow().isEmpty }
+        try await waitFor { firstRow() == line }
         #expect(firstRow() == line)
         attach.close()
         await cleanUp()
