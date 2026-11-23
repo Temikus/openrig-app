@@ -398,7 +398,6 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
   - A `.canary` bundle id gets `MenuBarMarkCanary`, whose centre seat is a ring: the canary's yellow can't show in a one-colour menu bar.
   - A `Label` in a `MenuBarExtra` draws only its image. The old bell's count never showed. Measured through AX on background copies: a `Label` with a count is 36 pt wide, as quiet; an `HStack` of image and count is about 50 pt, quiet 36 pt.
   - A status item has no window to capture on macOS 27; read it through AX by pid (`menu bar 2` of the process). Its look in the real menu bar is checked by the person.
-  - A copy launched with `-menuBarItem YES` stored `menuBarItem = 1` in its own domain, untouched. Test the menu bar on a build with its own bundle id (`OPENRIG_ID_SUFFIX=.<name>`), never the person's.
   - The item is on when `menuBarItem` is absent. A stored value or a `-menuBarItem` launch argument wins.
   - `menuBarItem` saves only on change. Saving every write stored "off" at launch for every existing user.
   - The person chose to keep a stored "off": no migration. Existing users turn the item on in Settings › General.
