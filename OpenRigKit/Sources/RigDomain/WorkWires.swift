@@ -1,4 +1,3 @@
-import CoreGraphics
 import RigCanvasLayout
 import RigModel
 
@@ -67,19 +66,4 @@ public func routeCanvas(_ layout: CanvasLayout, spec: [WireRequest], work: [Wire
         wires.append(wire)
     }
     return RouteResult(wires: wires, junctions: routed.junctions)
-}
-
-/// Where a wire's label chip goes: the midpoint of its longest segment that stays clear of every rect.
-public func chipAnchor(for wire: Wire, avoiding rects: [CGRect], clearance: CGFloat = 10) -> CGPoint {
-    let segments = wire.segments.sorted { length($0) > length($1) }
-    for (a, b) in segments {
-        let mid = CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
-        if !rects.contains(where: { $0.insetBy(dx: -clearance, dy: -clearance).contains(mid) }) { return mid }
-    }
-    guard let (a, b) = segments.first else { return wire.points.first ?? .zero }
-    return CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
-}
-
-private func length(_ s: (CGPoint, CGPoint)) -> CGFloat {
-    abs(s.0.x - s.1.x) + abs(s.0.y - s.1.y)
 }

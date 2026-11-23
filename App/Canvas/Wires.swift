@@ -339,13 +339,28 @@ struct WireChip: View {
     let isSelected: Bool
     let select: () -> Void
 
+    static func text(item: QItem, kind: WireKind, label: String?) -> String {
+        label ?? (kind == .needsYou ? "\(shortQItemID(item.id)) · blocked" : shortQItemID(item.id))
+    }
+
+    /// The chip's size, known before it draws so the canvas can place it in one pass. The chip draws at exactly this size.
+    static func size(of text: String) -> CGSize {
+        let caption2 = NSFont.preferredFont(forTextStyle: .caption2).pointSize
+        let font = NSFont.monospacedSystemFont(ofSize: caption2, weight: .semibold)
+        let measured = (text as NSString).size(withAttributes: [.font: font])
+        return CGSize(width: ceil(measured.width) + 2 * 6, height: ceil(measured.height) + 2 * 2)
+    }
+
     var body: some View {
+        let text = Self.text(item: item, kind: kind, label: label)
+        let size = Self.size(of: text)
         Button(action: select) {
-            Text(label ?? (kind == .needsYou ? "\(shortQItemID(item.id)) · blocked" : shortQItemID(item.id)))
+            Text(text)
                 .font(.caption2.monospaced().weight(.semibold))
                 .foregroundStyle(.black)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
+                .lineLimit(1)
+                .fixedSize()
+                .frame(width: size.width, height: size.height)
                 .background(WireStyle.of(kind).color, in: .rect(cornerRadius: 4))
                 .overlay {
                     if isSelected {
