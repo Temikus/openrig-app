@@ -14,7 +14,7 @@ The person uses this laptop while you work. Never take the pointer, the keyboard
 APP=~/Library/Caches/openrig-app/DerivedData/Build/Products/Debug/OpenRig.app
 BIN="OpenRig.app/Contents/MacOS/OpenRig"
 before=$(pgrep -f "$BIN")
-open -g -n --env OPENRIG_DEBUG_OPEN=kernel/queue --env OPENRIG_DEBUG_SIZE=900x600 "$APP"
+open -g -n --env OPENRIG_DEBUG_OPEN=kernel/queue --env OPENRIG_DEBUG_SIZE=900x600 "$APP" --args -menuBarItem NO
 # Your pid is the one that was not running before.
 n=0; until PID=$(pgrep -f "$BIN" | grep -vxF "${before:-none}" | head -1) && [ -n "$PID" ]; do
     n=$((n + 1)); [ "$n" -gt 30 ] && break; sleep 1
@@ -22,6 +22,7 @@ done
 ```
 
 - `-g` keeps the app behind the person's windows. `-n` starts a new copy.
+- `-menuBarItem NO` keeps your copy out of the person's menu bar. It shares their settings, where the item is on by default.
 - A copy may already be running. It is the person's: do not drive, relaunch or quit it.
 - Set the state you need with `OPENRIG_DEBUG_*` hooks at launch, not with clicks.
 - When done, `kill "$PID"`. Never `pkill` or `killall` OpenRig.
