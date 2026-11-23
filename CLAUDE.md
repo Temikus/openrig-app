@@ -11,10 +11,12 @@ The person uses this laptop while you work. Never take the pointer, the keyboard
 ### 1. Launch your own copy in the background
 
 ```bash
-APP=~/Library/Caches/openrig-app/DerivedData/Build/Products/Debug/OpenRig.app
+just build -skipPackagePluginValidation OPENRIG_ID_SUFFIX=.agent
+APP="${OPENRIG_BUILD_ROOT:-$HOME/Library/Caches/openrig-app}/DerivedData/Build/Products/Debug/OpenRig.app"
 BIN="OpenRig.app/Contents/MacOS/OpenRig"
 before=$(pgrep -f "$BIN")
-open -g -n --env OPENRIG_DEBUG_OPEN=kernel/queue --env OPENRIG_DEBUG_SIZE=900x600 "$APP" --args -menuBarItem NO
+open -g -n --env OPENRIG_DEBUG_OPEN=kernel/queue --env OPENRIG_DEBUG_SIZE=900x600 "$APP" \
+    --args -menuBarItem NO -bannerKinds '()'
 # Your pid is the one that was not running before.
 n=0; until PID=$(pgrep -f "$BIN" | grep -vxF "${before:-none}" | head -1) && [ -n "$PID" ]; do
     n=$((n + 1)); [ "$n" -gt 30 ] && break; sleep 1
@@ -22,7 +24,9 @@ done
 ```
 
 - `-g` keeps the app behind the person's windows. `-n` starts a new copy.
-- `-menuBarItem NO` keeps your copy out of the person's menu bar. It shares their settings, where the item is on by default.
+- `OPENRIG_ID_SUFFIX=.agent` gives your copy its own bundle id and settings (`dev.openrig.OpenRig.agent`). The person's copy uses `dev.openrig.OpenRig`: never write to it.
+- To build in your own folder, set `OPENRIG_BUILD_ROOT`. The justfile and `APP` both read it.
+- `-menuBarItem NO` keeps your copy out of the person's menu bar. `-bannerKinds '()'` stops it posting banners. A new bundle id would otherwise ask for notification permission on the person's screen.
 - A copy may already be running. It is the person's: do not drive, relaunch or quit it.
 - Set the state you need with `OPENRIG_DEBUG_*` hooks at launch, not with clicks.
 - When done, `kill "$PID"`. Never `pkill` or `killall` OpenRig.
