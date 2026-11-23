@@ -60,6 +60,11 @@ public struct RouterOptions: Sendable {
     /// Cost factor for running through a pod that is neither the source's nor the target's.
     public var foreignPod: CGFloat = 2.5
     public var laneSpacing: CGFloat = 8
+    /// Extra length (bends at `bendPenalty`) a wire may take to go around another instead of crossing it, per crossing
+    /// removed.
+    public var detourPerCrossing: CGFloat = 480
+    /// While looking for that detour, cost of each grid point the crossed wire passes through.
+    public var crossedPointPenalty: CGFloat = 200
 
     public init() {}
 }
@@ -132,44 +137,129 @@ public func route(_ layout: CanvasLayout, _ requests: [WireRequest], options o: 
         }
 
     let bundleOf = bundles(ordered)
-    var usedByBundle: [String: Set<Int>] = [:]
-    var routed: [String: Wire] = [:]
-    for request in ordered {
-        let start = layout.outPort(request.source)
-        let end = layout.inPort(request.target)
-        let bundle = bundleOf[request.id] ?? request.id
-        var used = usedByBundle[bundle, default: []]
-        let points: [CGPoint]
-        if let path = grid.shortestPath(
-            from: CGPoint(x: start.x + o.stub, y: start.y),
-            to: CGPoint(x: end.x - o.stub, y: end.y),
-            discounted: used,
-            avoiding: layout.pods.keys.sorted().compactMap { key -> CGRect? in
-                let frame = layout.pods[key]!
-                return frame == podFrame(of: request.source) || frame == podFrame(of: request.target) ? nil : frame
+    let pods = layout.pods.keys.sorted().map { layout.pods[$0]! }
+    var paths: [String: RoutedPath] = [:]
+
+    /// Routes one bundle's wires in order; later ones share the earlier ones' trunk.
+    func routeBundle(_ bundle: String, avoiding avoid: Set<Int> = []) -> [String: RoutedPath] {
+        var used = Set<Int>()
+        var out: [String: RoutedPath] = [:]
+        for request in ordered where bundleOf[request.id] == bundle {
+            let start = layout.outPort(request.source)
+            let end = layout.inPort(request.target)
+            let own = [podFrame(of: request.source), podFrame(of: request.target)]
+            if let path = grid.shortestPath(
+                from: CGPoint(x: start.x + o.stub, y: start.y),
+                to: CGPoint(x: end.x - o.stub, y: end.y),
+                discounted: used,
+                avoiding: pods.filter { !own.contains($0) },
+                crossedPoints: avoid
+            ) {
+                used.formUnion(path.edges)
+                out[request.id] = RoutedPath(points: simplify([start] + path.points + [end]), vertices: path.vertices)
+            } else {
+                // No grid path (shouldn't happen with channels on every side): fall back to a plain dogleg.
+                let midX = (start.x + end.x) / 2
+                let points = [start, CGPoint(x: midX, y: start.y), CGPoint(x: midX, y: end.y), end]
+                out[request.id] = RoutedPath(points: simplify(points), vertices: [])
             }
-        ) {
-            used.formUnion(path.edges)
-            points = [start] + path.points + [end]
-        } else {
-            // No grid path (shouldn't happen with channels on every side): fall back to a plain dogleg.
-            let midX = (start.x + end.x) / 2
-            points = [start, CGPoint(x: midX, y: start.y), CGPoint(x: midX, y: end.y), end]
         }
-        usedByBundle[bundle] = used
-        routed[request.id] = Wire(
-            id: request.id, source: request.source, target: request.target, kind: request.kind, bundle: bundle,
-            points: simplify(points))
+        return out
     }
 
-    var wires = ordered.compactMap { routed[$0.id] }
-    assignLanes(&wires, spacing: o.laneSpacing)
-    staggerInPorts(&wires, spacing: o.laneSpacing)
+    func laidOut(_ paths: [String: RoutedPath]) -> [Wire] {
+        var wires = ordered.compactMap { r -> Wire? in
+            paths[r.id].map {
+                Wire(
+                    id: r.id, source: r.source, target: r.target, kind: r.kind, bundle: bundleOf[r.id] ?? r.id,
+                    points: $0.points)
+            }
+        }
+        assignLanes(&wires, spacing: o.laneSpacing)
+        staggerInPorts(&wires, spacing: o.laneSpacing)
+        return wires
+    }
+
+    var bundleOrder: [String] = []
+    for r in ordered where !bundleOrder.contains(bundleOf[r.id]!) { bundleOrder.append(bundleOf[r.id]!) }
+    for bundle in bundleOrder { paths.merge(routeBundle(bundle)) { $1 } }
+    var wires = laidOut(paths)
+
+    // Detours. Two wires whose ends interleave along a shared line cross however their lanes are ordered. Re-route a
+    // bundle that crosses another around it, and keep the new route if it removes crossings for a short enough detour.
+    // Work wires come and go, so they detour before spec wires do; within each, the last routed goes first.
+    var crossings = crossingCount(wires)
+    let isWork = { (b: String) in ordered.contains { bundleOf[$0.id] == b && $0.kind.isWork } }
+    let rerouteOrder = bundleOrder.reversed().filter(isWork) + bundleOrder.reversed().filter { !isWork($0) }
+    for bundle in rerouteOrder where crossings > 0 {
+        let mine = wires.filter { $0.bundle == bundle }
+        let crossed = wires.filter { other in
+            other.bundle != bundle && other.kind != .observes && mine.contains { crossingCount($0, other) > 0 }
+        }
+        guard !crossed.isEmpty else { continue }
+        var candidate = paths
+        candidate.merge(routeBundle(bundle, avoiding: Set(crossed.flatMap { paths[$0.id]!.vertices }))) { $1 }
+        let next = laidOut(candidate)
+        let remaining = crossingCount(next)
+        func length(_ p: [String: RoutedPath]) -> CGFloat {
+            mine.reduce(0) { sum, w in
+                let points = p[w.id]!.points
+                return sum + polylineLength(points) + CGFloat(max(points.count - 2, 0)) * o.bendPenalty
+            }
+        }
+        guard remaining < crossings,
+            length(candidate) - length(paths) <= o.detourPerCrossing * CGFloat(crossings - remaining)
+        else { continue }
+        paths = candidate
+        wires = next
+        crossings = remaining
+    }
+
     let junctions = thinned(findJunctions(wires), within: o.laneSpacing)
     let byID = Dictionary(uniqueKeysWithValues: wires.map { ($0.id, $0) })
     var seen = Set<String>()
     let output = requests.compactMap { r -> Wire? in seen.insert(r.id).inserted ? byID[r.id] : nil }
     return RouteResult(wires: output, junctions: junctions)
+}
+
+extension WireKind {
+    var isWork: Bool { [.inFlight, .needsYou, .next, .past].contains(self) }
+}
+
+struct RoutedPath {
+    /// Port to port, corners not rounded, before lanes.
+    var points: [CGPoint]
+    /// Grid points the search passed through.
+    var vertices: Set<Int>
+}
+
+func polylineLength(_ points: [CGPoint]) -> CGFloat {
+    zip(points, points.dropFirst()).reduce(0) { $0 + abs($1.0.x - $1.1.x) + abs($1.0.y - $1.1.y) }
+}
+
+/// Places where a segment of one wire passes through the inside of a perpendicular segment of the other.
+func crossingCount(_ a: Wire, _ b: Wire) -> Int {
+    var n = 0
+    for (p, q) in a.segments {
+        for (r, s) in b.segments {
+            let (h, v) = p.y == q.y ? ((p, q), (r, s)) : ((r, s), (p, q))
+            guard h.0.y == h.1.y, v.0.x == v.1.x, h.0 != h.1, v.0 != v.1 else { continue }
+            let (x, y) = (v.0.x, h.0.y)
+            if min(h.0.x, h.1.x) < x, x < max(h.0.x, h.1.x), min(v.0.y, v.1.y) < y, y < max(v.0.y, v.1.y) { n += 1 }
+        }
+    }
+    return n
+}
+
+/// Crossings between wires of different bundles. Wires of one bundle share trunks, and watch lines draw faint as
+/// context, so neither counts.
+func crossingCount(_ wires: [Wire]) -> Int {
+    let counted = wires.filter { $0.kind != .observes }
+    var n = 0
+    for (i, a) in counted.enumerated() {
+        for b in counted[(i + 1)...] where a.bundle != b.bundle { n += crossingCount(a, b) }
+    }
+    return n
 }
 
 // MARK: - Grid
@@ -267,6 +357,7 @@ struct RoutingGrid {
     struct Path {
         var points: [CGPoint]
         var edges: Set<Int>
+        var vertices: Set<Int>
     }
 
     private struct Entry: Comparable {
@@ -275,8 +366,12 @@ struct RoutingGrid {
         static func < (l: Entry, r: Entry) -> Bool { (l.cost, l.state) < (r.cost, r.state) }
     }
 
-    /// Leaves `start` heading east and must arrive at `goal` able to continue east.
-    func shortestPath(from start: CGPoint, to goal: CGPoint, discounted: Set<Int>, avoiding pods: [CGRect]) -> Path? {
+    /// Leaves `start` heading east and must arrive at `goal` able to continue east. Each of `crossedPoints` on the way
+    /// costs `crossedPointPenalty`.
+    func shortestPath(
+        from start: CGPoint, to goal: CGPoint, discounted: Set<Int>, avoiding pods: [CGRect],
+        crossedPoints: Set<Int> = []
+    ) -> Path? {
         guard let s = index(of: start), let g = index(of: goal) else { return nil }
         let opposite = [1, 0, 3, 2]
         var dist = [CGFloat](repeating: .infinity, count: valid.count * 4)
@@ -303,7 +398,8 @@ struct RoutingGrid {
                 if d >= 2 && !channelXs.contains(a.x) { length *= options.offChannelVertical }
                 if pods.contains(where: { crosses(a, b, $0) }) { length *= options.foreignPod }
                 if discounted.contains(Self.edgeKey(p, q)) { length *= options.trunkDiscount }
-                let cost = e.cost + length + (d == dir ? 0 : options.bendPenalty)
+                var cost = e.cost + length + (d == dir ? 0 : options.bendPenalty)
+                if q != g, crossedPoints.contains(q) { cost += options.crossedPointPenalty }
                 let next = q * 4 + d
                 if cost < dist[next] {
                     dist[next] = cost
@@ -318,7 +414,7 @@ struct RoutingGrid {
         let indices = states.reversed().map { $0 / 4 }
         var edges = Set<Int>()
         for (a, b) in zip(indices, indices.dropFirst()) { edges.insert(Self.edgeKey(a, b)) }
-        return Path(points: indices.map(point), edges: edges)
+        return Path(points: indices.map(point), edges: edges, vertices: Set(indices))
     }
 }
 

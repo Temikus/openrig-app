@@ -178,6 +178,39 @@ import Testing
         #expect(points.contains { $0.x > orch.maxX && $0.x < dev.minX })
     }
 
+    @Test func workWireGoesAroundRatherThanCrossASpecWire() throws {
+        // plan→lead and the spec wire lead→plan both cross the seat column. Through the gap between the seats their
+        // ends interleave, so lanes can't keep them apart; one has to go around plan instead.
+        var input = Denkeeper.input
+        input.seatSizes["plan"] = CGSize(width: 216, height: 140)
+        let layout = layoutRig(input)
+        let work = WireRequest(id: "q:back", source: "plan", target: "lead", kind: .inFlight)
+        let wires = route(layout, Denkeeper.requests + [work]).wires
+        let spec = try #require(wires.first { $0.id == "d:lead>plan" })
+        let back = try #require(wires.first { $0.id == "q:back" })
+        #expect(crossings(spec, back) == 0, "\(spec.points) vs \(back.points)")
+        let alone = try #require(route(layout, Denkeeper.requests).wires.first { $0.id == "d:lead>plan" })
+        #expect(spec.bends == alone.bends, "the work wire detours, not the spec wire")
+        #expect(back.points.contains { $0.y > layout.seats["plan"]!.maxY }, "around plan, under it")
+    }
+
+    @Test func watchLinesDontPullSpecWiresIntoDetours() throws {
+        // The watch lines into frontend cross the delegates trunk. They draw faint, so the trunk stays the short way.
+        #expect(try wire("d:lead>frontend").bends == 4)
+    }
+
+    @Test func noDetourPastTheBudget() {
+        var input = Denkeeper.input
+        input.seatSizes["plan"] = CGSize(width: 216, height: 140)
+        let layout = layoutRig(input)
+        let work = WireRequest(id: "q:back", source: "plan", target: "lead", kind: .inFlight)
+        var tight = RouterOptions()
+        tight.detourPerCrossing = 0
+        let wires = route(layout, Denkeeper.requests + [work], options: tight).wires
+        let spec = wires.first { $0.id == "d:lead>plan" }!, back = wires.first { $0.id == "q:back" }!
+        #expect(crossings(spec, back) == 1, "no detour is free")
+    }
+
     @Test func roundedCornerRadiusShrinksOnShortSegments() {
         #expect(cornerRadius(previous: 100, next: 100) == 10)
         #expect(cornerRadius(previous: 6, next: 100) == 3)
@@ -203,4 +236,18 @@ func segment(_ a: CGPoint, _ b: CGPoint, entersInteriorOf rect: CGRect) -> Bool 
         return a.y > inner.minY && a.y < inner.maxY && overlap(a.x, b.x, inner.minX, inner.maxX)
     }
     return a.x > inner.minX && a.x < inner.maxX && overlap(a.y, b.y, inner.minY, inner.maxY)
+}
+
+/// Points where a segment of one wire passes through the interior of a perpendicular segment of the other.
+func crossings(_ a: Wire, _ b: Wire) -> Int {
+    var n = 0
+    for (p, q) in a.segments {
+        for (r, s) in b.segments {
+            let (h, v) = p.y == q.y ? ((p, q), (r, s)) : ((r, s), (p, q))
+            guard h.0.y == h.1.y, v.0.x == v.1.x, h.0 != h.1, v.0 != v.1 else { continue }
+            let x = v.0.x, y = h.0.y
+            if min(h.0.x, h.1.x) < x, x < max(h.0.x, h.1.x), min(v.0.y, v.1.y) < y, y < max(v.0.y, v.1.y) { n += 1 }
+        }
+    }
+    return n
 }

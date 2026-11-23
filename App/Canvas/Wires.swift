@@ -1,3 +1,4 @@
+import AppKit
 import RigCanvasLayout
 import RigDomain
 import RigModel
@@ -55,37 +56,53 @@ struct WireLayer: View {
     var focus: Set<String> = []
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let sharp = Set(routes.junctions)
-        Canvas { context, _ in
-            // Spec edges first so work wires (M2) draw on top.
-            let order: [WireKind] = [.related, .observes, .delegates, .past, .next, .inFlight, .needsYou]
-            for kind in order {
-                for wire in routes.wires where wire.kind == kind {
-                    let style = style(wire)
-                    let path = Path(roundedPath(wire.points, sharp: sharp))
-                    if let selectedQItem, wire.id == "q:\(selectedQItem)" {
-                        // Selection ring: a wider halo under the wire.
+        let shining = reduceMotion ? [] : routes.wires.filter { $0.kind == .inFlight }
+        ZStack {
+            Canvas { context, _ in
+                // Spec edges first so work wires (M2) draw on top.
+                let order: [WireKind] = [.related, .observes, .delegates, .past, .next, .inFlight, .needsYou]
+                for kind in order {
+                    for wire in routes.wires where wire.kind == kind {
+                        let style = style(wire)
+                        let path = Path(roundedPath(wire.points, sharp: sharp))
+                        if let selectedQItem, wire.id == "q:\(selectedQItem)" {
+                            // Selection ring: a wider halo under the wire.
+                            context.stroke(
+                                path, with: .color(.primary.opacity(0.25)),
+                                style: StrokeStyle(lineWidth: style.width + 6, lineCap: .round, lineJoin: .round))
+                        }
+                        // Under the sheen the wire steps back so the band stands out; not with Increase Contrast.
+                        let dims = !shining.isEmpty && wire.kind == .inFlight && contrast != .increased
                         context.stroke(
-                            path, with: .color(.primary.opacity(0.25)),
-                            style: StrokeStyle(lineWidth: style.width + 6, lineCap: .round, lineJoin: .round))
-                    }
-                    context.stroke(path, with: .color(style.color), style: style.strokeStyle)
-                    if let start = wire.points.first, let end = wire.points.last {
-                        for p in [start, end] {
-                            context.fill(
-                                Path(ellipseIn: CGRect(x: p.x - 3, y: p.y - 3, width: 6, height: 6)),
-                                with: .color(style.color))
+                            path, with: .color(dims ? style.color.opacity(0.6) : style.color),
+                            style: style.strokeStyle)
+                        if let start = wire.points.first, let end = wire.points.last {
+                            for p in [start, end] {
+                                context.fill(
+                                    Path(ellipseIn: CGRect(x: p.x - 3, y: p.y - 3, width: 6, height: 6)),
+                                    with: .color(style.color))
+                            }
                         }
                     }
                 }
+                // Smaller than the port dots, in the colour of the wire that branches there.
+                for j in routes.junctions {
+                    let color = branching(at: j).map { style($0).color } ?? .secondary
+                    context.fill(
+                        Path(ellipseIn: CGRect(x: j.x - 2.25, y: j.y - 2.25, width: 4.5, height: 4.5)),
+                        with: .color(color))
+                }
             }
-            // Smaller than the port dots, in the colour of the wire that branches there.
-            for j in routes.junctions {
-                let color = branching(at: j).map { style($0).color } ?? .secondary
-                context.fill(
-                    Path(ellipseIn: CGRect(x: j.x - 2.25, y: j.y - 2.25, width: 4.5, height: 4.5)), with: .color(color))
+            if !shining.isEmpty {
+                // White would vanish on a light canvas, so there the band is the wire's own green at full strength.
+                SheenBands(
+                    wires: shining, sharp: sharp,
+                    color: colorScheme == .dark ? Color.moving.mix(with: .white, by: 0.85) : Color.moving)
             }
         }
         .allowsHitTesting(false)
@@ -108,6 +125,84 @@ struct WireLayer: View {
                     || (a.y == b.y && p.y == a.y && min(a.x, b.x) <= p.x && p.x <= max(a.x, b.x))
             }
         }.max { (order.firstIndex(of: $0.kind) ?? 0) < (order.firstIndex(of: $1.kind) ?? 0) }
+    }
+}
+
+/// The sheen on in-flight wires (`Wire.points` run out port to in port, so the band moves sender to receiver).
+/// Core Animation runs it; the layers are rebuilt only when the wires or the colour change.
+struct SheenBands: NSViewRepresentable {
+    let wires: [Wire]
+    let sharp: Set<CGPoint>
+    let color: Color
+
+    func makeNSView(context: Context) -> BandsView { BandsView() }
+
+    func updateNSView(_ view: BandsView, context: Context) {
+        view.show(wires: wires, sharp: sharp, color: color.resolve(in: context.environment).cgColor)
+    }
+
+    final class BandsView: NSView {
+        private let sheen = Sheen()
+        private var shown: (wires: [Wire], sharp: Set<CGPoint>, color: CGColor)?
+
+        override init(frame: NSRect) {
+            super.init(frame: frame)
+            wantsLayer = true
+            setAccessibilityElement(false)
+        }
+
+        required init?(coder: NSCoder) { nil }
+
+        override var isFlipped: Bool { true }
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        override func viewDidChangeBackingProperties() {
+            super.viewDidChangeBackingProperties()
+            layer?.sublayers?.forEach { $0.contentsScale = bandScale }
+        }
+
+        /// Sharp up to the canvas's 200% zoom, which scales this view rather than redrawing it.
+        private var bandScale: CGFloat { (window?.backingScaleFactor ?? 2) * 2 }
+
+        func show(wires: [Wire], sharp: Set<CGPoint>, color: CGColor) {
+            if let shown, shown.wires == wires, shown.sharp == sharp, shown.color == color { return }
+            shown = (wires, sharp, color)
+            guard let root = layer else { return }
+            root.sublayers?.forEach { $0.removeFromSuperlayer() }
+            let now = CACurrentMediaTime()
+            for wire in wires {
+                let path = roundedPath(wire.points, sharp: sharp)
+                let length = Sheen.length(wire.points)
+                let duration = sheen.duration(length: length)
+                // From the media clock, so a rebuild (every poll that changes a wire) doesn't restart the bands.
+                let offset = (now + sheen.timeOffset(length: length, id: wire.id))
+                    .truncatingRemainder(dividingBy: duration)
+                for (i, spec) in sheen.layers.enumerated() {
+                    let band = CAShapeLayer()
+                    band.path = path
+                    band.fillColor = nil
+                    band.strokeColor = color.copy(alpha: color.alpha * spec.opacity)
+                    band.lineWidth = spec.width
+                    band.lineCap = .round
+                    band.lineJoin = .round
+                    band.strokeStart = 0
+                    band.strokeEnd = 0
+                    band.contentsScale = bandScale
+                    let frames = sheen.keyframes(length: length, layer: i)
+                    for (key, keyframes) in [("strokeStart", frames.start), ("strokeEnd", frames.end)] {
+                        let animation = CAKeyframeAnimation(keyPath: key)
+                        animation.values = keyframes.map(\.value)
+                        animation.keyTimes = keyframes.map { NSNumber(value: Double($0.time)) }
+                        animation.calculationMode = .linear
+                        animation.duration = duration
+                        animation.repeatCount = .infinity
+                        animation.timeOffset = offset
+                        band.add(animation, forKey: key)
+                    }
+                    root.addSublayer(band)
+                }
+            }
+        }
     }
 }
 
