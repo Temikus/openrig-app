@@ -3,6 +3,10 @@ import SwiftUI
 @main
 struct OpenRigApp: App {
     static let mainWindow = "main"
+    /// `just install` builds the canary with a `.canary` bundle id. Its mark has a hollow centre seat.
+    static let menuBarMark =
+        Bundle.main.bundleIdentifier?.hasSuffix(".canary") == true ? "MenuBarMarkCanary" : "MenuBarMark"
+    static let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "OpenRig"
     @State private var store: AppStore
 
     init() {
@@ -34,8 +38,13 @@ struct OpenRigApp: App {
             MenuBarNeedsYou()
                 .environment(store)
         } label: {
-            let urgent = store.waitingEverywhere.urgent
-            Label(urgent > 0 ? "\(urgent)" : "OpenRig", systemImage: urgent > 0 ? "bell.badge.fill" : "bell")
+            let waiting = store.waitingEverywhere
+            // Not a Label: in a MenuBarExtra it draws only the image, so the count would never show.
+            HStack {
+                Image(Self.menuBarMark)
+                if waiting.urgent > 0 { Text("\(waiting.urgent)") }
+            }
+            .accessibilityLabel(waiting.menuBarLabel(appName: Self.appName))
         }
         .menuBarExtraStyle(.window)
     }

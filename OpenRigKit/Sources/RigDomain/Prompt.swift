@@ -111,6 +111,11 @@ public struct Waiting: Equatable, Sendable {
             .filter { $0.0 > 0 }.map { "\($0.0) \($0.0 == 1 ? $0.1 : $0.2)" }.joined(separator: " · ")
     }
 
+    /// VoiceOver text for the menu bar item, which draws only the mark and the urgent count.
+    public func menuBarLabel(appName: String) -> String {
+        urgent == 0 ? appName : "\(appName), \(urgent) \(urgent == 1 ? "needs" : "need") you"
+    }
+
     public static func + (a: Waiting, b: Waiting) -> Waiting {
         Waiting(asks: a.asks + b.asks, prompts: a.prompts + b.prompts, fyis: a.fyis + b.fyis)
     }
