@@ -5,6 +5,8 @@
 
 A native SwiftUI app for [OpenRig](https://openrig.dev): see what each agent seat in a rig is doing, spot what needs you, and act on it.
 
+<img width="1712" height="777" alt="Screenshot 2026-11-23 at 10 20 35 am" src="https://github.com/user-attachments/assets/ba8f027c-d98f-4478-b3e6-65f957b519ba" />
+
 It talks to the local `rig` daemon. Reads use the daemon's HTTP API; actions run the `rig` CLI. See [PLAN.md](PLAN.md) for the design and milestones.
 
 **Status:** v1 milestones M0–M6 done: canvas, queue board, terminals, actions, permission prompts, and offline handling.
