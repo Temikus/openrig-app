@@ -401,7 +401,7 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
   - The item is on when `menuBarItem` is absent. A stored value or a `-menuBarItem` launch argument wins.
   - `menuBarItem` saves only on change. Saving every write stored "off" at launch for every existing user.
   - The person chose to keep a stored "off": no migration. Existing users turn the item on in Settings › General.
-  - macOS 27 parks a new status item hidden (review-ui). It may need allowing once in System Settings › Menu Bar.
+  - Seat copies' status items sat off screen at (-1, 1068). Not the Menu Bar allow list: the person's System Settings › Menu Bar shows OpenRig allowed. Cause unknown.
 
 
 ### Design review, 2026-11-19 (platform conventions, accessibility)
