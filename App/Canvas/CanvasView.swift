@@ -77,7 +77,8 @@ struct CanvasView: View {
                         fit(layout)
                     })
             )
-            .onChange(of: layout.bounds.size) { if !userZoomed { fit(layout) } }
+            // Only when seats move: labels come and go with rows and selection, and a refit scrolls to the top.
+            .onChange(of: placed.bounds.size) { if !userZoomed { fit(layout) } }
             .gesture(
                 MagnifyGesture()
                     .onChanged { value in
@@ -204,15 +205,15 @@ struct CanvasContent: View {
                     .accessibilityFocused($voiceOverSeat, equals: seat.id)
                 }
             }
-            // Above the cards: if a label still meets one (a held layout's growing prompt card), the card's edge is
-            // covered, not the label's text.
+            // Above a card's edge if a label still meets one, but below a prompt card (zIndex 1): in a held layout it
+            // can grow over a label, and its Allow and No buttons must stay on top.
             ForEach(chips, id: \.wire.id) { chip in
                 WireChip(
                     item: chip.item, kind: chip.wire.kind, label: chip.label,
                     isSelected: chip.wire.kind != .next && chip.item.id == selection.qitemID
                 ) { selection.select(qitem: chip.item.id) }
                 .position(x: chip.frame.midX, y: chip.frame.midY)
-                .zIndex(2)
+                .zIndex(0.5)
             }
         }
         .onChange(of: voiceOverSeat != nil) { _, on in rig.canvasVoiceOver = on }

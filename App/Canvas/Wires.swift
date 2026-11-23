@@ -344,22 +344,31 @@ struct WireChip: View {
     }
 
     /// The chip's size, known before it draws so the canvas can place it in one pass. The chip draws at exactly this size.
+    /// Capped at `WireLabel.maxWidth`; longer text is cut in the middle.
     static func size(of text: String) -> CGSize {
+        let natural = naturalSize(of: text)
+        return CGSize(width: min(natural.width, WireLabel.maxWidth), height: natural.height)
+    }
+
+    private static func naturalSize(of text: String) -> CGSize {
         let caption2 = NSFont.preferredFont(forTextStyle: .caption2).pointSize
         let font = NSFont.monospacedSystemFont(ofSize: caption2, weight: .semibold)
         let measured = (text as NSString).size(withAttributes: [.font: font])
-        return CGSize(width: ceil(measured.width) + 2 * 6, height: ceil(measured.height) + 2 * 2)
+        // 1 pt of slack so text that fits isn't cut by rounding.
+        return CGSize(width: ceil(measured.width) + 1 + 2 * 6, height: ceil(measured.height) + 2 * 2)
     }
 
     var body: some View {
         let text = Self.text(item: item, kind: kind, label: label)
         let size = Self.size(of: text)
+        let cut = Self.naturalSize(of: text).width > size.width
         Button(action: select) {
             Text(text)
                 .font(.caption2.monospaced().weight(.semibold))
                 .foregroundStyle(.black)
                 .lineLimit(1)
-                .fixedSize()
+                .truncationMode(.middle)
+                .padding(.horizontal, 6)
                 .frame(width: size.width, height: size.height)
                 .background(WireStyle.of(kind).color, in: .rect(cornerRadius: 4))
                 .overlay {
@@ -369,8 +378,8 @@ struct WireChip: View {
                 }
         }
         .buttonStyle(.plain)
-        .help(item.summary)
-        .accessibilityLabel("\(label ?? shortQItemID(item.id)), \(item.summary)")
+        .help(cut ? "\(text)\n\(item.summary)" : item.summary)
+        .accessibilityLabel("\(text), \(item.summary)")
     }
 }
 

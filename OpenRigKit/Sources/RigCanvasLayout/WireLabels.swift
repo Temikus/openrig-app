@@ -2,12 +2,16 @@ import CoreGraphics
 
 /// A label to place on a routed wire, at its drawn size.
 public struct WireLabel: Sendable, Equatable {
+    /// The widest a label draws. Wider, it finds no clear spot beside a wire in the 112 pt gap between columns, so the
+    /// chip cuts its text to fit.
+    public static let maxWidth: CGFloat = 120
+
     public var wireID: String
     public var size: CGSize
 
     public init(wireID: String, size: CGSize) {
         self.wireID = wireID
-        self.size = size
+        self.size = CGSize(width: min(size.width, Self.maxWidth), height: size.height)
     }
 }
 

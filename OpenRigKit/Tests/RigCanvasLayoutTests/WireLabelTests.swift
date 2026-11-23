@@ -35,22 +35,23 @@ import Testing
         }
     }
 
-    /// Denkeeper's spec wires plus a work wire for every ordered pair of seats, at both label widths, at default seat
-    /// heights and with each seat in turn as tall as a prompt card.
+    /// Denkeeper's spec wires plus a work wire for every ordered pair of seats, at default seat heights and with each
+    /// seat in turn as tall as a prompt card. Labels of 50 and 110 pt, and a 140 pt "next:" label, which is capped.
     @Test(arguments: [nil] + Denkeeper.pods.flatMap(\.seatIDs))
     func everyLabelClearsTheCardsAndTouchesItsWire(tall: String?) throws {
         var input = Denkeeper.input
         if let tall { input.seatSizes[tall] = CGSize(width: 216, height: 220) }
         let layout = layoutRig(input)
         let seats = Denkeeper.pods.flatMap(\.seatIDs)
-        for size in [Self.short, Self.blocked] {
-            for source in seats {
-                for target in seats where target != source {
-                    let work = WireRequest(id: "q:\(source)>\(target)", source: source, target: target, kind: .inFlight)
-                    let wires = route(layout, Denkeeper.requests + [work]).wires
-                    let wire = try #require(wires.first { $0.id == work.id })
+        for source in seats {
+            for target in seats where target != source {
+                let work = WireRequest(id: "q:\(source)>\(target)", source: source, target: target, kind: .inFlight)
+                let wires = route(layout, Denkeeper.requests + [work]).wires
+                let wire = try #require(wires.first { $0.id == work.id })
+                for size in [Self.short, Self.blocked, CGSize(width: 140, height: 16)] {
                     let placed = placeLabels([WireLabel(wireID: work.id, size: size)], on: wires, in: layout)
                     let frame = try #require(placed.frames[work.id])
+                    #expect(frame.width == min(size.width, WireLabel.maxWidth))
                     #expect(clearOfSeats(frame, layout), "\(work.id) \(size.width) pt at \(frame)")
                     #expect(touches(frame, wire), "\(work.id) \(size.width) pt at \(frame)")
                     #expect(placed.bounds.contains(frame), "\(work.id) \(size.width) pt at \(frame)")
@@ -111,7 +112,7 @@ import Testing
     @Test func boundsGrowForALabelPastTheLastColumn() throws {
         let input = LayoutInput(pods: [.init(id: "solo", seatIDs: ["top", "bottom"])], flows: [])
         let layout = layoutRig(input)
-        let wide = CGSize(width: 160, height: 16)
+        let wide = CGSize(width: WireLabel.maxWidth, height: 16)
         let others = [WireRequest(id: "o", source: "top", target: "bottom", kind: .observes)]
         let wires = route(layout, others + [WireRequest(id: "q:1", source: "top", target: "bottom", kind: .inFlight)])
             .wires
