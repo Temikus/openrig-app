@@ -1,8 +1,9 @@
 import Foundation
+import RigModel
 
 /// The fields of a daemon event that say which rig, seat or row it is about.
 /// Queue and seat-activity events carry no `rigId`; they name sessions, a seat node or a row instead.
-public struct EventPlace: Sendable, Equatable, Decodable {
+public struct EventPlace: Sendable, Equatable {
     public var type: String
     public var rigId: String?
     public var nodeId: String?
@@ -36,16 +37,16 @@ public struct EventPlace: Sendable, Equatable, Decodable {
 
     /// Decodes the payload the stream sent. A payload that isn't a JSON object places nothing.
     public init(type: String, payload: Data) {
-        struct Fields: Decodable {
-            var rigId, nodeId, seatNodeId, sessionName, sourceSession, destinationSession: String?
-            var fromSession, toSession, actorSession, qitemId: String?
+        // Each field is read on its own, so a retyped field becomes nil and the rest still place the event.
+        let object = (try? JSONDecoder().decode([String: JSONValue].self, from: payload)) ?? [:]
+        func field(_ key: String) -> String? {
+            if case .string(let value) = object[key] { value } else { nil }
         }
-        let fields = try? JSONDecoder().decode(Fields.self, from: payload)
         self.init(
-            type: type, rigId: fields?.rigId, nodeId: fields?.nodeId, seatNodeId: fields?.seatNodeId,
-            sessionName: fields?.sessionName, sourceSession: fields?.sourceSession,
-            destinationSession: fields?.destinationSession, fromSession: fields?.fromSession,
-            toSession: fields?.toSession, actorSession: fields?.actorSession, qitemId: fields?.qitemId)
+            type: type, rigId: field("rigId"), nodeId: field("nodeId"), seatNodeId: field("seatNodeId"),
+            sessionName: field("sessionName"), sourceSession: field("sourceSession"),
+            destinationSession: field("destinationSession"), fromSession: field("fromSession"),
+            toSession: field("toSession"), actorSession: field("actorSession"), qitemId: field("qitemId"))
     }
 
     /// Sessions that place the event. The actor counts only when no other session is named.

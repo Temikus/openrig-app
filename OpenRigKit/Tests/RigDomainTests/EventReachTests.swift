@@ -65,6 +65,17 @@ private func here(
         }
     }
 
+    /// The daemon's API changes between versions; one retyped field must not lose the others.
+    @Test func aRetypedFieldBecomesNilAndKeepsTheRest() throws {
+        let objects = try #require(
+            try JSONSerialization.jsonObject(with: RigFixtures.data("events")) as? [[String: Any]])
+        var seat = try #require(objects.first { $0["seq"] as? Int == Seq.seatHere })
+        seat["seatNodeId"] = 42
+        let event = EventPlace(type: "seat.activity_changed", payload: try JSONSerialization.data(withJSONObject: seat))
+        #expect(event.seatNodeId == nil)
+        #expect(event.sessionName == "dev-b2@openrig-app")
+    }
+
     @Test func aPayloadThatIsNotAnObjectPlacesNothing() {
         let event = EventPlace(type: "seat.activity_changed", payload: Data("not json".utf8))
         #expect(event == EventPlace(type: "seat.activity_changed"))
