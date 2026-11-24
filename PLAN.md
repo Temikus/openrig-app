@@ -527,9 +527,11 @@ Plan: `.claude/plans/refresh-load/plan.md`. The app asked the daemon for far mor
 An iPhone app (`Remote/`, `OpenRigRemote`) that pairs with the Mac app from a QR code. At home on the same Wi-Fi it shows what waits on the person and lets them act on it. How to install and pair it is in the README. The boards are in `design/ui/11-ios-remote/`.
 
 **A daemon on Wi-Fi is open to the whole network.** This is from rig 0.7.21's shipped source and docs. No route was called from another device.
-- `rig daemon start --host <Wi-Fi address>` refuses to start without `OPENRIG_AUTH_BEARER_TOKEN`. That operator token guards only:
+- `rig daemon start --host <Wi-Fi address>` refuses to start without `OPENRIG_AUTH_BEARER_TOKEN`. That operator token, and the terminal token, guard only:
   - Mission Control's writes;
   - hosts and rig-mode writes;
+  - issuing and revoking app credentials, `/api/apps/v1/credentials` (operator token);
+  - starting seats, `/api/startup` (terminal token);
   - on a Wi-Fi bind, `/api/transport`, `/api/compaction` and `/api/terminal`.
 - Every other route has no token check:
   - `/api/queue`, `/api/transcripts`, `/api/ps`, `/api/rigs`;

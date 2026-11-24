@@ -49,16 +49,23 @@ The iPhone app shows what waits on you and lets you act on it from your phone. T
 3. Under Signing & Capabilities, choose your team. The project leaves the team empty, and `just gen` empties it again. Command-line builds read it from `OPENRIG_TEAM`.
 4. Run (⌘R).
 
+With a free Apple ID, the app stops opening after 7 days. Run it from Xcode again to renew it.
+
 `just build-ios` builds for the simulator only, as CI does.
 
 **Pair it**
-1. On the Mac, open OpenRig › Settings › Phone and choose **Pair a Phone…**. A code and a link appear.
-2. On the phone, choose **Scan the code**. If the camera is off, copy the link under the code on the Mac and paste it on the phone.
-3. Allow Local Network access when iOS asks. It asks once. Without it the phone can't reach the Mac. To turn it on later, use the app's **Open Settings** button.
+1. **Check which OpenRig is running on the Mac.**
+   - OpenRig Canary (from `just install`) or a release listens on the Wi-Fi.
+   - A Debug build (`just run`) listens only on this Mac. Start it with the Wi-Fi switch first: see "Debug builds and the Wi-Fi" below. Otherwise the phone says "Can't reach".
+2. On the Mac, open OpenRig › Settings › Phone and choose **Pair a Phone…**. A code and a link appear.
+3. On the phone, choose **Scan the code**. If the camera is off, choose **Copy Link** on the Mac, then **Paste** on the phone. Pasting from the Mac needs Handoff on both, signed in to the same Apple ID.
+4. Allow Local Network access when iOS asks. It asks once. Without it the phone can't reach the Mac. To turn it on later, use the app's **Open Settings** button.
 
 The phone answers as the person the Mac app acts as. The relay listens on port 7434, or on a free port if that one is taken; the code carries the port. It listens only while "Let paired phones connect" is on and a phone is paired or a code is showing.
 
-**A Debug build of the Mac app listens only on this Mac.** That includes `just run`: its relay binds to 127.0.0.1, so only the simulator can connect. Release builds, including `just install`'s OpenRig Canary, listen on the Wi-Fi.
+**Debug builds and the Wi-Fi**
+
+A Debug build of the Mac app, including `just run`, binds its relay to 127.0.0.1, so only the simulator can connect. Release builds, including OpenRig Canary, listen on the Wi-Fi.
 
 To try a real phone with a Debug build:
 1. Quit OpenRig.

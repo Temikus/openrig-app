@@ -27,7 +27,7 @@ struct ExplainerView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     step(1, "On the Mac, open OpenRig and go to Settings › Phone.")
                     Divider().padding(.leading, 44)
-                    step(2, "Choose Pair a phone. A code appears.")
+                    step(2, "Choose Pair a Phone… to show a code.")
                     Divider().padding(.leading, 44)
                     step(3, "Scan the code with this phone.")
                 }
@@ -114,7 +114,7 @@ struct ScannerView: View {
             "To scan the code, allow the camera for OpenRig in Settings. Or copy the link under the code on your Mac and paste it here."
         default:
             canScan || camera == .notDetermined
-                ? "In OpenRig on the Mac, open Settings › Phone and choose Pair a phone."
+                ? "In OpenRig on the Mac, choose Pair a Phone… in Settings › Phone."
                 : "Copy the link under the code on your Mac and paste it here."
         }
     }
