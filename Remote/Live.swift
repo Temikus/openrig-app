@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import RigClient
 import RigModel
 
@@ -101,6 +102,12 @@ enum PairingStep: Hashable {
             default: nil
             }
         }
+
+        /// `end` opens the prompt scrolled to its bottom, as if the person had scrolled there.
+        static var promptScroll: String? { environment["OPENRIG_DEBUG_PROMPT_SCROLL"] }
+
+        /// Capture checks read these lines with `log show`.
+        static let log = Logger(subsystem: "dev.openrig.Remote", category: "debug")
 
         /// On the opened row: `reply` opens the Reply sheet.
         static var rowAction: String? { environment["OPENRIG_DEBUG_ROW_ACTION"] }

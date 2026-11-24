@@ -15,6 +15,9 @@ struct PromptView: View {
     /// A newer prompt found by a re-read, kept until the person asks to see it.
     @State private var newer: RelayPrompt?
     @State private var endSeen = false
+    /// The command's bottom edge in the scroll content's coordinates, and where the scroll view stands.
+    @State private var commandEnd: Double?
+    @State private var viewport: Viewport?
     @State private var declining = Self.launchDeclining
     @State private var sending = false
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -70,20 +73,21 @@ struct PromptView: View {
                 if typeSize.isAccessibilitySize, showsButtons, prompt.canAllowOnce, !endSeen {
                     Text("Scroll to the end of the command to allow it").font(.footnote).foregroundStyle(.secondary)
                 }
-                VStack(alignment: .leading, spacing: 0) {
-                    // Never shortened: the risky part of a command is often at its end.
-                    Text(prompt.command)
-                        .font(.callout.monospaced())
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
-                        .background(Color.attention.opacity(0.08), in: .rect(cornerRadius: 10))
-                    Color.clear.frame(height: 1)
-                        .onScrollVisibilityChange(threshold: 1) { if $0 { endSeen = true } }
-                        .accessibilityHidden(true)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Command: \(prompt.command)")
+                // Never shortened: the risky part of a command is often at its end.
+                Text(prompt.command)
+                    .font(.callout.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Color.attention.opacity(0.08), in: .rect(cornerRadius: 10))
+                    .onGeometryChange(for: Double.self) {
+                        Double($0.frame(in: .named(Self.content)).maxY)
+                    } action: {
+                        commandEnd = $0
+                        checkEnd()
+                    }
+                    .accessibilityLabel("Command: \(prompt.command)")
+                    .id(prompt.observedAt + prompt.command)
                 Text("Allow once lets this one command run. “Always allow” is on the Mac.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -91,14 +95,50 @@ struct PromptView: View {
                 if typeSize.isAccessibilitySize { notes(prompt) }
             }
             .padding(20)
+            .coordinateSpace(.named(Self.content))
         }
-        .safeAreaInset(edge: .bottom) {
-            if !typeSize.isAccessibilitySize || showsButtons { bottom(prompt) }
+        // Content scrolled under the pinned buttons doesn't count as seen (`CommandEnd`).
+        .onScrollGeometryChange(for: Viewport.self) {
+            Viewport(
+                offset: $0.contentOffset.y, topInset: $0.contentInsets.top, height: $0.containerSize.height,
+                bottomInset: $0.contentInsets.bottom)
+        } action: { _, new in
+            viewport = new
+            checkEnd()
         }
+        #if DEBUG
+            .defaultScrollAnchor(DebugHooks.promptScroll == "end" ? .bottom : nil)
+        #endif
+        .safeAreaInset(edge: .bottom) { bottom(prompt) }
     }
 
     /// The buttons stay until an answer may have gone out.
     var showsButtons: Bool { outcome?.keepsButtons ?? true }
+
+    // MARK: Has the command's end been seen
+
+    nonisolated static let content = "prompt content"
+
+    struct Viewport: Equatable {
+        var offset: Double
+        var topInset: Double
+        /// Between the insets: leaves out the navigation bar and the pinned buttons.
+        var height: Double
+        /// Logged only: `height` already leaves it out.
+        var bottomInset: Double
+    }
+
+    /// Once seen, it stays seen, so scrolling back up doesn't turn Allow once off.
+    func checkEnd() {
+        guard !endSeen, let commandEnd, let viewport else { return }
+        endSeen = CommandEnd.isSeen(
+            endY: commandEnd, offsetY: viewport.offset, topInset: viewport.topInset, visibleHeight: viewport.height)
+        #if DEBUG
+            DebugHooks.log.notice(
+                "command end \(commandEnd) offset \(viewport.offset) top inset \(viewport.topInset) height \(viewport.height) bottom inset \(viewport.bottomInset) seen \(endSeen)"
+            )
+        #endif
+    }
 
     func header(_ prompt: RelayPrompt) -> some View {
         let state = PromptWords.state(outcome)
@@ -125,7 +165,7 @@ struct PromptView: View {
 
     @ViewBuilder func bottom(_ prompt: RelayPrompt) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            if !typeSize.isAccessibilitySize { notes(prompt) }
+            if typeSize.isAccessibilitySize { pinnedTitle(prompt) } else { notes(prompt) }
             if showsButtons { buttons(prompt) }
         }
         .padding(20)
@@ -133,16 +173,39 @@ struct PromptView: View {
         .background(.bar)
     }
 
+    var showNew: (() -> Void)? {
+        outcome?.offersNewPrompt == true ? { Task { await showNewPrompt() } } : nil
+    }
+
+    /// At accessibility sizes the outcome's title stays where the buttons were, and its detail scrolls.
+    @ViewBuilder func pinnedTitle(_ prompt: RelayPrompt) -> some View {
+        Group {
+            if let outcome, !outcome.keepsButtons {
+                OutcomeView(
+                    outcome: outcome, seat: prompt.seat, mac: model.macName, at: answeredAt, part: .title,
+                    showNew: showNew)
+            } else if outcome == .unreachable {
+                Label("Couldn't reach \(model.macName)", systemImage: "wifi.exclamationmark").font(.headline)
+            }
+        }
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+    }
+
     /// The outcome in place of the buttons, or what holds the buttons back.
     @ViewBuilder func notes(_ prompt: RelayPrompt) -> some View {
+        let large = typeSize.isAccessibilitySize
         if let outcome, !outcome.keepsButtons {
             OutcomeView(
-                outcome: outcome, seat: prompt.seat, mac: model.macName, at: answeredAt,
-                showNew: outcome.offersNewPrompt ? { Task { await showNewPrompt() } } : nil)
+                outcome: outcome, seat: prompt.seat, mac: model.macName, at: answeredAt, part: large ? .detail : .all,
+                showNew: large ? nil : showNew)
         } else {
             if outcome == .unreachable {
-                Label("Couldn't reach \(model.macName). Nothing was sent.", systemImage: "wifi.exclamationmark")
-                    .font(.footnote)
+                if large {
+                    Text("Nothing was sent.").font(.footnote)
+                } else {
+                    Label("Couldn't reach \(model.macName). Nothing was sent.", systemImage: "wifi.exclamationmark")
+                        .font(.footnote)
+                }
             }
             if !prompt.canAllowOnce {
                 Text("\(model.macName) can't find this prompt's plain Yes. Allow it in the terminal on the Mac.")
@@ -271,6 +334,8 @@ struct PromptView: View {
         outcome = nil
         answeredAt = nil
         endSeen = false
+        // The old command's end no longer counts. The new command's text is a new view (`.id`), so it reports its own.
+        commandEnd = nil
     }
 
     static var launchDeclining: Bool {
@@ -307,18 +372,22 @@ struct OutcomeView: View {
     var seat: String
     var mac: String
     var at: Date?
+    /// At accessibility sizes the title is pinned and the detail scrolls, so each shows alone.
+    var part: Part = .all
     var showNew: (() -> Void)?
+
+    enum Part { case all, title, detail }
 
     var body: some View {
         let words = PromptWords.outcome(outcome, seat: seat, mac: mac, at: at)
         VStack(alignment: .leading, spacing: 12) {
             Label {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(words.title).font(.headline)
-                    Text(words.detail).font(.subheadline).foregroundStyle(.secondary)
+                    if part != .detail { Text(words.title).font(.headline) }
+                    if part != .title { Text(words.detail).font(.subheadline).foregroundStyle(.secondary) }
                 }
             } icon: {
-                if outcome == .allowed {
+                if outcome == .allowed, part != .detail {
                     Image(systemName: "checkmark").foregroundStyle(Color.statusGood)
                 }
             }

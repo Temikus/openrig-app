@@ -74,6 +74,7 @@ struct RowView: View {
                 .controlSize(.large)
                 .disabled(sending || model.desk == nil)
                 .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+                if !typeSize.isAccessibilitySize { doneCaption(item) }
             }
         }
         .padding(20)
@@ -105,7 +106,17 @@ struct RowView: View {
                     .font(.footnote)
                 }
                 if let failure { Text(failure).font(.footnote) }
+                if typeSize.isAccessibilitySize { doneCaption(item) }
             }
+        }
+    }
+
+    /// As on the Mac's For You panel: Done answers nobody, so an ask closed with it leaves the asker waiting.
+    @ViewBuilder func doneCaption(_ item: RelayNeedsYouItem) -> some View {
+        if item.kind == "ask", repliedAt == nil {
+            Text("Done closes the ask without telling \(item.sender). Reply first if you haven't answered.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
     }
 
