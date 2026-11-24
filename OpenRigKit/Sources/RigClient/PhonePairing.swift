@@ -101,11 +101,17 @@ public enum PairingRefusal: Error, Sendable, Equatable {
     case madeUp
     /// The phone's credential lives on another daemon, as "host:port".
     case otherDaemon(String)
+    /// The relay's switch is off: a phone on the Wi-Fi has no way in.
+    case relayOff
+    /// The Mac has no home-network address or `.local` name to put in the code.
+    case noWiFiAddress
 
     public var message: String {
         switch self {
         case .madeUp: "A made-up state (OPENRIG_DEBUG_PHONE): no credential is issued or revoked."
         case .otherDaemon(let daemon): "Paired on the daemon at \(daemon). Connect to it to unpair."
+        case .relayOff: "Turn on “Let paired phones connect” first, or the phone has no way in."
+        case .noWiFiAddress: "This Mac has no Wi-Fi address a phone could reach. Join the Wi-Fi, then try again."
         }
     }
 }
@@ -125,6 +131,19 @@ public struct PairedPhones: Sendable, Equatable {
     }
 
     public var refusesIssue: PairingRefusal? { isMadeUp ? .madeUp : nil }
+
+    /// Before a credential is issued: a code needs the relay on and a Wi-Fi address to name. Held to loopback (the
+    /// simulator on this Mac), the loopback reach is enough.
+    public func refusesPairing(relayOn: Bool, heldToLoopback: Bool, wifiAddresses: [String]) -> PairingRefusal? {
+        if let refusal = refusesIssue { return refusal }
+        if !relayOn { return .relayOff }
+        return heldToLoopback || !wifiAddresses.isEmpty ? nil : .noWiFiAddress
+    }
+
+    /// After it is issued and the relay restarted: no code without a way in. The caller revokes the credential.
+    public func refusesCode(relay: RelayReach?, heldToLoopback: Bool) -> PairingRefusal? {
+        relay != nil || heldToLoopback ? nil : .noWiFiAddress
+    }
 
     public func refusesRevoke(_ phone: PairedPhone, at daemon: URL) -> PairingRefusal? {
         if isMadeUp { return .madeUp }

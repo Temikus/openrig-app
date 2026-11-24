@@ -97,22 +97,31 @@ struct PhoneSettings: View {
                 Button("Pair a Phone…") {
                     Task { await phones.pair(daemon: daemon, bearer: store.token, actor: store.me, relay: store.relay) }
                 }
-                .disabled(!daemonHere || phones.code == .issuing)
+                .disabled(!daemonHere || !store.relay.enabled || phones.code == .issuing)
+                .help(store.relay.enabled ? "Shows a code to scan." : PairingRefusal.relayOff.message)
             }
         } label: {
             Label {
                 Text(reachable ? "Phones on this Wi-Fi can reach this Mac" : "Phones can't reach this Mac")
                 Text(reachCaption).foregroundStyle(.secondary)
             } icon: {
-                Image(systemName: "circle.fill").foregroundStyle(reachable ? Color.green : Color.attention)
-                    .imageScale(.small)
+                Image(systemName: "circle.fill").foregroundStyle(dot).imageScale(.small)
             }
         }
     }
 
-    /// The relay listens on the Wi-Fi, not held to this Mac.
-    private var reachable: Bool {
-        if case .listening(let host, _) = store.relay.state { host != "127.0.0.1" } else { false }
+    /// The same check a code passes before it is shown: green means a phone could use one.
+    private var reachable: Bool { store.relay.usable }
+
+    /// Green when usable, attention when something is wrong, grey when simply off or nothing is paired yet.
+    private var dot: Color {
+        if reachable { return .green }
+        if !daemonHere { return .attention }
+        switch store.relay.state {
+        case .failed: return .attention
+        case .listening(let host, _) where host != "127.0.0.1": return .attention  // listening, but no address
+        default: return .secondary
+        }
     }
 
     private var reachCaption: String {
@@ -120,6 +129,7 @@ struct PhoneSettings: View {
         switch store.relay.state {
         case .listening(let host, _) where host == "127.0.0.1":
             return "Held to this Mac for testing (OPENRIG_RELAY_LOOPBACK): only the simulator can connect."
+        case .listening where !reachable: return PairingRefusal.noWiFiAddress.message
         case .listening: return "Listening on \(store.relay.address ?? "this Mac")."
         case .off where !store.relay.enabled: return "Turn on “Let paired phones connect” below."
         case .off: return "Pair a phone, and this Mac listens for it on the Wi-Fi."
@@ -127,7 +137,9 @@ struct PhoneSettings: View {
         }
     }
 
-    private let relayCaption = "This Mac listens on the Wi-Fi only while a phone is paired."
+    private let relayCaption =
+        "This Mac listens on the Wi-Fi only while a phone is paired. macOS may ask whether OpenRig can accept "
+        + "incoming connections. Allow it, or phones can't connect."
 
     /// Why this phone can't be unpaired from here (another daemon's), or nil.
     private func elsewhere(_ phone: PairedPhone) -> String? {

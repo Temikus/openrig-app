@@ -138,6 +138,27 @@ import Testing
         #expect(PairedPhones(data: newer).list.first?.daemon == "127.0.0.1:7500")
     }
 
+    /// No code a phone could never use: with the relay off or no Wi-Fi address, Pair says why instead. Held to
+    /// loopback (the simulator), a loopback-only code is the point.
+    @Test func pairingNeedsAWayInForAPhone() {
+        let phones = PairedPhones()
+        #expect(phones.refusesPairing(relayOn: true, heldToLoopback: false, wifiAddresses: ["192.168.1.5"]) == nil)
+        #expect(
+            phones.refusesPairing(relayOn: false, heldToLoopback: false, wifiAddresses: ["192.168.1.5"]) == .relayOff)
+        #expect(phones.refusesPairing(relayOn: true, heldToLoopback: false, wifiAddresses: []) == .noWiFiAddress)
+        #expect(phones.refusesPairing(relayOn: true, heldToLoopback: true, wifiAddresses: []) == nil)
+        #expect(phones.refusesPairing(relayOn: false, heldToLoopback: true, wifiAddresses: []) == .relayOff)
+    }
+
+    /// After the credential is issued and the relay restarted, the code must carry a way in, or it isn't shown.
+    @Test func aCodeWithoutAWayInIsRefused() {
+        let phones = PairedPhones()
+        let reach = RelayReach(addresses: ["192.168.1.5"], port: 7434, secret: RelayLink.newSecret())
+        #expect(phones.refusesCode(relay: reach, heldToLoopback: false) == nil)
+        #expect(phones.refusesCode(relay: nil, heldToLoopback: false) == .noWiFiAddress)
+        #expect(phones.refusesCode(relay: nil, heldToLoopback: true) == nil)
+    }
+
     @Test func aDamagedRecordReadsAsEmpty() {
         #expect(PairedPhones(data: Data("not json".utf8)) == PairedPhones())
         #expect(PairedPhones(data: nil) == PairedPhones())

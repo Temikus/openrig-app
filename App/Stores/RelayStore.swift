@@ -107,14 +107,25 @@ final class RelayStore {
         running = nil
     }
 
-    /// The pairing code's `lan` reach for one phone: this Mac's `.local` name, then its home-network addresses, and the
-    /// relay's port. Nil unless the relay listens on the Wi-Fi: a loopback relay is no use to a phone.
+    /// OPENRIG_RELAY_LOOPBACK=1: only the simulator on this Mac can connect, by design.
+    var heldToLoopback: Bool { Self.bindHost == "127.0.0.1" }
+
+    /// What a code can name for a phone on the Wi-Fi: this Mac's `.local` name, then its home-network addresses.
+    var wifiAddresses: [String] {
+        let name = SCDynamicStoreCopyLocalHostName(nil).map { ($0 as String).lowercased() + ".local" }
+        return [name].compactMap(\.self).filter(PairingCode.Reach.Kind.lan.accepts) + LocalAddresses.lan()
+    }
+
+    /// The pairing code's `lan` reach for one phone, with the relay's port. Nil unless the relay listens on the Wi-Fi
+    /// and the Mac has an address to name: otherwise no phone could use the code.
     func reach(for secret: Data) -> RelayReach? {
         guard case .listening(let host, let port) = state, host != "127.0.0.1" else { return nil }
-        let name = SCDynamicStoreCopyLocalHostName(nil).map { ($0 as String).lowercased() + ".local" }
-        let addresses = [name].compactMap(\.self).filter(PairingCode.Reach.Kind.lan.accepts) + LocalAddresses.lan()
+        let addresses = wifiAddresses
         return addresses.isEmpty ? nil : RelayReach(addresses: addresses, port: port, secret: secret)
     }
+
+    /// A phone on the Wi-Fi could connect right now: the same check a code passes before it is shown.
+    var usable: Bool { reach(for: Data()) != nil }
 
     /// What a phone connects to: this Mac's home-network address and Bonjour name, or loopback when held there.
     var address: String? {

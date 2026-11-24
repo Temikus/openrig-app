@@ -68,7 +68,9 @@ final class PhoneStore {
     /// Issues a credential that answers as `actor` and shows its code. The row is recorded at once: the credential
     /// exists from here on, and the record is the only way to revoke it.
     func pair(daemon: URL, bearer: String?, actor: String, relay: RelayStore) async {
-        if let refusal = phones.refusesIssue {
+        if let refusal = phones.refusesPairing(
+            relayOn: relay.enabled, heldToLoopback: relay.heldToLoopback, wifiAddresses: relay.wifiAddresses)
+        {
             code = .failed(refusal.message)
             return
         }
@@ -81,16 +83,25 @@ final class PhoneStore {
         do {
             let credential = try await DaemonHTTP(baseURL: daemon, timeout: 5, bearer: bearer)
                 .issueAppCredential(for: [actor])
-            phones.add(PairedPhone(id: credential.id, name: "", actor: actor, paired: .now, daemon: daemon))
+            let phone = PairedPhone(id: credential.id, name: "", actor: actor, paired: .now, daemon: daemon)
+            phones.add(phone)
             save()
             // The phone's own key to the relay. The relay restarts with it before the code is drawn, so the code
             // carries the port it actually got.
             let secret = RelayLink.newSecret()
             RelaySecrets.save(secret, for: credential.id)
             await relay.refresh(daemon: daemon)
+            let reach = relay.reach(for: secret)
+            if let refusal = phones.refusesCode(relay: reach, heldToLoopback: relay.heldToLoopback) {
+                // No way in after all (the relay couldn't listen on the Wi-Fi): take back what was just issued.
+                await unpair(phone, daemon: daemon, bearer: bearer)
+                await relay.refresh(daemon: daemon)
+                code = .failed(phones.list.contains { $0.id == phone.id } ? Self.leftOver : refusal.message)
+                return
+            }
             code = .showing(
                 try PairingCode.forThisMac(
-                    credential: credential, actor: actor, daemon: daemon, relay: relay.reach(for: secret),
+                    credential: credential, actor: actor, daemon: daemon, relay: reach,
                     name: Host.current().localizedName))
         } catch let error as DaemonError {
             code = .failed(Self.message(error))
@@ -142,6 +153,9 @@ final class PhoneStore {
         guard !phones.isMadeUp else { return }
         defaults.set(phones.data, forKey: Self.key)
     }
+
+    /// The take-back failed: the row stays, with its error, for Unpair.
+    static let leftOver = "No phone could use the code, and taking it back failed. Unpair it below."
 
     static func elsewhere(_ host: String) -> String {
         "The daemon runs at \(host), not on this Mac. A phone pairs with the Mac that runs the daemon."
