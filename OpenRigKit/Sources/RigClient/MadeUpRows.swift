@@ -46,7 +46,7 @@ extension RigAction {
             .newDeadline(let id, _), .resolve(let id, _):
             id
         case .send, .create, .answerPrompt, .clearAttention, .startDaemon, .rigUp, .rigDown, .launchSeat,
-            .freshSeat:
+            .freshSeat, .rigArchive, .rigDelete:
             nil
         }
     }
