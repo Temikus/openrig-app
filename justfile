@@ -27,8 +27,10 @@ _xcodebuild config *flags: gen
         -destination "platform=macOS,arch=$(uname -m)" ONLY_ACTIVE_ARCH=YES \
         -derivedDataPath {{ quote(derived) }} -quiet build
 
+alias install := install-canary
+
 # Build a Release copy as OpenRig Canary and install it beside the public app (quit the canary first)
-install *flags: (_xcodebuild "Release" "OPENRIG_ID_SUFFIX=.canary" "OPENRIG_ICON=AppIconCanary" "OPENRIG_APP_NAME='OpenRig Canary'" flags)
+install-canary *flags: (_xcodebuild "Release" "OPENRIG_ID_SUFFIX=.canary" "OPENRIG_ICON=AppIconCanary" "OPENRIG_APP_NAME='OpenRig Canary'" flags)
     #!/usr/bin/env bash
     set -euo pipefail
     dest="/Applications/OpenRig Canary.app"
@@ -38,6 +40,28 @@ install *flags: (_xcodebuild "Release" "OPENRIG_ID_SUFFIX=.canary" "OPENRIG_ICON
     rm -rf "$dest"
     ditto {{ quote(derived / "Build/Products/Release/OpenRig.app") }} "$dest"
     echo "Installed $dest"
+
+# Download the latest GitHub release and install it as /Applications/OpenRig.app (quit it first)
+install-public:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dest="/Applications/OpenRig.app"
+    if pgrep -f "^$dest/Contents/MacOS/OpenRig" >/dev/null; then
+      echo "Quit $dest first; it is running." >&2; exit 1
+    fi
+    tmp="$(mktemp -d)"
+    mnt="$tmp/mnt"
+    trap 'hdiutil detach -quiet "$mnt" 2>/dev/null || true; rm -rf "$tmp"' EXIT
+    tag="$(gh release view --json tagName -q .tagName)"
+    gh release download "$tag" --pattern 'OpenRig-*.dmg' --dir "$tmp"
+    dmg="$(echo "$tmp"/OpenRig-*.dmg)"
+    spctl -a -t open --context context:primary-signature "$dmg"
+    mkdir "$mnt"
+    hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mnt" "$dmg"
+    spctl -a -t exec "$mnt/OpenRig.app"
+    rm -rf "$dest"
+    ditto "$mnt/OpenRig.app" "$dest"
+    echo "Installed OpenRig $tag at $dest"
 
 # Build a Developer ID-signed, notarised DMG in <build root>/dist (version from the latest v* tag)
 dist:
