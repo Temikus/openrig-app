@@ -13,7 +13,7 @@ jobs:
     # Xcode 27 preview image: Xcode 26.6 crashes compiling the app (Swift 6.3.3 IRGen).
     runs-on: xcode-27
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Install tools
         run: brew install just xcodegen
       - name: Use the runner's default Xcode
