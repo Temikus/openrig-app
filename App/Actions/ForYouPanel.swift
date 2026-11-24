@@ -28,7 +28,8 @@ struct ForYouPanel: View {
         change(&next)
         actions.answers.set(next, for: key)
     }
-    private var askerSeat: Seat? { rig.seat(session: item.source) }
+    /// None on a made-up row, so Tell and Reply… never offer to type into a real seat.
+    private var askerSeat: Seat? { rig.isMadeUp(item.id) ? nil : rig.seat(session: item.source) }
     private var busy: Bool { actions.isRunning(key) || actions.offline }
     /// Tell only reaches a seat in this rig; anywhere else the answer is only recorded on the row.
     private var canTell: Bool { askerSeat != nil }
@@ -47,14 +48,15 @@ struct ForYouPanel: View {
                     .foregroundStyle(kind == .decision ? Color.attention : .secondary)
             }
             .font(.callout.weight(.semibold))
-            if let evidence = item.evidenceRef { EvidenceLine(ref: evidence) }
+            RowEvidence(item: item)
             switch kind {
             case .decision where item.asksHuman: questions
             case .decision: decision
             case .update: update
             }
             if replying, let askerSeat {
-                MessageComposer(seat: askerSeat, inline: true, autofocus: true) {
+                // Under the row's key, so a made-up row's reply is refused even if the seat above lets it show.
+                MessageComposer(seat: askerSeat, inline: true, autofocus: true, key: "\(key)|reply") {
                     replying = false
                     update { $0.replied = true }
                 }
@@ -80,9 +82,12 @@ struct ForYouPanel: View {
                     .toggleStyle(.checkbox)
                     .help("Also sends your answer to \(asker) with rig send. Closing alone only records it on the row.")
             } else {
-                Text("\(asker) isn't in this rig, so your answer is only recorded on the row.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    rig.isMadeUp(item.id)
+                        ? ActionStore.madeUp : "\(asker) isn't in this rig, so your answer is only recorded on the row."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             HStack {
                 ActionStatusLine(key: key)
@@ -269,33 +274,6 @@ private struct QuestionPicker: View {
                     )
                     .lineLimit(1...3)
                 }
-            }
-        }
-    }
-}
-
-/// The artifact the agent asked the person to judge: a file opens in its app; anything else is shown to copy.
-private struct EvidenceLine: View {
-    let ref: String
-
-    private var file: URL? {
-        guard ref.hasPrefix("/") else { return nil }
-        let url = URL(filePath: ref)
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
-    }
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: file == nil ? "text.quote" : "doc.text").foregroundStyle(.secondary)
-            Text(file?.lastPathComponent ?? ref)
-                .font(file == nil ? .caption : .caption.monospaced())
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .textSelection(.enabled)
-                .help(ref)
-            Spacer()
-            if let file {
-                Button("Open") { NSWorkspace.shared.open(file) }.buttonStyle(.link).font(.caption)
             }
         }
     }

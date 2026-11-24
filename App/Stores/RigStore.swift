@@ -32,6 +32,11 @@ final class RigStore {
     #if DEBUG
         private let launched = Date.now
     #endif
+    /// The OPENRIG_DEBUG_ROW rows the last refresh added (a real row with the same id wins).
+    private var madeUpIDs: Set<QItem.ID> = []
+
+    /// A row from OPENRIG_DEBUG_ROW: it never posts a banner, and nothing on it reaches a seat (ActionStore refuses).
+    func isMadeUp(_ id: QItem.ID) -> Bool { madeUpIDs.contains(id) }
 
     /// Seat heights measured by the canvas. Layout depends on them, so changes re-run layout.
     private var seatSizes: [String: CGSize] = [:]
@@ -80,6 +85,33 @@ final class RigStore {
             let lines = try? await tmux.screen(pane: pane)
         else { return nil }
         return PromptScreen(lines: lines)
+    }
+
+    /// Each seat's launch folder, or nil when the daemon couldn't say (seat gone, daemon down or slow). Kept 30 s:
+    /// a restarted seat may have a new folder, and a slow daemon isn't asked again for every row.
+    @ObservationIgnored private var launchFolders: [String: (folder: String?, at: Date)] = [:]
+
+    func launchFolder(session: String) async -> String? {
+        guard daemonIsLocal else { return nil }
+        if let known = launchFolders[session], Date.now.timeIntervalSince(known.at) < 30 { return known.folder }
+        let folder = try? await client.seatStatus(session: session).launchCwd
+        launchFolders[session] = (folder, .now)
+        return folder
+    }
+
+    /// The daemon runs on this Mac, so a row's paths name this Mac's files. (DaemonLocator's settings check is
+    /// separate; ios-remote changes that file.)
+    var daemonIsLocal: Bool {
+        ["127.0.0.1", "localhost", "::1", "[::1]"].contains(client.baseURL.host()?.lowercased() ?? "")
+    }
+
+    /// The images `item` points at; relative paths resolve only with a launch folder. Reads the disk off the main thread.
+    func images(for item: QItem, launchFolder folder: String?) async -> RowImages {
+        let local = daemonIsLocal
+        let (ref, body) = (item.evidenceRef, item.body)
+        return await Task.detached(priority: .userInitiated) {
+            RowImages.find(evidenceRef: ref, body: body, launchFolder: folder, local: local)
+        }.value
     }
 
     /// Reads the seat's prompt now, bypassing the cached copy; used right before answering.
@@ -132,7 +164,9 @@ final class RigStore {
         do {
             async let graphRequest = client.graph(rigID: rigID)
             async let queueRequest = client.queue(rigName: rigName)
-            let (fresh, rows) = try await (graphRequest, queueRequest)
+            let (fresh, real) = try await (graphRequest, queueRequest)
+            let (rows, added) = MadeUpRows.launch.merge(into: real)
+            madeUpIDs = added
             error = nil
             lastUpdated = .now
             if fresh != graph || rows != items {

@@ -24,7 +24,10 @@ final class Banners: NSObject, UNUserNotificationCenterDelegate {
         guard let store else { return }
         let settings = store.settings
         var current: [Notice] = []
-        if let rig = store.rig { current += notices(entries: rig.needsYou, rig: rig.rigName, me: store.me) }
+        if let rig = store.rig {
+            let real = rig.needsYou.filter { if case .qitem(let row) = $0 { !rig.isMadeUp(row.id) } else { true } }
+            current += notices(entries: real, rig: rig.rigName, me: store.me)
+        }
         if settings.bannerScope == .allRigs {
             current += store.elsewhere.compactMap { notice(for: $0, me: store.me) }
             current += attentionNotices(
