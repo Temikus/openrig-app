@@ -44,7 +44,7 @@ public struct DaemonHealth: Decodable, Sendable, Equatable {
 
         /// Where a phone can reach this daemon: its tailnet IPv4 or MagicDNS name. Nil while the daemon listens on no
         /// tailnet address, e.g. when Tailscale was off as it started.
-        public var tailnetHost: String? { hosts.first(where: PairingCode.isTailnet) }
+        public var tailnetHost: String? { hosts.first { PairingCode.Reach.Kind.tailnet.accepts($0) } }
     }
 
     private enum CodingKeys: String, CodingKey { case status, semver, commit, eventLoop, bind }
