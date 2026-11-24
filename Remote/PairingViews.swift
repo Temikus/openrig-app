@@ -51,6 +51,8 @@ struct ExplainerView: View {
                 PasteLinkButton()
             }
             .padding(20)
+            // Opaque, so scrolled text doesn't show through the buttons at large text sizes.
+            .background(.bar)
         }
     }
 
@@ -69,18 +71,25 @@ struct ScannerView: View {
     @State private var camera = AVCaptureDevice.authorizationStatus(for: .video)
 
     var body: some View {
-        VStack(spacing: 24) {
-            VStack(spacing: 8) {
-                Text(heading).font(.title2.bold())
-                Text(guidance).foregroundStyle(.secondary)
+        // Scrolls, so the paste explanation isn't cut at large text sizes. Paste stays pinned below.
+        ScrollView {
+            VStack(spacing: 24) {
+                VStack(spacing: 8) {
+                    Text(heading).font(.title2.bold())
+                    Text(guidance).foregroundStyle(.secondary)
+                }
+                .multilineTextAlignment(.center)
+                viewfinder
+                PairingErrorText()
             }
-            .multilineTextAlignment(.center)
-            viewfinder
-            Spacer(minLength: 0)
-            PairingErrorText()
-            PasteLinkButton()
+            .padding(20)
         }
-        .padding(20)
+        .safeAreaInset(edge: .bottom) {
+            PasteLinkButton()
+                .frame(maxWidth: .infinity)
+                .padding(20)
+                .background(.bar)
+        }
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if camera == .notDetermined {

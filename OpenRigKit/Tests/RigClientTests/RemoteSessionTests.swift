@@ -121,6 +121,24 @@ import Testing
         #expect(remote.pairingError?.contains("Keychain") == true)
     }
 
+    /// The badge counts what the list shows. A state screen hides the list, so there is nothing to count.
+    @Test(arguments: [RemoteStatus.unpaired, .unsupportedDaemon, .localNetworkDenied, .noSafeAddress])
+    func aStateScreenShowsNoAsks(status: RemoteStatus) async throws {
+        let remote = session(FakeMac([:]))
+        remote.statusOverride = status
+        remote.pair(link: linkA)
+        await remote.refresh()
+        #expect(remote.shownRequests == nil)
+    }
+
+    @Test func nothingReadYetShowsNoAsks() async throws {
+        let remote = session(FakeMac(["127.0.0.1": .unreachable(detail: "x")]))
+        #expect(remote.shownRequests == nil)
+        remote.pair(link: linkA)
+        await remote.refresh()
+        #expect(remote.shownRequests == nil)
+    }
+
     @Test func aStatusOverrideReplacesTheCheckedStatus() async throws {
         let remote = session(FakeMac(["127.0.0.1": .unsupportedDaemon]))
         remote.statusOverride = .localNetworkDenied

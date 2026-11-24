@@ -38,12 +38,14 @@ struct RootView: View {
 
     var body: some View {
         content
-            .confirmationDialog(
+            // An alert, not a confirmation dialog: iOS 26 draws a dialog without its Cancel button, which would leave
+            // accepting a stranger's link as the only visible choice.
+            .alert(
                 "Pair with \(model.pendingCode?.name ?? "this Mac")?", isPresented: pendingBinding,
-                titleVisibility: .visible, presenting: model.pendingCode
+                presenting: model.pendingCode
             ) { _ in
-                Button("Pair") { model.confirmPending() }
                 Button("Cancel", role: .cancel) {}
+                Button("Pair") { model.confirmPending() }
             } message: { code in
                 Text(pendingMessage(code))
             }
@@ -68,8 +70,9 @@ struct RootView: View {
     func pendingMessage(_ code: PairingCode) -> String {
         let address = RemoteEndpoint.all(in: code).first?.description ?? ""
         let replaces = model.pairing.map { _ in " This replaces \(model.macName)." } ?? ""
+        // The warning first: at large text sizes the alert cuts the end of its message.
         return
-            "A link asks this phone to answer as \(code.actor) through \(address).\(replaces) Pair only if it came from your own Mac."
+            "Pair only if this link came from your own Mac.\(replaces) It asks this phone to answer as \(code.actor) through \(address)."
     }
 
     @ViewBuilder var content: some View {
@@ -78,7 +81,7 @@ struct RootView: View {
         } else {
             TabView(selection: $tab) {
                 Tab("Needs you", systemImage: "tray", value: .needs) { NeedsYouView() }
-                    .badge(model.needs?.requests.count ?? 0)
+                    .badge(model.shownRequests?.count ?? 0)
                 Tab("Settings", systemImage: "gear", value: .settings) { SettingsView() }
             }
             #if DEBUG
@@ -94,26 +97,27 @@ struct StatusLabel: View {
 
     var body: some View {
         Label {
-            Text(words)
+            Text(Self.words(for: model.status))
         } icon: {
-            Image(systemName: "circle.fill").font(.system(size: 7)).foregroundStyle(colour)
+            Image(systemName: "circle.fill").font(.system(size: 7)).foregroundStyle(Self.colour(for: model.status))
         }
         .labelStyle(.titleAndIcon)
     }
 
-    var words: String {
-        switch model.status {
+    static func words(for status: RemoteStatus?) -> String {
+        switch status {
         case nil: "Connecting…"
         case .connected: "Connected"
         case .unreachable: "Can't reach"
         case .localNetworkDenied: "Local Network off"
         case .unpaired: "Unpaired"
         case .unsupportedDaemon: "Can't talk to it"
+        case .noSafeAddress: "Wi-Fi not ready"
         }
     }
 
-    var colour: Color {
-        switch model.status {
+    static func colour(for status: RemoteStatus?) -> Color {
+        switch status {
         case nil: .secondary
         case .connected: .statusGood
         default: .statusBad

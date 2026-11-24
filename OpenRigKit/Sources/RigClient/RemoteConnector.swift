@@ -35,6 +35,8 @@ public enum RemoteStatus: Sendable, Equatable {
     case unpaired
     /// Something answered, but not a daemon with this app's contract.
     case unsupportedDaemon
+    /// Every address would have carried the token in clear (`RemoteConnector.plainHTTPClient`), so none was tried.
+    case noSafeAddress
 }
 
 /// Tries each endpoint of a pairing code in order, and says where the phone stands.
@@ -89,21 +91,17 @@ public struct RemoteConnector: Sendable {
         #endif
     }()
 
-    public static let noSafeAddress =
-        "This version of the app can't reach this Mac at its paired addresses without sending its key unencrypted."
-
     /// The first endpoint that answers wins. Otherwise a revoked credential outranks a stranger on an old address,
-    /// which outranks denied Local Network access, which outranks silence.
+    /// which outranks denied Local Network access, which outranks silence. If no endpoint was safe to try, says so.
     public func connect(_ code: PairingCode) async -> Outcome {
         var revoked = false
         var stranger = false
+        var tried = false
         var lastError: String?
         var firstSilentLan: RemoteEndpoint?
         for endpoint in RemoteEndpoint.all(in: code) {
-            guard let app = client(endpoint, code) else {
-                lastError = lastError ?? Self.noSafeAddress
-                continue
-            }
+            guard let app = client(endpoint, code) else { continue }
+            tried = true
             do {
                 if try await app.capabilities().supportsAnswering {
                     return Outcome(status: .connected(endpoint), client: app)
@@ -126,6 +124,7 @@ public struct RemoteConnector: Sendable {
                 }
             }
         }
+        if !tried { return Outcome(status: .noSafeAddress) }
         if revoked { return Outcome(status: .unpaired) }
         if stranger { return Outcome(status: .unsupportedDaemon) }
         if let firstSilentLan, await localNetworkDenied(firstSilentLan) {

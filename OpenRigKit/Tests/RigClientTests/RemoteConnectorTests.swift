@@ -62,8 +62,29 @@ import Testing
             return false
         })
         let outcome = await connector.connect(try code([Reach(kind: .lan, addresses: ["10.255.255.1"], port: 9)]))
-        #expect(outcome.status == .unreachable(detail: RemoteConnector.noSafeAddress))
+        #expect(outcome.status == .noSafeAddress)
         #expect(probe.endpoints.isEmpty)
+    }
+
+    /// Once any address was tried, silence is a network fault, not a missing link.
+    @Test func aRefusedAddressBesideASilentOneIsUnreachable() async throws {
+        let silent = Script([.drop])
+        let connector = RemoteConnector(
+            client: { endpoint, code in
+                endpoint.kind == .lan
+                    ? nil
+                    : AppClient(baseURL: silent.baseURL, token: code.token, actor: code.actor, session: silent.session)
+            },
+            localNetworkDenied: { _ in false })
+        let outcome = await connector.connect(
+            try code([
+                Reach(kind: .lan, addresses: ["10.0.0.208"], port: 7433),
+                Reach(kind: .loopback, addresses: ["127.0.0.1"], port: 7433),
+            ]))
+        guard case .unreachable = outcome.status else {
+            Issue.record("expected unreachable, got \(outcome.status)")
+            return
+        }
     }
 
     /// Plain HTTP only where the path is private by construction: this Mac, or a MagicDNS name that only

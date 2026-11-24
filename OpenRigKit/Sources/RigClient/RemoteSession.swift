@@ -40,6 +40,16 @@ public final class RemoteSession {
         return pairing.flatMap { RemoteEndpoint.all(in: $0.code).first?.description }
     }
 
+    /// The asks Needs you lists, or nil when a state screen takes its place. A list read before the Mac went out of
+    /// reach stays, marked with `lastReached`.
+    public var shownRequests: [AppRequest]? {
+        switch status {
+        case nil, .unreachable: needs?.requests
+        case .connected: needs?.requests ?? []
+        case .localNetworkDenied, .unpaired, .unsupportedDaemon, .noSafeAddress: nil
+        }
+    }
+
     /// `artem@external` shows as `artem`.
     public var answeringAs: String? { pairing.map { String($0.code.actor.prefix { $0 != "@" }) } }
 
