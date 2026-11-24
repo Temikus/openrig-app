@@ -1,5 +1,6 @@
 import Foundation
 import RigFixtures
+import RigModel
 import Testing
 
 @testable import RigDomain
@@ -118,6 +119,15 @@ private func here(
         #expect(eventReach(event, in: here()) == [.refreshRowsForMe])
         let someoneElse = EventContext(rigID: openrigApp, rigName: "openrig-app", addresses: ["human@host"])
         #expect(eventReach(event, in: someoneElse) == [])
+    }
+
+    @Test func aRowSentToAnyOfThePersonsAddressesRereadsTheirRows() {
+        let context = EventContext(rigID: nil, rigName: nil, addresses: Set(Human.addresses(of: "artem@external")))
+        for address in ["artem@external", "human@host", "human@kernel"] {
+            let event = EventPlace(
+                type: "queue.created", sourceSession: "orch-lead@denkeeper", destinationSession: address, qitemId: "q")
+            #expect(eventReach(event, in: context) == [.refreshRowsForMe], "\(address)")
+        }
     }
 
     @Test func theSessionsNamedOutrankTheActor() {

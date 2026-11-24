@@ -16,6 +16,12 @@ import Testing
         #expect(Human.isAddress(Human.session))
         #expect(Human.isYou("human@kernel") && !Human.isYou("human-sarah@host"))
     }
+
+    /// The daemon keeps a destination as the sender wrote it, so the person's rows are found at each address.
+    @Test func thePersonIsReachedAtTheirAddressAndTheUnnamedOnes() {
+        #expect(Human.addresses(of: "sam@external") == ["sam@external", "human@host", "human@kernel"])
+        #expect(Human.addresses(of: "human@kernel") == ["human@kernel", "human@host"])
+    }
 }
 
 @Suite struct GatewayIdentityTests {
