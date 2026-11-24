@@ -325,7 +325,7 @@ Deviations and discoveries, by milestone. Each line is something the plan above 
 - **Queue task always nudges** the destination (the CLI default). Live tests use `--no-nudge`, because a nudge to the human seat types into its terminal.
 - **Hand-off targets** are limited to the owner's `delegates_to` seats, as planned. "Also tell" runs `rig send` only after the handoff succeeds.
 - **Nudge opens an editable message** rather than sending at once; it types into an agent's pane.
-- **`just test-live`** (opt-in, `OPENRIG_LIVE_WRITES=1`) creates one self-addressed qitem, notes it, closes it as canceled, and requires each step on the event stream within 1 s.
+- **`just test-live`** (opt-in, `OPENRIG_LIVE_WRITES=1`) creates one self-addressed qitem, notes it, closes it as canceled, and requires each step on the event stream within 1 s. It also runs the read-only chain check, `LiveChainTests` (`OPENRIG_LIVE_READS=1`), which left `just test` on 2026-11-24 because it timed out against a busy daemon.
 - Verified in the app: a note and a close made from the inspector reached the daemon as `operator-human@kernel`, and the board updated through the event stream within about a second. Handoff, block, nudge and send were not run live (they would touch agents); argv tests cover them.
 - `Resolve` (answering a human-gated HELD row) moves to M5 with the permission control.
 
