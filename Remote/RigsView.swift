@@ -109,17 +109,29 @@ final class RigsStore {
     }
 }
 
-/// Where the Rigs tab's stack is: a rig, then a seat in it.
+/// Where the Rigs tab's stack is: a rig, then a seat in it, then the seat's prompt.
 enum RigsLink: Hashable {
     case rig(String)
     case seat(rig: String, session: String)
+    case prompt(rig: String, session: String)
+
+    static var launchPath: [RigsLink] {
+        #if DEBUG
+            guard let rig = DebugHooks.openRig else { return [] }
+            guard let seat = DebugHooks.openSeat else { return [.rig(rig)] }
+            let opened: [RigsLink] = [.rig(rig), .seat(rig: rig, session: seat)]
+            return DebugHooks.seatPrompt ? opened + [.prompt(rig: rig, session: seat)] : opened
+        #else
+            return []
+        #endif
+    }
 }
 
 /// Rigs first, each with what waits in it; a rig opens its seats (board 6B).
 struct RigsView: View {
     @Environment(RemoteSession.self) private var model
     @State private var store = RigsStore()
-    @State private var path: [RigsLink] = []
+    @State private var path = RigsLink.launchPath
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -131,16 +143,13 @@ struct RigsView: View {
                     switch link {
                     case .rig(let name): RigScreen(rig: name)
                     case .seat(let rig, let session): SeatScreen(rig: rig, session: session)
+                    // The screen Needs you opens, so its checks before Allow once hold here too.
+                    case .prompt(let rig, let session): PromptView(session: session, rig: rig)
                     }
                 }
         }
         .environment(store)
-        .onAppear {
-            store.use(model.desk)
-            #if DEBUG
-                if path.isEmpty { path = RigsLink.launchPath }
-            #endif
-        }
+        .onAppear { store.use(model.desk) }
         .onChange(of: model.desk.map(ObjectIdentifier.init)) { store.use(model.desk) }
         // Restarts with each new client, so the first read follows the session's first connection.
         .task(id: model.desk.map(ObjectIdentifier.init)) {
@@ -168,8 +177,8 @@ struct RigsView: View {
                 if let readError = store.readError { ReadErrorRow(words: readError) }
                 ForEach(rigs, id: \.id) { rig in
                     NavigationLink(value: RigsLink.rig(rig.name)) {
-                        // The session reads the relay's Needs-you list on each check.
-                        RigRow(rig: rig, waiting: model.relayNeeds?.waiting(in: rig.name) ?? 0)
+                        // What Needs you lists for this rig, so the rows add up to its tab badge.
+                        RigRow(rig: rig, waiting: model.needsYouList?.count(inRig: rig.name) ?? 0)
                     }
                 }
             }
@@ -415,14 +424,19 @@ struct SeatScreen: View {
                 .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
             }
 
-            // At accessibility sizes the two actions come first, so they show before anything scrolls (board 6).
-            if typeSize.isAccessibilitySize { actionsSection(seat) }
+            // At accessibility sizes the actions come first, so they show before anything scrolls (board 6). A prompt
+            // comes before them: it's what the seat waits on, and Message is off until it's answered.
+            if typeSize.isAccessibilitySize {
+                promptSection(seat)
+                actionsSection(seat)
+            }
 
             if let result = store.results[session] { Section { ResultRow(result: result) } }
 
-            if seat.atPrompt { Section { PromptCard(command: store.prompts[session]) } }
-
-            if !typeSize.isAccessibilitySize { actionsSection(seat) }
+            if !typeSize.isAccessibilitySize {
+                promptSection(seat)
+                actionsSection(seat)
+            }
 
             Section("Working on") {
                 if let row = seat.currentRow {
@@ -443,6 +457,17 @@ struct SeatScreen: View {
             }
         }
         .listSectionSpacing(.compact)
+    }
+
+    @ViewBuilder func promptSection(_ seat: RelaySeat) -> some View {
+        if seat.atPrompt {
+            Section {
+                NavigationLink(value: RigsLink.prompt(rig: rig, session: session)) {
+                    PromptCard(command: store.prompts[session])
+                }
+                .listRowBackground(Color.statusBad.opacity(0.12))
+            }
+        }
     }
 
     func actionsSection(_ seat: RelaySeat) -> some View {
@@ -484,7 +509,7 @@ enum SeatSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
-/// The seat is stopped at a prompt: what it asks to run. Answering is on the Needs-you list (task 11).
+/// The seat is stopped at a prompt: what it asks to run. It opens the prompt screen, where it's answered.
 struct PromptCard: View {
     var command: String?
 
@@ -494,9 +519,9 @@ struct PromptCard: View {
             if let command {
                 Text(command).font(.footnote.monospaced()).lineLimit(3)
             }
+            Text("Open to allow or decline").font(.footnote).foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
-        .listRowBackground(Color.statusBad.opacity(0.12))
         .accessibilityElement(children: .combine)
     }
 }
@@ -526,20 +551,14 @@ struct ResultRow: View {
         static var compose: String? { environment["OPENRIG_DEBUG_COMPOSE"] }
         /// The sheet's text: the message, or the task's summary. With `OPENRIG_DEBUG_SEND=1` it is sent.
         static var composeText: String? { environment["OPENRIG_DEBUG_TEXT"] }
+        /// `1` opens the opened seat's prompt screen, as its prompt card does.
+        static var seatPrompt: Bool { environment["OPENRIG_DEBUG_SEAT_PROMPT"] == "1" }
     }
 
     extension RigsStore {
         /// A sheet opened at launch can come up before the seat list arrives.
         func debugWaitForSeat(_ session: String) async {
             for _ in 0..<50 where seat(session) == nil { try? await Task.sleep(for: .milliseconds(200)) }
-        }
-    }
-
-    extension RigsLink {
-        static var launchPath: [RigsLink] {
-            guard let rig = DebugHooks.openRig else { return [] }
-            guard let seat = DebugHooks.openSeat else { return [.rig(rig)] }
-            return [.rig(rig), .seat(rig: rig, session: seat)]
         }
     }
 

@@ -64,19 +64,6 @@ import Testing
         #expect(RelaySeat.summary([Self.seat(activity: "idle")]) == "1 seat · nothing running")
     }
 
-    /// The count each rig's row shows: its own Needs-you items, or its line from the other rigs' counts.
-    @Test func eachRigCountsWhatWaitsInIt() {
-        let list = RelayNeedsYou(
-            items: [
-                RelayNeedsYouItem(kind: "ask", id: "1", rig: "openrig-app", title: "x"),
-                RelayNeedsYouItem(kind: "prompt", id: "2", rig: "openrig-app", title: "y"),
-            ],
-            attentionElsewhere: [RelayNeedsYou.RigCount(rig: "kernel", count: 3)])
-        #expect(list.waiting(in: "openrig-app") == 2)
-        #expect(list.waiting(in: "kernel") == 3)
-        #expect(list.waiting(in: "other") == 0)
-    }
-
     // MARK: Results in plain words
 
     @Test func resultsSayWhatHappened() {

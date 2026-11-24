@@ -39,8 +39,9 @@ The iPhone app shows what waits on you and lets you act on it from your phone. T
 
 **What the phone can do**
 - **Answer asks:** pick from their options, or reply in your own words.
-- **Answer a seat's permission prompt.** It opens on its own screen with the command in full. Allow once stays off until you've seen the end of a long command, and Decline asks for an optional reason. If the prompt changes before you answer, the buttons go and the phone shows the new prompt. "Always allow" stays on the Mac.
+- **Answer a seat's permission prompt,** from Needs you or from the seat in the Rigs tab. It opens on its own screen with the command in full. Allow once stays off until you've seen the end of a long command, and Decline asks for an optional reason. If the prompt changes before you answer, the buttons go and nothing is sent; Show the new prompt loads the new one. "Always allow" stays on the Mac.
 - **Act on rows waiting on you:** Reply, Got it and Done.
+- **See each rig's seats** in the Rigs tab. A rig's count is what Needs you lists for it.
 - **Message a seat, or queue it a task,** from the Rigs tab. Message is off while the seat is stopped at a prompt.
 
 **Install it on your iPhone**

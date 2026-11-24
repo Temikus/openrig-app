@@ -42,6 +42,26 @@ import Testing
         #expect(list.count(inRig: "no-such-rig") == 0)
     }
 
+    /// A rig row's badge counts what Needs you lists for that rig: an ask the Mac also lists counts once, a contract
+    /// ask counts in its asker's rig, and a kind Needs you doesn't list doesn't count.
+    @Test func aRigCountsWhatNeedsYouListsForIt() throws {
+        let contract = try asks()
+        let rig = try #require(contract[0].askerRig)
+        let relay = RelayNeedsYou(
+            items: [
+                RelayNeedsYouItem(kind: "ask", id: "a", rig: rig, title: "x", row: contract[0].id),
+                RelayNeedsYouItem(kind: "prompt", id: "p", rig: rig, title: "y", session: "dev-b1@\(rig)"),
+                RelayNeedsYouItem(kind: "something-new", id: "n", rig: rig, title: "z"),
+                RelayNeedsYouItem(kind: "something-newer", id: "m", rig: rig, title: "w"),
+            ],
+            attentionElsewhere: [.init(rig: "kernel", count: 3)])
+        let list = NeedsYouList(asks: contract, relay: relay)
+        let contractInRig = contract.count { $0.askerRig == rig }
+        #expect(list.count(inRig: rig) == contractInRig + 1)
+        #expect(list.count(inRig: "kernel") == 3)
+        #expect(list.count(inRig: "other") == 0)
+    }
+
     @Test func eachKindGoesInItsPlace() throws {
         let relay = RelayNeedsYou(
             items: [

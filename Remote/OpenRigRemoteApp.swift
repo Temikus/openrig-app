@@ -32,11 +32,24 @@ struct OpenRigRemoteApp: App {
 
 enum RemoteTab: Hashable {
     case needs, rigs, settings
+
+    static var launch: RemoteTab {
+        #if DEBUG
+            switch DebugHooks.screen {
+            case "settings": return .settings
+            case "rigs": return .rigs
+            default: break
+            }
+        #endif
+        return .needs
+    }
 }
 
 struct RootView: View {
     @Environment(RemoteSession.self) private var model
-    @State private var tab = RemoteTab.needs
+    /// `OPENRIG_DEBUG_SCREEN`'s tab is set here, not in onAppear: a tab switched there kept its tab bar on a pushed
+    /// screen that hides it.
+    @State private var tab = RemoteTab.launch
 
     var body: some View {
         content
@@ -87,15 +100,6 @@ struct RootView: View {
                 Tab("Rigs", systemImage: "point.3.connected.trianglepath.dotted", value: .rigs) { RigsView() }
                 Tab("Settings", systemImage: "gear", value: .settings) { SettingsView() }
             }
-            #if DEBUG
-                .onAppear {
-                    switch DebugHooks.screen {
-                    case "settings": tab = .settings
-                    case "rigs": tab = .rigs
-                    default: break
-                    }
-                }
-            #endif
         }
     }
 }

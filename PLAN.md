@@ -585,7 +585,9 @@ An iPhone app (`Remote/`, `OpenRigRemote`) that pairs with the Mac app from a QR
   - `OPENRIG_DEBUG_STATE=unreachable|local-network-denied|unpaired|unsupported` replaces the status after each check.
   - `OPENRIG_DEBUG_SCREEN=scanner|settings|rigs`.
   - `OPENRIG_DEBUG_OPEN_ASK=<id>` and `OPENRIG_DEBUG_DRAFT=reply:<text>` or `picks:<question>=<option>,…`.
-  - `OPENRIG_DEBUG_RIG=<rig>`, `OPENRIG_DEBUG_SEAT=<session>`, `OPENRIG_DEBUG_COMPOSE=message|task` and `OPENRIG_DEBUG_TEXT=<text>` open the Rigs tab on a seat, a sheet and its text.
+  - `OPENRIG_DEBUG_RIG=<rig>`, `OPENRIG_DEBUG_SEAT=<session>`, `OPENRIG_DEBUG_COMPOSE=message|task` and `OPENRIG_DEBUG_TEXT=<text>` open the Rigs tab on a seat, a sheet and its text. `OPENRIG_DEBUG_SEAT_PROMPT=1` opens that seat's prompt screen.
+  - `OPENRIG_DEBUG_OPEN_PROMPT=<session>` and `OPENRIG_DEBUG_OPEN_ROW=<row id>` open a prompt or a row from Needs you.
+  - On the opened prompt: `OPENRIG_DEBUG_PROMPT_ACTION=allow|decline|decline:<text>`, `OPENRIG_DEBUG_DECLINE_TEXT=<text>`, `OPENRIG_DEBUG_PROMPT_SCROLL=end`, and `OPENRIG_DEBUG_PROMPT_OUTCOME=lostReply|probablyAnswered|answeredThenNewPrompt|unreachable|cannotAllowOnce`, which shows that outcome without sending. `OPENRIG_DEBUG_ROW_ACTION=reply` opens the opened row's Reply sheet.
   - `OPENRIG_DEBUG_SEND=1` sends the opened ask's draft or the opened sheet. Use it against a fake daemon or relay only.
   - `OPENRIG_DEBUG_CONFIRM_PAIR_AGAIN=1` and `OPENRIG_DEBUG_UNSENT=<n>` (made-up unconfirmed answers) open the pairing confirmations.
 - **Mac:**
@@ -604,7 +606,7 @@ An iPhone app (`Remote/`, `OpenRigRemote`) that pairs with the Mac app from a QR
 
 **Later**
 - **Time in state** ("4m"), a seat's model, and its current row's id and age. The relay's seat list doesn't carry them.
-- **Per-rig counts** (working, asks) on the phone's rig list. A rig row shows its seat count and a badge.
+- **Per-rig counts** (working, asks) on the phone's rig list. A rig row shows its seat count and a badge of what Needs you lists for it; the badges add up to Needs you's.
 - **A closed event stream:** the relay notices that the phone closed one only on its next write.
 - **A clean close while idle:** if the Mac closes a connection cleanly while it's idle, the phone's next call reads as a lost reply. Reads retry; actions aren't resent.
 - Tailscale reach, and notifications.

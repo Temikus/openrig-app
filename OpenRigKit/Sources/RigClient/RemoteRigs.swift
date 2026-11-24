@@ -86,13 +86,6 @@ extension RelaySeat {
     }
 }
 
-extension RelayNeedsYou {
-    /// What waits in `rig`: its own items, or its count from the other rigs' line.
-    public func waiting(in rig: String) -> Int {
-        items.count { $0.rig == rig } + attentionElsewhere.filter { $0.rig == rig }.reduce(0) { $0 + $1.count }
-    }
-}
-
 /// A message or a task from the phone, and what to say after it.
 public struct RemoteSend: Sendable, Equatable {
     public var done: String

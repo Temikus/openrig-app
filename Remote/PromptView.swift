@@ -22,8 +22,13 @@ struct PromptView: View {
     @State private var sending = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// The rig, from the list row; kept once the prompt leaves the list.
+    /// The rig, from the seat or the list row; kept once the prompt leaves the list.
     @State private var rig: String?
+
+    init(session: String, rig: String? = nil) {
+        self.session = session
+        _rig = State(initialValue: rig)
+    }
 
     var seat: String { shown?.seat ?? session.prefix { $0 != "@" }.description }
 
