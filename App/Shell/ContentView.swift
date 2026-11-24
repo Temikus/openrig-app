@@ -1,3 +1,4 @@
+import RigClient
 import RigDomain
 import RigModel
 import SwiftUI
@@ -28,14 +29,18 @@ struct ContentView: View {
     var body: some View {
         @Bindable var store = store
         NavigationSplitView {
-            RigSidebar()
-                .navigationSplitViewColumnWidth(min: 200, ideal: 230)
-                .onGeometryChange(for: CGFloat.self) {
-                    $0.size.width.rounded()
-                } action: {
-                    sidebarWidth = $0
-                    debugWidths("sidebar \($0)")
-                }
+            RigSidebar { summary in
+                store.selectedRigID = summary.id
+                // Next turn of the run loop: the toolbar's power item is rebuilt for the newly selected rig first.
+                Task { @MainActor in showsStopConfirmation = true }
+            }
+            .navigationSplitViewColumnWidth(min: 200, ideal: 230)
+            .onGeometryChange(for: CGFloat.self) {
+                $0.size.width.rounded()
+            } action: {
+                sidebarWidth = $0
+                debugWidths("sidebar \($0)")
+            }
         } detail: {
             // The toolbar belongs to the detail column, so its trailing items end at the inspector's edge
             // instead of straddling it; the inspector's toggle sits over the inspector while it shows.
@@ -245,7 +250,11 @@ extension ToolbarContent {
 // MARK: - Sidebar
 
 struct RigSidebar: View {
+    /// Opens the window's own stop confirmation for a rig, so a stop from here names who is mid-turn as the
+    /// toolbar's does.
+    let stopRig: (RigSummary) -> Void
     @Environment(AppStore.self) private var store
+    @State private var removing: Removal?
 
     var body: some View {
         @Bindable var store = store
@@ -253,8 +262,23 @@ struct RigSidebar: View {
             Section("Rigs") {
                 ForEach(store.rigs) { rig in
                     RigRow(rig: rig).tag(rig.id)
+                        .contextMenu { menu(for: rig) }
                 }
             }
+        }
+        .confirmationDialog(
+            removing?.title ?? "", isPresented: removingBinding, titleVisibility: .visible, presenting: removing
+        ) { removal in
+            Button(removal.button, role: removal.kind == .delete ? .destructive : nil) {
+                Task {
+                    switch removal.kind {
+                    case .archive: await store.archiveRig(removal.rig)
+                    case .delete: await store.deleteRig(removal.rig)
+                    }
+                }
+            }
+        } message: { removal in
+            Text(removal.message)
         }
         .overlay {
             if store.rigs.isEmpty, store.isUp {
@@ -263,6 +287,73 @@ struct RigSidebar: View {
             }
         }
         .safeAreaInset(edge: .bottom) { DaemonStatusFooter() }
+    }
+
+    /// Acts on the row's rig, which need not be the selected one. Items that ask first select the rig, so the
+    /// confirmation and the result show on the rig they're about.
+    @ViewBuilder private func menu(for rig: RigSummary) -> some View {
+        let busy = store.rigOps[rig.id] != nil || !store.isUp
+        if isStopped(rig) {
+            Button("Start Rig", systemImage: "power") { Task { await store.startRig(rig) } }
+                .disabled(busy)
+        } else {
+            Button("Stop Rig…", systemImage: "power") { stopRig(rig) }
+                .disabled(busy)
+        }
+        Divider()
+        let removable = store.canRemove(rig)
+        let why = isStopped(rig) ? nil : "Stop the rig first"
+        Button("Archive Rig…", systemImage: "archivebox") { ask(.archive, rig) }
+            .disabled(!removable)
+            .help(why ?? RigAction.rigArchive(rig: rig.name).userCommand)
+        Button("Delete Rig…", systemImage: "trash", role: .destructive) { ask(.delete, rig) }
+            .disabled(!removable)
+            .help(why ?? RigAction.rigDelete(rig: rig.name).userCommand)
+    }
+
+    private func ask(_ kind: Removal.Kind, _ rig: RigSummary) {
+        store.selectedRigID = rig.id
+        removing = Removal(kind: kind, rig: rig)
+    }
+
+    private var removingBinding: Binding<Bool> {
+        Binding {
+            removing != nil
+        } set: {
+            if !$0 { removing = nil }
+        }
+    }
+}
+
+/// An archive or delete waiting on the person's confirmation.
+private struct Removal {
+    enum Kind { case archive, delete }
+    let kind: Kind
+    let rig: RigSummary
+
+    var title: String {
+        switch kind {
+        case .archive: "Archive \(rig.name)?"
+        case .delete: "Delete \(rig.name)?"
+        }
+    }
+
+    var button: String {
+        switch kind {
+        case .archive: "Archive Rig"
+        case .delete: "Delete Rig"
+        }
+    }
+
+    var message: String {
+        switch kind {
+        case .archive:
+            "It's hidden from the rig list and keeps all its data. Bring it back with "
+                + "rig unarchive \(rig.name)."
+        case .delete:
+            "Its rig record is removed, so Start Rig can't bring it back.\n\n"
+                + RigAction.rigDelete(rig: rig.name).userCommand
+        }
     }
 }
 
