@@ -78,6 +78,32 @@ import Testing
         #expect(throws: PairingCodeError.noKnownReach) { try parsed("reach=relay-v2:9:x&reach=bluetooth&\(rest)") }
     }
 
+    /// A missing kind is a broken link, not a newer Mac: the phone shouldn't say "update the app".
+    @Test(arguments: ["reach", "reach=", "reach=:7433:192.168.1.5"])
+    func anEmptyKindIsMalformed(reach: String) {
+        #expect(throws: PairingCodeError.malformed("reach")) { try parsed("\(reach)&\(rest)") }
+    }
+
+    @Test func kindIsReadInAnyCase() throws {
+        let decoded = try parsed("reach=LAN:7433:192.168.1.5&\(rest)")
+        #expect(decoded.reaches.map(\.kind) == [.lan])
+    }
+
+    /// Some parsers read a leading zero as octal, so `010.0.0.1` could mean 8.0.0.1. A sign is no octet either.
+    @Test(arguments: [
+        (Reach.Kind.lan, "010.0.0.1"), (.lan, "192.168.001.005"), (.lan, "+10.0.0.1"), (.lan, "10.0.0.+1"),
+        (.tailnet, "100.064.0.1"), (.tailnet, "0100.64.0.1"),
+    ])
+    func refusesPaddedOrSignedOctets(kind: Reach.Kind, address: String) {
+        #expect(throws: PairingCodeError.unsupportedHost(address)) {
+            try Reach(kind: kind, addresses: [address], port: 7433)
+        }
+    }
+
+    @Test func aZeroOctetIsFine() throws {
+        #expect(try Reach(kind: .lan, addresses: ["10.0.0.0"], port: 7433).addresses == ["10.0.0.0"])
+    }
+
     @Test(arguments: ["10.0.0.1", "172.16.0.1", "172.31.255.255", "192.168.1.5", "mac.local", "my-mac-2.local"])
     func lanAcceptsPrivateAddressesAndLocalNames(address: String) throws {
         #expect(try Reach(kind: .lan, addresses: [address], port: 7433).addresses == [address])

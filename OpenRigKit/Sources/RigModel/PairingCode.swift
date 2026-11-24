@@ -107,9 +107,14 @@ extension PairingCode {
                 }
             }
 
+            /// Digits only, and no leading zero: some parsers read `010` as octal 8.
             static func ipv4(_ text: String) -> [UInt8]? {
                 let parts = text.split(separator: ".", omittingEmptySubsequences: false)
-                guard parts.count == 4, parts.allSatisfy({ (1...3).contains($0.count) && $0.allSatisfy(\.isASCII) })
+                guard parts.count == 4,
+                    parts.allSatisfy({ part in
+                        (1...3).contains(part.count) && part.allSatisfy { $0.isASCII && $0.isNumber }
+                            && (part.count == 1 || part.first != "0")
+                    })
                 else { return nil }
                 let octets = parts.compactMap { UInt8($0) }
                 return octets.count == 4 ? octets : nil
@@ -140,7 +145,8 @@ extension PairingCode {
         /// Nil for a kind this version doesn't know.
         init?(wire: String) throws(PairingCodeError) {
             let parts = wire.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
-            guard let kind = Kind(rawValue: String(parts[0])) else { return nil }
+            guard !parts[0].isEmpty else { throw .malformed("reach") }
+            guard let kind = Kind(rawValue: parts[0].lowercased()) else { return nil }
             guard parts.count == 3, let port = Int(parts[1]) else { throw .malformed("reach") }
             let addresses = parts[2].split(separator: ",", omittingEmptySubsequences: false).map(String.init)
             guard !addresses.contains(where: \.isEmpty) else { throw .malformed("reach addresses") }
