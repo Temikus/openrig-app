@@ -49,6 +49,33 @@ private func at(_ seconds: TimeInterval) -> Date { Date(timeIntervalSince1970: s
         #expect(rows.holds("old"))
     }
 
+    /// Kept by id, then served by the open read, then closed: the old by-id copy must not show it open.
+    @Test func aRowKeptByIDIsNotShownOpenAfterItCloses() {
+        var rows = HeldRows()
+        rows.keep(item("a", .pending, updated: 10))
+        rows.replaceOpen([item("a", .inProgress, updated: 20)])
+        rows.replaceOpen([])
+        #expect(rows.row("a") == nil)
+        #expect(rows.all.isEmpty)
+    }
+
+    /// An open row read by id that the next open read leaves out has closed or moved since.
+    @Test func anOpenRowKeptByIDGoesWhenTheOpenReadLeavesItOut() {
+        var rows = HeldRows()
+        rows.keep(item("a", .blocked, updated: 10))
+        rows.replaceOpen([item("b")])
+        #expect(!rows.holds("a"))
+    }
+
+    /// A closed row read by id stays: no open read serves it.
+    @Test func aClosedRowKeptByIDOutlivesOpenReads() {
+        var rows = HeldRows()
+        rows.keep(item("a", .done, updated: 10))
+        rows.replaceOpen([item("b")])
+        rows.replaceOpen([])
+        #expect(rows.row("a")?.state == .done)
+    }
+
     @Test func closedRowsAreToppedUpAndDropped() {
         var rows = HeldRows()
         #expect(rows.topUpSince == nil)

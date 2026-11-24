@@ -12,9 +12,11 @@ public struct HeldRows: Sendable, Equatable {
 
     public init() {}
 
-    /// Replaces the open rows with a fresh read.
+    /// Replaces the open rows with a fresh read. A row kept by id goes when the read serves it, or when the
+    /// kept copy is open and the read leaves it out: it closed or moved, and only a new read by id is current.
     public mutating func replaceOpen(_ rows: [QItem]) {
         open = Self.index(rows)
+        byID = byID.filter { id, row in open[id] == nil && !workStatus(row).isActive }
     }
 
     /// Replaces the closed rows with a read of rows closed at or after `since`.
@@ -35,7 +37,7 @@ public struct HeldRows: Sendable, Equatable {
         closedSince = nil
     }
 
-    /// Keeps a row read by id. It stays until the store is reset.
+    /// Keeps a row read by id. A closed row stays until the store is reset; an open one, until `replaceOpen`.
     public mutating func keep(_ row: QItem) {
         byID[row.id] = row
     }
