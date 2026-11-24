@@ -31,8 +31,8 @@ public struct QItem: Decodable, Sendable, Identifiable, Hashable {
     public var asksHuman: Bool
     /// The questions, each with 2–4 options, when the asker gave fixed choices.
     public var humanQuestions: [HumanQuestion] = []
-    /// Answers recorded so far: question id → option id.
-    public var humanAnswers: [String: String] = [:]
+    /// Answers recorded so far, by question id. Any recorded value counts as answered, as it does for the daemon.
+    public var humanAnswers: [String: HumanAnswer] = [:]
     /// For a row to a person: `decision` (the daemon's default) or `update`, an FYI.
     public var humanIntent: String?
     /// The artifact a person is asked to judge; required on every row to a person.
@@ -105,12 +105,48 @@ public struct QItem: Decodable, Sendable, Identifiable, Hashable {
         humanIntent = c.lenient(String.self, .humanIntent)
         evidenceRef = c.lenient(String.self, .evidenceRef)
         humanQuestions = c.lenient([HumanQuestion].self, .humanQuestions) ?? []
-        humanAnswers = c.lenient([String: String].self, .humanAnswers) ?? [:]
+        // Each value on its own: one typed reply (an object) must not drop the row's other answers.
+        humanAnswers = (c.lenient([String: JSONValue].self, .humanAnswers) ?? [:]).compactMapValues(HumanAnswer.init)
         // Any non-null, non-empty value counts, even one whose shape didn't decode.
         if let questions = c.lenient([JSONValue].self, .humanQuestions) {
             asksHuman = !questions.isEmpty
         } else {
             asksHuman = c.lenient(JSONValue.self, .humanQuestions).map { $0 != .null } ?? false
+        }
+    }
+}
+
+/// One recorded answer. The daemon stores a choice as the option id and a typed reply as
+/// `{kind: "typed-reply", text, placement, unansweredCount}` (queue-repository.js `placeTypedReply`).
+public enum HumanAnswer: Sendable, Hashable, ExpressibleByStringLiteral {
+    case option(String)
+    case typedReply(String)
+    /// A shape this app doesn't know. The daemon still counts the question as answered.
+    case unrecognized
+
+    public init(stringLiteral id: String) { self = .option(id) }
+
+    /// Nil only for null, which the daemon treats as no answer.
+    init?(_ value: JSONValue) {
+        switch value {
+        case .null: return nil
+        case .string(let id): self = .option(id)
+        case .object(let fields):
+            if case .string(let text) = fields["text"], fields["kind"] == .string("typed-reply") {
+                self = .typedReply(text)
+            } else {
+                self = .unrecognized
+            }
+        default: self = .unrecognized
+        }
+    }
+
+    /// What to show for it: the option's label, or the person's own words.
+    public func text(in question: HumanQuestion) -> String {
+        switch self {
+        case .option(let id): question.options.first { $0.id == id }?.label ?? id
+        case .typedReply(let text): text
+        case .unrecognized: "An answer this app can't show"
         }
     }
 }

@@ -99,6 +99,8 @@ import Testing
         var answered = item("a", .done, closureReason: "no-follow-on")
         answered.humanAnswers = ["builds": "both"]
         #expect(outcome(answered) == .answered)
+        answered.humanAnswers = ["builds": .typedReply("Both, but b1 first.")]
+        #expect(outcome(answered) == .answered, "a typed reply answers the ask too")
         #expect(closed(nil) == .done)
         #expect(closed(nil, state: .canceled) == .canceled)
         #expect(closed("superseded", target: "qitem-2") == .replaced(by: "qitem-2"))
