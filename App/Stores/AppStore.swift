@@ -409,7 +409,9 @@ final class AppStore {
     }
 
     private func remove(_ summary: RigSummary, _ action: RigAction, verb: String, doing: String, done: String) async {
-        guard canRemove(summary) else { return }
+        // The rig as it is now, not as it was when the menu opened: one started meanwhile must not be deleted,
+        // and `rig down --delete` would stop its seats first.
+        guard let summary = rigs.first(where: { $0.id == summary.id }), canRemove(summary) else { return }
         announce("\(doing) \(summary.name)")
         // The row and its status line go once the rig leaves the list, so say the result too.
         if await actions.perform(action, key: Self.rigKey(summary.id), success: "\(summary.name) \(done)") {
