@@ -6,8 +6,14 @@ import Testing
 @testable import RigDomain
 
 /// Contract check against the local daemon: chains rebuilt from list rows must match
-/// what `GET /api/queue/:id` (and so `rig queue show`) reports. Read-only.
-@Suite(.enabled("needs a running rig daemon") { (try? await liveClient().health())?.isHealthy == true })
+/// what `GET /api/queue/:id` (and so `rig queue show`) reports. Read-only. Opt-in: on a busy daemon its reads
+/// outlast the 3 s timeout, so `just test` would fail at random. `just test-live` sets OPENRIG_LIVE_READS=1.
+@Suite(
+    .enabled("set OPENRIG_LIVE_READS=1 (just test-live)") {
+        // The variable first, so a default run never contacts the daemon.
+        guard ProcessInfo.processInfo.environment["OPENRIG_LIVE_READS"] == "1" else { return false }
+        return (try? await liveClient().health())?.isHealthy == true
+    })
 struct LiveChainTests {
     @Test func reconstructedChainsMatchTheDaemon() async throws {
         let client = liveClient()

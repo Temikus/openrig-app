@@ -60,9 +60,9 @@ releases:
 test:
     swift test {{ spm }}
 
-# Tests that write to the real queue: one self-addressed qitem, created and closed by the test
+# Tests against the real daemon: queue writes (one self-addressed qitem, created and closed) and the chain read check
 test-live:
-    OPENRIG_LIVE_WRITES=1 swift test {{ spm }} --filter LiveWriteTests
+    OPENRIG_LIVE_WRITES=1 OPENRIG_LIVE_READS=1 swift test {{ spm }} --filter "LiveWriteTests|LiveChainTests"
 
 # The app's write actions as its person, against a throwaway seat (it messages that seat's agent)
 test-rig seat:
