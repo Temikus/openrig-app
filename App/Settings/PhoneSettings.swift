@@ -83,7 +83,7 @@ struct PhoneSettings: View {
         }
     }
 
-    /// Until the Mac relays for phones on the Wi-Fi, a code works only in the iOS simulator on this Mac.
+    /// Whether a phone can reach this Mac: the relay on the Wi-Fi, or why not.
     private var status: some View {
         LabeledContent {
             if case .showing = phones.code {
@@ -95,33 +95,39 @@ struct PhoneSettings: View {
                 }
             } else {
                 Button("Pair a Phone…") {
-                    Task { await phones.pair(daemon: daemon, bearer: store.token, actor: store.me) }
+                    Task { await phones.pair(daemon: daemon, bearer: store.token, actor: store.me, relay: store.relay) }
                 }
                 .disabled(!daemonHere || phones.code == .issuing)
             }
         } label: {
             Label {
-                Text("Phones can't reach this Mac yet")
-                Text(
-                    daemonHere
-                        ? "The Mac doesn't listen for phones on the Wi-Fi yet. Until it does, a code works only in "
-                            + "the iOS simulator on this Mac."
-                        : PhoneStore.elsewhere(daemon.host() ?? daemon.absoluteString)
-                )
-                .foregroundStyle(.secondary)
+                Text(reachable ? "Phones on this Wi-Fi can reach this Mac" : "Phones can't reach this Mac")
+                Text(reachCaption).foregroundStyle(.secondary)
             } icon: {
-                Image(systemName: "circle.fill").foregroundStyle(Color.attention).imageScale(.small)
+                Image(systemName: "circle.fill").foregroundStyle(reachable ? Color.green : Color.attention)
+                    .imageScale(.small)
             }
         }
     }
 
-    private var relayCaption: String {
+    /// The relay listens on the Wi-Fi, not held to this Mac.
+    private var reachable: Bool {
+        if case .listening(let host, _) = store.relay.state { host != "127.0.0.1" } else { false }
+    }
+
+    private var reachCaption: String {
+        guard daemonHere else { return PhoneStore.elsewhere(daemon.host() ?? daemon.absoluteString) }
         switch store.relay.state {
-        case .listening: "Listening on \(store.relay.address ?? "this Mac")."
-        case .off(let reason): reason
-        case .failed(let message): message
+        case .listening(let host, _) where host == "127.0.0.1":
+            return "Held to this Mac for testing (OPENRIG_RELAY_LOOPBACK): only the simulator can connect."
+        case .listening: return "Listening on \(store.relay.address ?? "this Mac")."
+        case .off where !store.relay.enabled: return "Turn on “Let paired phones connect” below."
+        case .off: return "Pair a phone, and this Mac listens for it on the Wi-Fi."
+        case .failed(let message): return message
         }
     }
+
+    private let relayCaption = "This Mac listens on the Wi-Fi only while a phone is paired."
 
     /// Why this phone can't be unpaired from here (another daemon's), or nil.
     private func elsewhere(_ phone: PairedPhone) -> String? {

@@ -1,16 +1,52 @@
 import Foundation
 import RigModel
 
+/// Where the Mac's relay listens, and the one phone's secret for it.
+public struct RelayReach: Sendable, Equatable {
+    /// The Mac's `.local` name first (it survives a new Wi-Fi address), then its home-network addresses.
+    public var addresses: [String]
+    public var port: UInt16
+    public var secret: Data
+
+    public init(addresses: [String], port: UInt16, secret: Data) {
+        self.addresses = addresses
+        self.port = port
+        self.secret = secret
+    }
+}
+
 extension PairingCode {
-    /// The code the Mac's Phone tab shows. Until the relay listens on the Wi-Fi, the only way in is loopback, which
-    /// only the simulator on this Mac shares: the code points it at the daemon directly.
-    public static func forThisMac(credential: AppCredential, actor: String, daemon: URL) throws(PairingCodeError)
-        -> PairingCode
-    {
+    /// The code the Mac's Phone tab shows. Loopback first: the simulator on this Mac reaches the daemon directly.
+    /// With the relay listening, a `lan` reach to it follows, with this phone's secret; without it, a real phone has
+    /// no way in.
+    public static func forThisMac(
+        credential: AppCredential, actor: String, daemon: URL, relay: RelayReach? = nil, name: String? = nil
+    ) throws(PairingCodeError) -> PairingCode {
         let host = daemon.host()?.lowercased() ?? ""
         guard Reach.Kind.loopback.accepts(host) else { throw .unsupportedHost(host) }
-        let reach = try Reach(kind: .loopback, addresses: [host], port: daemon.port ?? 7433)
-        return try PairingCode(reaches: [reach], actor: actor, credentialID: credential.id, token: credential.token)
+        var reaches = [try Reach(kind: .loopback, addresses: [host], port: daemon.port ?? 7433)]
+        if let relay, !relay.addresses.isEmpty {
+            reaches.append(try Reach(kind: .lan, addresses: relay.addresses, port: Int(relay.port)))
+        }
+        return try PairingCode(
+            reaches: reaches, actor: actor, credentialID: credential.id, token: credential.token,
+            pairingSecret: relay.map { RelayLink.encode($0.secret) }, name: name)
+    }
+}
+
+extension RelayLink {
+    /// A secret as it travels in the pairing link: base64url, no padding.
+    public static func encode(_ secret: Data) -> String {
+        secret.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+
+    /// Nil unless the text is base64url for exactly 256 bits.
+    public static func decode(_ text: String) -> Data? {
+        var base64 = text.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        base64 += String(repeating: "=", count: (4 - base64.count % 4) % 4)
+        guard let data = Data(base64Encoded: base64), data.count == 32 else { return nil }
+        return data
     }
 }
 

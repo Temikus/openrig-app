@@ -107,6 +107,15 @@ final class RelayStore {
         running = nil
     }
 
+    /// The pairing code's `lan` reach for one phone: this Mac's `.local` name, then its home-network addresses, and the
+    /// relay's port. Nil unless the relay listens on the Wi-Fi: a loopback relay is no use to a phone.
+    func reach(for secret: Data) -> RelayReach? {
+        guard case .listening(let host, let port) = state, host != "127.0.0.1" else { return nil }
+        let name = SCDynamicStoreCopyLocalHostName(nil).map { ($0 as String).lowercased() + ".local" }
+        let addresses = [name].compactMap(\.self).filter(PairingCode.Reach.Kind.lan.accepts) + LocalAddresses.lan()
+        return addresses.isEmpty ? nil : RelayReach(addresses: addresses, port: port, secret: secret)
+    }
+
     /// What a phone connects to: this Mac's home-network address and Bonjour name, or loopback when held there.
     var address: String? {
         guard case .listening(let host, let port) = state else { return nil }

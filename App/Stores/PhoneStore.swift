@@ -67,7 +67,7 @@ final class PhoneStore {
 
     /// Issues a credential that answers as `actor` and shows its code. The row is recorded at once: the credential
     /// exists from here on, and the record is the only way to revoke it.
-    func pair(daemon: URL, bearer: String?, actor: String) async {
+    func pair(daemon: URL, bearer: String?, actor: String, relay: RelayStore) async {
         if let refusal = phones.refusesIssue {
             code = .failed(refusal.message)
             return
@@ -83,9 +83,15 @@ final class PhoneStore {
                 .issueAppCredential(for: [actor])
             phones.add(PairedPhone(id: credential.id, name: "", actor: actor, paired: .now, daemon: daemon))
             save()
-            // The phone's own key to the relay; the QR code carries it.
-            RelaySecrets.save(RelayLink.newSecret(), for: credential.id)
-            code = .showing(try PairingCode.forThisMac(credential: credential, actor: actor, daemon: daemon))
+            // The phone's own key to the relay. The relay restarts with it before the code is drawn, so the code
+            // carries the port it actually got.
+            let secret = RelayLink.newSecret()
+            RelaySecrets.save(secret, for: credential.id)
+            await relay.refresh(daemon: daemon)
+            code = .showing(
+                try PairingCode.forThisMac(
+                    credential: credential, actor: actor, daemon: daemon, relay: relay.reach(for: secret),
+                    name: Host.current().localizedName))
         } catch let error as DaemonError {
             code = .failed(Self.message(error))
         } catch {

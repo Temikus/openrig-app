@@ -18,6 +18,35 @@ import Testing
         #expect(try PairingCode(parsing: code.url.absoluteString) == code, "the phone reads what the Mac shows")
     }
 
+    /// With the relay listening, the code adds a `lan` reach to it, carries the phone's secret and names the Mac.
+    /// Loopback stays first, for the simulator on this Mac.
+    @Test func aCodeWithTheRelayReachesItOnTheWiFi() throws {
+        let secret = RelayLink.newSecret()
+        let relay = RelayReach(addresses: ["artems-mac.local", "192.168.1.5"], port: 7434, secret: secret)
+        let code = try PairingCode.forThisMac(
+            credential: credential, actor: "human-example@external", daemon: URL(string: "http://127.0.0.1:7433")!,
+            relay: relay, name: "Artem's MacBook Pro")
+        #expect(
+            code.reaches == [
+                try PairingCode.Reach(kind: .loopback, addresses: ["127.0.0.1"], port: 7433),
+                try PairingCode.Reach(kind: .lan, addresses: ["artems-mac.local", "192.168.1.5"], port: 7434),
+            ])
+        #expect(code.name == "Artem's MacBook Pro")
+        let read = try PairingCode(parsing: code.url.absoluteString)
+        #expect(read == code)
+        #expect(read.pairingSecret.flatMap(RelayLink.decode) == secret, "the phone gets the same key")
+    }
+
+    /// The secret goes in a URL: base64url without padding, and anything else doesn't decode.
+    @Test func aSecretSurvivesTheLink() {
+        let secret = RelayLink.newSecret()
+        let text = RelayLink.encode(secret)
+        #expect(!text.contains("+") && !text.contains("/") && !text.contains("="))
+        #expect(RelayLink.decode(text) == secret)
+        #expect(RelayLink.decode("not base64!") == nil)
+        #expect(RelayLink.decode(RelayLink.encode(Data([1, 2, 3]))) == nil, "a secret is 256 bits")
+    }
+
     @Test func aCodeKeepsTheDaemonsPortAndName() throws {
         let code = try PairingCode.forThisMac(
             credential: credential, actor: "human-example@external", daemon: URL(string: "http://localhost:7500/")!)
