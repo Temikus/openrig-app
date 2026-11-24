@@ -50,7 +50,35 @@ public struct QuestionAnswers: Sendable, Equatable {
         return true
     }
 
+    var isEmpty: Bool { picks.isEmpty && other.isEmpty }
+
+    /// Only answers to questions still open on the row, and picks of options it still offers.
+    func kept(for item: QItem) -> QuestionAnswers {
+        let open = Dictionary(open(in: item).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        return QuestionAnswers(
+            picks: picks.filter { id, option in open[id]?.options.contains { $0.id == option } == true },
+            other: other.filter { open[$0.key] != nil })
+    }
+
     private func open(in item: QItem) -> [HumanQuestion] {
         item.humanQuestions.filter { item.humanAnswers[$0.id] == nil }
     }
+}
+
+/// Half-answered rows, by the panel's action key, so picks outlive the panel that showed them. Memory only.
+public struct AnswerDrafts: Sendable, Equatable {
+    private var byKey: [String: QuestionAnswers] = [:]
+
+    public init() {}
+
+    /// The draft as the row stands now: a question it no longer asks, or already records, shows no pick.
+    public func draft(_ key: String, on item: QItem) -> QuestionAnswers {
+        byKey[key]?.kept(for: item) ?? QuestionAnswers()
+    }
+
+    public mutating func set(_ answers: QuestionAnswers, for key: String) {
+        byKey[key] = answers.isEmpty ? nil : answers
+    }
+
+    public mutating func clear(_ key: String) { byKey[key] = nil }
 }

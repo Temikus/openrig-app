@@ -57,6 +57,43 @@ struct QuestionAnswersTests {
         #expect(answers.calls(for: partly) == [.choice(question: "review", option: "sec")])
     }
 
+    @Test func rowsAnsweredInTurnKeepTheirOwnPicks() {
+        var other = item
+        other.id = "qitem-2"
+        var drafts = AnswerDrafts()
+        drafts.set(QuestionAnswers(picks: ["builds": "b1"]), for: "answer:qitem-1")
+        drafts.set(QuestionAnswers(picks: ["builds": "both"], other: ["review": "ask"]), for: "answer:qitem-2")
+        #expect(drafts.draft("answer:qitem-1", on: item) == QuestionAnswers(picks: ["builds": "b1"]))
+        #expect(
+            drafts.draft("answer:qitem-2", on: other)
+                == QuestionAnswers(picks: ["builds": "both"], other: ["review": "ask"]))
+
+        drafts.clear("answer:qitem-1")
+        #expect(drafts.draft("answer:qitem-1", on: item) == QuestionAnswers())
+        #expect(drafts.draft("answer:qitem-2", on: other).picks == ["builds": "both"])
+    }
+
+    @Test func anEmptyDraftIsNotKept() {
+        var drafts = AnswerDrafts()
+        drafts.set(QuestionAnswers(picks: ["builds": "b1"]), for: "answer:qitem-1")
+        drafts.set(QuestionAnswers(), for: "answer:qitem-1")
+        #expect(drafts == AnswerDrafts())
+    }
+
+    /// Another device answered "builds", and a new revision dropped option "sec" and added a question.
+    @Test func aDraftShowsNoPickForAQuestionTheRowNoLongerAsks() {
+        var drafts = AnswerDrafts()
+        drafts.set(QuestionAnswers(picks: ["builds": "b1", "review": "sec", "gone": "x"]), for: "k")
+        var changed = item
+        changed.humanAnswers = ["builds": "both"]
+        changed.humanQuestions[1].options.removeAll { $0.id == "sec" }
+        #expect(drafts.draft("k", on: changed) == QuestionAnswers())
+
+        drafts.set(QuestionAnswers(picks: ["review": "both"], other: ["builds": "later", "gone": "y"]), for: "k")
+        #expect(drafts.draft("k", on: changed) == QuestionAnswers(picks: ["review": "both"]))
+        #expect(drafts.draft("k", on: item) == QuestionAnswers(picks: ["review": "both"], other: ["builds": "later"]))
+    }
+
     @Test func runStopsAtTheFirstFailure() async {
         var sent: [AskAnswer] = []
         let ok = await QuestionAnswers(picks: ["builds": "both", "review": "sec"]).run(on: item) { call in

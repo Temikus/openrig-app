@@ -18,13 +18,16 @@ struct ForYouPanel: View {
     @State private var sent: RigAction?
     /// A reply went out from this panel, so Done can record the question as answered.
     @State private var replied = false
-    /// The person's picks for a row with questions, sent together.
-    @State private var choices = QuestionAnswers()
 
     /// Shared with QItemInspector, which shows the outcome once the closed row drops this panel.
     static func key(_ item: QItem) -> String { "answer:\(item.id)" }
     private var key: String { Self.key(item) }
     private var asker: String { rig.displayName(session: item.source) }
+    /// The person's picks for a row with questions, sent together. Kept in ActionStore, so leaving the row keeps them.
+    private var choices: QuestionAnswers { actions.answers.draft(key, on: item) }
+    private var picks: Binding<QuestionAnswers> {
+        Binding(get: { choices }, set: { actions.answers.set($0, for: key) })
+    }
     private var askerSeat: Seat? { rig.seat(session: item.source) }
     private var busy: Bool { actions.isRunning(key) || actions.offline }
     /// Tell only reaches a seat in this rig; anywhere else the answer is only recorded on the row.
@@ -60,12 +63,11 @@ struct ForYouPanel: View {
         .padding(12)
         .background((kind == .decision ? Color.attention : .secondary).opacity(0.06), in: .rect(cornerRadius: 10))
         .onChange(of: item.id) {
-            note = ""
+            note = actions.drafts["\(key)|note"] ?? ""
             tell = true
             replying = false
             sent = nil
             replied = false
-            choices = QuestionAnswers()
         }
     }
 
@@ -76,6 +78,7 @@ struct ForYouPanel: View {
                 axis: .vertical
             )
             .lineLimit(1...4)
+            .keepsDraft($note, key, "note")
             .help(
                 canTell && tell ? "Goes to \(asker) with your answer, and onto the row." : "Recorded on the row only.")
             if canTell {
@@ -110,7 +113,7 @@ struct ForYouPanel: View {
             let missing = choices.missing(in: item).count
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(item.humanQuestions) { question in
-                    QuestionPicker(question: question, recorded: item.humanAnswers[question.id], answers: $choices)
+                    QuestionPicker(question: question, recorded: item.humanAnswers[question.id], answers: picks)
                 }
                 HStack {
                     ActionStatusLine(key: key)
@@ -134,13 +137,14 @@ struct ForYouPanel: View {
     private func sendAnswers() async {
         let calls = choices.calls(for: item)
         var sentCount = 0
-        _ = await choices.run(on: item) { call in
+        let done = await choices.run(on: item) { call in
             sentCount += 1
             // Only the last call finishes the ask; earlier ones only record a pick.
             let last = sentCount == calls.count
             return await actions.answer(
                 call, on: item.id, key: key, success: last ? "Answers sent to \(asker)" : "Recorded")
         }
+        if done { actions.clearDrafts(for: key) }
     }
 
     /// A row whose questions didn't decode: answer in your own words, then close.
@@ -195,6 +199,7 @@ struct ForYouPanel: View {
             return await actions.perform(action, key: key, success: outcome)
         }
         sent = result.closed ? nil : result.sent
+        if result.closed { actions.clearDrafts(for: key) }
     }
 }
 
