@@ -35,6 +35,9 @@ public enum ShellPath {
         let process = Process()
         process.executableURL = URL(filePath: shell)
         process.arguments = ["-ilc", "printf '\\n\(marker)%s\\n' \"$PATH\""]
+        // Lets startup files skip slow work, like VS Code's VSCODE_RESOLVING_ENVIRONMENT.
+        process.environment = ProcessInfo.processInfo.environment.merging(
+            ["OPENRIG_RESOLVING_ENVIRONMENT": "1"]) { $1 }
         let out = Pipe()
         process.standardOutput = out
         process.standardError = FileHandle.nullDevice
@@ -56,8 +59,8 @@ public enum ShellPath {
             try? await Task.sleep(for: .milliseconds(10))
         }
         guard !process.isRunning else {
-            // Interactive zsh leads its own process group, so a startup command it waits on (a curl with no
-            // timeout, say) dies with it. When the shell leads no group, kill gives ESRCH, which is fine to ignore.
+            // `Process` starts the shell in its own process group, so a startup command it waits on (a curl with
+            // no timeout, say) dies with it.
             let pid = process.processIdentifier
             kill(pid, SIGKILL)
             _ = kill(-pid, SIGKILL)
