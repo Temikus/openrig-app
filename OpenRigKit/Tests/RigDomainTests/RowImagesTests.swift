@@ -84,6 +84,44 @@ import Testing
         #expect(found.images.map(\.lastPathComponent) == ["a.png", "b.png", "c.png", "d.png", "e.png", "f.png"])
     }
 
+    @Test func aMarkdownLinkGivesItsTarget() throws {
+        try make(["shots/a.png", "shots/b.png"])
+        let found = find(nil, body: "See [here](shots/a.png) and [shots/b.png](shots/b.png).")
+        #expect(found.images.map(\.lastPathComponent) == ["a.png", "b.png"])
+    }
+
+    @Test func aPathInAFencedCodeBlock() throws {
+        try make(["shots/a.png", "logs/b.png"])
+        let body = """
+            Before:
+            ```
+            open shots/a.png
+            logs/b.png
+            ```
+            """
+        #expect(find(nil, body: body).images.map(\.lastPathComponent) == ["a.png", "b.png"])
+    }
+
+    /// A bare `~/` or `.` names the home or launch folder itself, not a folder of images meant for the row.
+    @Test func theHomeOrLaunchFolderItselfIsIgnored() throws {
+        try make(["a.png"])
+        try make(["b.png"], in: home)
+        #expect(find(nil, body: "Run it from ~/ or from `.` here, or ./ there") == RowImages())
+        #expect(find(".") == RowImages())
+        #expect(find("~/") == RowImages())
+        #expect(find(checkout.path) == RowImages())
+    }
+
+    /// A blank `launch_cwd` would resolve against the app's own working folder.
+    @Test func aBlankLaunchFolderIsNone() throws {
+        try make(["shots/a.png"])
+        let cwd = FileManager.default.currentDirectoryPath.split(separator: "/").count
+        let fromCwd = String(repeating: "../", count: cwd) + checkout.appending(path: "shots/a.png").path.dropFirst()
+        #expect(FileManager.default.fileExists(atPath: fromCwd), "the probe path exists from the app's folder")
+        #expect(find(fromCwd, launch: "") == RowImages())
+        #expect(find(fromCwd, launch: "  ") == RowImages())
+    }
+
     /// The lead's launch folder, `~/iCloud/…`, is a symlink: the same board named through it and directly shows once.
     @Test func aFileReachedTwoWaysShowsOnce() throws {
         try make(["mockups/1.png", "mockups/2.png"])

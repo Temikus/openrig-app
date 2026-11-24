@@ -25,6 +25,8 @@ public struct RowImages: Equatable, Sendable {
         evidenceRef: String?, body: String?, launchFolder: String?, local: Bool, home: String = NSHomeDirectory()
     ) -> RowImages {
         guard local else { return RowImages() }
+        // Blank would resolve against the app's own working folder.
+        let launchFolder = launchFolder?.trimmingCharacters(in: .whitespaces).isEmpty == false ? launchFolder : nil
         var found = Found()
         var evidence: URL?
         let ref = evidenceRef?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -38,7 +40,7 @@ public struct RowImages: Equatable, Sendable {
     }
 
     /// An absolute path, a `~/` path, or one relative to the launch folder, if it exists. Symlinks are resolved so a
-    /// file reached two ways is one file.
+    /// file reached two ways is one file. The home or launch folder itself (`~/`, `.`) names nothing for the row.
     static func resolve(_ path: String, launchFolder: String?, home: String) -> URL? {
         guard !path.isEmpty, !path.contains("://") else { return nil }
         let full: String
@@ -54,11 +56,17 @@ public struct RowImages: Equatable, Sendable {
             return nil
         }
         guard FileManager.default.fileExists(atPath: full) else { return nil }
-        return URL(fileURLWithPath: full).standardizedFileURL.resolvingSymlinksInPath()
+        let url = canonical(full)
+        return [home, launchFolder].compactMap { $0 }.map(canonical).contains(url) ? nil : url
     }
 
-    /// Candidate paths in the order written: each `backtick` span whole, and outside them each run without spaces that
-    /// contains "/". Brackets, quotes and trailing punctuation around a run are dropped.
+    private static func canonical(_ path: String) -> URL {
+        URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath()
+    }
+
+    /// Candidate paths in the order written: each one-line `backtick` span whole, and elsewhere (fenced code blocks
+    /// too) each run without spaces that contains "/". Brackets, quotes and trailing punctuation around a run are
+    /// dropped, and a Markdown link gives its target.
     static func paths(in body: String) -> [String] {
         var out: [String] = []
         let parts = body.split(separator: "`", omittingEmptySubsequences: false)
@@ -66,11 +74,14 @@ public struct RowImages: Equatable, Sendable {
             // Odd parts sit between two backticks; a last odd part has no closing one.
             if i % 2 == 1, i < parts.count - 1 {
                 let span = part.trimmingCharacters(in: .whitespaces)
-                if !span.isEmpty, !span.contains("\n") { out.append(span) }
-                continue
+                if !span.contains("\n") {
+                    if !span.isEmpty { out.append(span) }
+                    continue
+                }
             }
             for run in part.split(whereSeparator: \.isWhitespace) where run.contains("/") {
-                let trimmed = run.drop { "([{<\"'*".contains($0) }
+                let target = run.range(of: "](").map { run[$0.upperBound...] } ?? run
+                let trimmed = target.drop { "([{<\"'*".contains($0) }
                 let path = String(trimmed.reversed().drop { ".,;:!?)]}>\"'*".contains($0) }.reversed())
                 if !path.isEmpty { out.append(path) }
             }
