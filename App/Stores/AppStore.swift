@@ -105,12 +105,8 @@ final class AppStore {
         didSet {
             guard selectedRigID != oldValue else { return }
             selection.clear()
-            rig = selectedRigID.map { id in
-                RigStore(rigID: id, rigName: rigs.first { $0.id == id }?.name ?? id, client: client, tmux: tmux())
-            }
-            rig?.op = selectedRigID.flatMap { rigOps[$0] }
+            rig = selectedRigID.map { id in makeRigStore(id: id, name: rigs.first { $0.id == id }?.name ?? id) }
             if let name = rig?.rigName { settings.lastRigName = name }
-            rig?.me = me
             Task { await rig?.refresh() }
         }
     }
@@ -242,11 +238,7 @@ final class AppStore {
         rig?.client = client
         actions.http = client
         actions.use(cli())
-        if let id = selectedRigID {
-            rig = RigStore(rigID: id, rigName: rig?.rigName ?? id, client: client, tmux: tmux())
-            rig?.me = me
-            rig?.op = rigOps[id]
-        }
+        if let id = selectedRigID { rig = makeRigStore(id: id, name: rig?.rigName ?? id) }
         daemon = .connecting
         Task {
             await loadToken()
@@ -284,11 +276,17 @@ final class AppStore {
         actions.use(cli())
         // A RigStore keeps the tmux it was made with; replace it only if the shell found a different one.
         if let id = selectedRigID, let rig, rig.terminals.tmux?.executable != tmux()?.executable {
-            self.rig = RigStore(rigID: id, rigName: rig.rigName, client: client, tmux: tmux())
-            self.rig?.me = me
-            self.rig?.op = rigOps[id]
+            self.rig = makeRigStore(id: id, name: rig.rigName)
             Task { await self.rig?.refresh() }
         }
+    }
+
+    /// A store for rig `id` with the current client, tmux, actor and pending Start or Stop.
+    private func makeRigStore(id: RigSummary.ID, name: String) -> RigStore {
+        let store = RigStore(rigID: id, rigName: name, client: client, tmux: tmux())
+        store.me = me
+        store.op = rigOps[id]
+        return store
     }
 
     /// Where `tool` is: the person's pick in Settings, else the first on their shell's PATH, else the usual install

@@ -122,6 +122,12 @@ import Testing
         return sh.path
     }
 
+    /// Startup files can skip slow work while the app is only reading PATH.
+    @Test func theShellIsToldItIsResolvingTheEnvironment() async throws {
+        let sh = try fake("printf '\\n__OPENRIG_PATH__=/%s\\n' \"$OPENRIG_RESOLVING_ENVIRONMENT\"")
+        #expect(await ShellPath.read(shell: sh) == ["/1"])
+    }
+
     /// Interactive zsh ignores SIGTERM, so a shell still in its startup files at the deadline is killed, and its
     /// PATH, if it prints one later, is never used.
     @Test func aShellThatIgnoresTERMStillTimesOut() async throws {
@@ -133,8 +139,8 @@ import Testing
         #expect(took < .seconds(2), "took \(took)")
     }
 
-    /// Like interactive zsh, this shell leads its own process group and is stuck waiting on a startup command. At
-    /// the deadline the command dies with it, rather than living on under launchd.
+    /// A shell stuck waiting on a startup command. At the deadline the command dies with it, rather than living on
+    /// under launchd. The shell makes no process group of its own: `Process` gives it one.
     @Test func aStuckStartupCommandDiesWithTheShell() async throws {
         let dir = FileManager.default.temporaryDirectory.appending(path: "openrig-shell-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -142,7 +148,6 @@ import Testing
         let sh = dir.appending(path: "sh")
         let script = """
             #!/usr/bin/perl
-            setpgrp(0, 0);
             $SIG{TERM} = 'IGNORE';
             my $child = fork();
             if ($child == 0) { exec('/bin/sleep', '30'); }
