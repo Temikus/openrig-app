@@ -58,8 +58,28 @@ public struct DaemonHTTP: Sendable {
     public func openRows(to destination: String, limit: Int = 200) async throws(DaemonError) -> [QItem] {
         try await get(
             "/api/queue/list",
-            query: ["destinationSession": destination, "state": "pending,in-progress,blocked", "limit": String(limit)])
+            query: ["destinationSession": destination, "state": Self.openStates, "limit": String(limit)])
     }
+
+    /// Open rows whose source or destination is in the rig. The daemon filters by state before its per-row work, so
+    /// this costs it far less than `queue(rigName:)`.
+    public func openRows(rig rigName: String, limit: Int = 500) async throws(DaemonError) -> [QItem] {
+        try await get("/api/queue/list", query: ["rig": rigName, "state": Self.openStates, "limit": String(limit)])
+    }
+
+    /// Closed rows of the rig updated at or after `since`, most recently updated first.
+    public func closedRows(rig rigName: String, since: Date, limit: Int = 500) async throws(DaemonError) -> [QItem] {
+        try await get(
+            "/api/queue/list",
+            query: [
+                "rig": rigName, "state": Self.closedStates, "limit": String(limit), "sort": "updated",
+                "updatedSince": since.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true)),
+            ])
+    }
+
+    static let openStates = "pending,in-progress,blocked"
+    /// Every state the daemon (0.7.22, `QUEUE_STATES`) has besides the open ones.
+    static let closedStates = "done,handed-off,canceled,denied,failed"
 
     public func seatStatus(session: String) async throws(DaemonError) -> SeatStatusReport {
         try await get("/api/seat/status/\(session)")
@@ -112,7 +132,7 @@ public struct DaemonHTTP: Sendable {
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await session.data(for: request)
+            (data, response) = try await send(request)
         } catch {
             throw .unreachable(error.localizedDescription)
         }
@@ -148,7 +168,7 @@ public struct DaemonHTTP: Sendable {
         request.setValue(actor, forHTTPHeaderField: "X-OpenRig-Session")
         request.httpBody = try? JSONEncoder().encode(body)
         authorize(&request)
-        guard let (_, response) = try? await session.data(for: request), let http = response as? HTTPURLResponse
+        guard let (_, response) = try? await send(request), let http = response as? HTTPURLResponse
         else { return .unreachable }
         return http.statusCode == 401 || http.statusCode == 403 ? .rejected(status: http.statusCode) : .accepted
     }
@@ -165,7 +185,7 @@ public struct DaemonHTTP: Sendable {
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await session.data(for: request)
+            (data, response) = try await send(request)
         } catch {
             throw .unreachable(error.localizedDescription)
         }
@@ -177,5 +197,27 @@ public struct DaemonHTTP: Sendable {
         } catch {
             throw .decoding(path: path, message: String(describing: error))
         }
+    }
+
+    /// Every request goes through here, so the request log sees each one.
+    private func send(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        let start = Date()
+        let clock = ContinuousClock.now
+        var data: Data?
+        var status: Int?
+        defer {
+            let elapsed = clock.duration(to: .now)
+            let url = request.url
+            let target = (url?.path() ?? "") + (url?.query().map { "?" + $0 } ?? "")
+            RequestLog.report(
+                RequestRecord(
+                    start: start, method: request.httpMethod ?? "GET", target: target, status: status,
+                    bytes: data?.count ?? 0,
+                    milliseconds: Int(elapsed / .milliseconds(1))))
+        }
+        let (body, response) = try await session.data(for: request)
+        data = body
+        status = (response as? HTTPURLResponse)?.statusCode
+        return (body, response)
     }
 }
