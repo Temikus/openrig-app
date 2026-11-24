@@ -39,6 +39,11 @@ public enum RigAction: Sendable, Equatable {
     case rigUp(rig: String)
     /// Stops every seat. The CLI snapshots first anyway; `--snapshot` makes that explicit.
     case rigDown(rig: String)
+    /// Hides a stopped rig from the rig list and keeps all its data; `rig unarchive` brings it back. No `--force`:
+    /// the app archives only stopped rigs.
+    case rigArchive(rig: String)
+    /// Removes a stopped rig's record, so Start Rig can't bring it back. `--yes` because the app has already asked.
+    case rigDelete(rig: String)
     /// Launches one seat of a running rig, resuming it. Seats already running are left alone.
     case launchSeat(rig: String, logicalId: String)
     /// Starts one seat with a blank conversation. Sibling seats stay attached.
@@ -82,6 +87,10 @@ public enum RigAction: Sendable, Equatable {
             args = ["up", rig, "--existing", "--yes"]
         case .rigDown(let rig):
             args = ["down", rig, "--snapshot", "--yes"]
+        case .rigArchive(let rig):
+            args = ["archive", rig]
+        case .rigDelete(let rig):
+            args = ["down", rig, "--delete", "--yes"]
         case .launchSeat(let rig, let logicalId):
             args = ["launch", rig, logicalId]
         case .freshSeat(let session, let reason):
