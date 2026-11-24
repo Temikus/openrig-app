@@ -23,21 +23,32 @@ public enum RelayDeskError: Error, Equatable, Sendable {
     case unreachable(String)
     /// The call went out but its reply was lost. It may have been done; it isn't sent again.
     case lostReply
+    /// Allow once or decline lost its reply, and the resend found the prompt gone: the first almost surely went
+    /// through.
+    case probablyAnswered
+    /// As above, but a new prompt is up now: show it.
+    case answeredThenNewPrompt
     case decoding(String)
 }
 
 /// The phone's client for the relay's Mac-side calls (`RelayCall`): Needs you, prompts, answers to rows, messages,
 /// tasks, rigs and seats. One call at a time over one channel, opened again when it drops.
 ///
-/// Retries: a read is asked again once on a new channel if the old one drops. An acting call isn't, since a lost
-/// reply may mean it ran: the phone hears `lostReply`. Allow once and decline are the exception and are resent once,
-/// because the Mac checks the stop's `observedAt`: if the first went through, the resend finds the stop gone or
-/// changed and types nothing, and the phone hears `promptGone` or `promptChanged`.
+/// Retries:
+/// - Nothing sent (no channel, a channel that died while idle, a send that failed): any call is tried once more on a
+///   new channel.
+/// - A read whose reply was lost is asked again once.
+/// - An acting call whose reply was lost isn't resent, since it may have run: the phone hears `lostReply`.
+/// - Allow once and decline are the exception and are resent once, because the Mac checks the stop's `observedAt`:
+///   if the first went through, the resend finds the stop gone or changed and types nothing. The phone hears
+///   `probablyAnswered`, or `answeredThenNewPrompt` when another prompt is up.
 public actor RelayDeskClient {
     public typealias Open = @Sendable () async throws -> RelayChannel
 
     private let open: Open
     private var channel: RelayChannel?
+    /// One call at a time through the whole open-and-call: the actor alone would let a second call in at every await.
+    private let serial = AsyncSerial()
 
     /// `open` makes and opens a new channel, e.g. to the next reach in the pairing code.
     public init(open: @escaping Open) {
@@ -100,10 +111,11 @@ public actor RelayDeskClient {
 
     private func get(_ path: String) async throws(RelayDeskError) -> RelayResponse {
         let request = RelayRequest(method: "GET", path: path)
-        do {
-            return try await send(request)
-        } catch .lostReply {
-            return try await send(request)  // a read changes nothing: ask again on a new channel
+        switch await send(request) {
+        case .success(let response): return response
+        // A read changes nothing: ask again on a new channel, whatever was lost.
+        case .failure(.lostReply), .failure(.unreachable): return try await send(request).get()
+        case .failure(let error): throw error
         }
     }
 
@@ -112,18 +124,36 @@ public actor RelayDeskClient {
         let request = RelayRequest(
             method: "POST", path: path, headers: ["Content-Type": "application/json"],
             body: try? JSONSerialization.data(withJSONObject: body))
-        let response: RelayResponse
-        do {
-            response = try await send(request)
-        } catch .lostReply where resend {
-            response = try await send(request)
+        var result = await send(request)
+        var resent = false
+        switch result {
+        case .failure(.unreachable):
+            result = await send(request)  // nothing was sent: safe for any call
+        case .failure(.lostReply) where resend:
+            result = await send(request)
+            resent = true
+        default: break
         }
-        try check(response)
+        do {
+            try check(try result.get())
+        } catch .promptGone where resent {
+            throw .probablyAnswered
+        } catch .promptChanged where resent {
+            throw .answeredThenNewPrompt
+        }
     }
 
-    /// One call. `unreachable` when no channel could be opened (nothing was sent); `lostReply` when the channel failed
-    /// after sending.
-    private func send(_ request: RelayRequest) async throws(RelayDeskError) -> RelayResponse {
+    /// One call, one at a time. `unreachable` when nothing was sent (no channel, or the send itself failed);
+    /// `lostReply` when the reply was lost after the send went out.
+    private func send(_ request: RelayRequest) async -> Result<RelayResponse, RelayDeskError> {
+        await serial.run { await attempt(request) }
+    }
+
+    private func attempt(_ request: RelayRequest) async -> Result<RelayResponse, RelayDeskError> {
+        if let idle = channel, !idle.isReady {
+            idle.close()
+            channel = nil
+        }
         let channel: RelayChannel
         if let open = self.channel {
             channel = open
@@ -131,17 +161,18 @@ public actor RelayDeskClient {
             do {
                 channel = try await open()
             } catch {
-                throw .unreachable("\(error)")
+                return .failure(.unreachable("\(error)"))
             }
             self.channel = channel
         }
         do {
             guard let response = try await channel.call(request).last else { throw RelayLinkError.closed }
-            return response
+            return .success(response)
         } catch {
             channel.close()
             self.channel = nil
-            throw .lostReply
+            if case RelayLinkError.notSent(let why) = error { return .failure(.unreachable(why)) }
+            return .failure(.lostReply)
         }
     }
 

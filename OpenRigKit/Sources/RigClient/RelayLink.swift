@@ -54,6 +54,8 @@ public enum RelayLinkError: Error, Equatable, Sendable {
     case refused(String)
     case closed
     case tooLarge(Int)
+    /// The frame didn't go out: nothing reached the other end.
+    case notSent(String)
 }
 
 /// One connection, as whole messages: each is a 4-byte big-endian length, then that many bytes.
@@ -63,6 +65,11 @@ public final class RelayChannel: @unchecked Sendable {
 
     private let connection: NWConnection
     private let queue = DispatchQueue(label: "openrig.relay.channel")
+    /// One `call` at a time: two at once would read each other's frames off the one connection.
+    let calls = AsyncSerial()
+
+    /// Still connected. A channel that died while idle isn't, and shouldn't be sent on.
+    public var isReady: Bool { connection.state == .ready }
 
     public init(_ connection: NWConnection) {
         self.connection = connection
@@ -107,7 +114,11 @@ public final class RelayChannel: @unchecked Sendable {
             connection.send(
                 content: frame,
                 completion: .contentProcessed { error in
-                    if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+                    if let error {
+                        continuation.resume(throwing: RelayLinkError.notSent("\(error)"))
+                    } else {
+                        continuation.resume()
+                    }
                 })
         }
     }
@@ -144,6 +155,49 @@ public final class RelayChannel: @unchecked Sendable {
                         throwing: complete ? RelayLinkError.closed : RelayLinkError.notConnected("short read"))
                 }
             }
+        }
+    }
+}
+
+/// Lets one async task at a time through, in the order they arrive. Unlike an actor, it holds across `await`s.
+public final class AsyncSerial: @unchecked Sendable {
+    private let lock = NSLock()
+    private var busy = false
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    public init() {}
+
+    public func run<T>(isolation: isolated (any Actor)? = #isolation, _ body: () async throws -> T) async rethrows
+        -> T
+    {
+        await acquire()
+        defer { release() }
+        return try await body()
+    }
+
+    private func acquire() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            lock.lock()
+            if busy {
+                waiting.append(continuation)
+                lock.unlock()
+            } else {
+                busy = true
+                lock.unlock()
+                continuation.resume()
+            }
+        }
+    }
+
+    private func release() {
+        lock.lock()
+        if waiting.isEmpty {
+            busy = false
+            lock.unlock()
+        } else {
+            let next = waiting.removeFirst()
+            lock.unlock()
+            next.resume()
         }
     }
 }

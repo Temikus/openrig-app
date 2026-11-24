@@ -28,13 +28,14 @@ import Testing
     }
 
     /// A client whose first channel goes to the first port and every later one to the last.
-    func client(ports: [UInt16]) -> RelayDeskClient {
+    func client(ports: [UInt16], keep: ChannelBox? = nil) -> RelayDeskClient {
         let opened = Counter()
         let secret = self.secret
         return RelayDeskClient {
             let port = ports[min(opened.next(), ports.count - 1)]
             let channel = RelayChannel(host: "127.0.0.1", port: port, identity: "cred-a", secret: secret)
             try await channel.open()
+            keep?.add(channel)
             return channel
         }
     }
@@ -43,7 +44,7 @@ import Testing
         let desk = ClientDesk()
         desk.list = RelayNeedsYou(
             items: [RelayNeedsYouItem(kind: "ask", id: "qitem:q1", rig: "openrig-app", title: "Pick one", row: "q1")],
-            promptsElsewhere: [.init(rig: "denkeeper", count: 2)])
+            attentionElsewhere: [.init(rig: "denkeeper", count: 2)])
         desk.rigList = [RelayRig(id: "r1", name: "openrig-app", state: "running", seats: 7)]
         desk.seatList = [
             RelaySeat(
@@ -151,7 +152,7 @@ import Testing
     }
 
     /// Allow once whose reply is lost: the client resends once on a new connection. The first went through, so the
-    /// Mac's re-read finds the stop gone and refuses; nothing is typed twice, and the phone hears `promptGone`.
+    /// Mac's re-read finds the stop gone and refuses; nothing is typed twice, and the phone hears `probablyAnswered`.
     @Test func allowOnceResentAfterALostReplyTypesOnce() async throws {
         let desk = ClientDesk()
         let (first, one) = try await serve(desk)
@@ -163,8 +164,59 @@ import Testing
             desk.reading = nil  // the answer took: the prompt is gone
             first.stop()  // and the reply is lost with the connection
         }
-        await #expect(throws: RelayDeskError.promptGone) { try await client.allowOnce(shown) }
+        await #expect(throws: RelayDeskError.probablyAnswered) { try await client.allowOnce(shown) }
         #expect(desk.done.count == 1)
+    }
+
+    /// The same, but the seat asked again meanwhile: the phone hears its answer went through and a new prompt is up.
+    @Test func aResendThatFindsANewPromptSaysSo() async throws {
+        let desk = ClientDesk()
+        let (first, one) = try await serve(desk)
+        let (second, two) = try await serve(desk)
+        defer { second.stop() }
+        let client = client(ports: [one, two])
+        let shown = try await client.prompt(session: Self.seat)
+        desk.onPerform = {
+            desk.reading = ClientDesk.prompt(asked: "2026-11-24T04:01:00.000Z")
+            first.stop()
+        }
+        await #expect(throws: RelayDeskError.answeredThenNewPrompt) { try await client.decline(shown, reason: "") }
+        #expect(desk.done.count == 1)
+    }
+
+    /// review-code's probe: the phone polls Needs you while the person taps. Reads and messages at once share one
+    /// channel, one call at a time, and every message is performed exactly once.
+    @Test func callsAtOnceShareTheChannel() async throws {
+        let desk = ClientDesk()
+        desk.slowReads = true
+        let (relay, client) = try await start(desk)
+        defer { relay.stop() }
+        _ = try await client.rigs()  // the channel is open before the burst, so every call shares it
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for n in 0..<20 {
+                group.addTask { _ = try await client.rigs() }
+                group.addTask { try await client.message(session: Self.seat, text: "m\(n)") }
+            }
+            try await group.waitForAll()
+        }
+        #expect(desk.done.count == 20)
+    }
+
+    /// A channel the system has marked failed or cancelled while idle isn't sent on: the call goes out on a new one,
+    /// and isn't a lost reply. (A peer that closes cleanly still reads as ready to Network until the next read; that
+    /// case stays `lostReply`.)
+    @Test func aChannelThatDiedIdleIsReplaced() async throws {
+        let desk = ClientDesk()
+        let (relay, port) = try await serve(desk)
+        defer { relay.stop() }
+        let channels = ChannelBox()
+        let client = client(ports: [port], keep: channels)
+        _ = try await client.rigs()
+        channels.first?.close()
+        try await Task.sleep(for: .milliseconds(100))
+        try await client.message(session: Self.seat, text: "after idle")
+        #expect(desk.done == [.send(session: Self.seat, text: "after idle")])
+        #expect(channels.count == 2, "a new channel was opened")
     }
 
     /// Any other acting call isn't resent: a lost reply may mean it ran, so the phone is told, not the seat twice.
@@ -178,6 +230,15 @@ import Testing
         await #expect(throws: RelayDeskError.lostReply) { try await client.message(session: Self.seat, text: "hi") }
         #expect(desk.done.count == 1)
     }
+}
+
+/// The channels a test client opened, in order.
+final class ChannelBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var channels: [RelayChannel] = []
+    func add(_ channel: RelayChannel) { lock.withLock { channels.append(channel) } }
+    var first: RelayChannel? { lock.withLock { channels.first } }
+    var count: Int { lock.withLock { channels.count } }
 }
 
 final class Counter: @unchecked Sendable {
@@ -210,6 +271,8 @@ final class ClientDesk: RelayDesk, @unchecked Sendable {
     var result = RelayOutcome.done
     var onPerform: (@Sendable () -> Void)?
     var onRead: (@Sendable () -> Void)?
+    /// Reads take a moment, so a call beside one would cross it if the channel weren't one call at a time.
+    var slowReads = false
     private(set) var done: [RigAction] = []
     private(set) var reads = 0
 
@@ -232,6 +295,7 @@ final class ClientDesk: RelayDesk, @unchecked Sendable {
             return reads == 1 ? onRead : nil
         }
         hook?()
+        if slowReads { try? await Task.sleep(for: .milliseconds(20)) }
         return rigList
     }
     func seats(rig: String) async -> [RelaySeat]? { rig == "openrig-app" ? seatList : nil }

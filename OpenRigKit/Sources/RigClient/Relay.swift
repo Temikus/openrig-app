@@ -75,14 +75,19 @@ public enum RelayPolicy {
 }
 
 extension RelayChannel {
-    /// Sends one call and reads its answer, every frame of it.
-    public func call(_ request: RelayRequest) async throws -> [RelayResponse] {
-        try await send(JSONEncoder().encode(request))
-        var frames: [RelayResponse] = []
-        repeat {
-            frames.append(try JSONDecoder().decode(RelayResponse.self, from: try await receive()))
-        } while frames.last?.more == true
-        return frames
+    /// Sends one call and reads its answer, every frame of it. Calls on one channel run one at a time, so two callers
+    /// never read each other's frames. A send that fails throws `RelayLinkError.notSent`: nothing went out.
+    public func call(_ request: RelayRequest, isolation: isolated (any Actor)? = #isolation) async throws
+        -> [RelayResponse]
+    {
+        try await calls.run {
+            try await send(JSONEncoder().encode(request))
+            var frames: [RelayResponse] = []
+            repeat {
+                frames.append(try JSONDecoder().decode(RelayResponse.self, from: try await receive()))
+            } while frames.last?.more == true
+            return frames
+        }
     }
 }
 

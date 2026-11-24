@@ -49,7 +49,7 @@ final class MacRelayDesk: RelayDesk {
         }
         // Other rigs' prompts and down seats, as the Mac's sidebar counts them; each is on that rig's seat list.
         let elsewhere = store.attentionElsewhere.map { RelayNeedsYou.RigCount(rig: $0.rig, count: $0.count) }
-        return RelayNeedsYou(items: items, promptsElsewhere: elsewhere)
+        return RelayNeedsYou(items: items, attentionElsewhere: elsewhere)
     }
 
     private static func item(_ row: QItem, rig: String, me: String) -> RelayNeedsYouItem {

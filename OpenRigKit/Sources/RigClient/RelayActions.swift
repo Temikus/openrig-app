@@ -122,11 +122,11 @@ public struct RelayPrompt: Codable, Sendable, Equatable {
     public var canDecline: Bool
 }
 
-/// The Mac's Needs-you list. Prompts in rigs other than the one open on the Mac aren't listed one by one; they show
-/// as a count per rig, and each is on that rig's seat list (`atPrompt`).
+/// The Mac's Needs-you list. In rigs other than the one open on the Mac, prompts and seats down aren't listed one by
+/// one; they show as one count per rig, as the Mac's sidebar counts them, and each is on that rig's seat list.
 public struct RelayNeedsYou: Codable, Sendable, Equatable {
     public var items: [RelayNeedsYouItem]
-    public var promptsElsewhere: [RigCount]
+    public var attentionElsewhere: [RigCount]
 
     public struct RigCount: Codable, Sendable, Equatable {
         public var rig: String
@@ -138,9 +138,9 @@ public struct RelayNeedsYou: Codable, Sendable, Equatable {
         }
     }
 
-    public init(items: [RelayNeedsYouItem] = [], promptsElsewhere: [RigCount] = []) {
+    public init(items: [RelayNeedsYouItem] = [], attentionElsewhere: [RigCount] = []) {
         self.items = items
-        self.promptsElsewhere = promptsElsewhere
+        self.attentionElsewhere = attentionElsewhere
     }
 }
 
