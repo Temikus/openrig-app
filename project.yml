@@ -91,11 +91,27 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
-        # The daemon serves plain HTTP. iOS 17+ blocks HTTP to IP addresses unless an exception names them.
-        # Allowed: the tailnet (CGNAT range and MagicDNS names), and loopback for the simulator, which
-        # reaches the Mac's daemon there. Every other host keeps full ATS.
+        NSCameraUsageDescription: The camera reads the pairing code that OpenRig shows on your Mac.
+        NSLocalNetworkUsageDescription: OpenRig connects to your Mac on this Wi-Fi to show what your seats ask you.
+        # Pairing links: openrig-remote://pair?… (RigModel's PairingCode).
+        CFBundleURLTypes:
+          - CFBundleURLName: dev.openrig.Remote.pair
+            CFBundleURLSchemes: [openrig-remote]
+        # The Mac serves plain HTTP. iOS 17+ blocks HTTP to IP addresses unless an exception names them.
+        # Allowed: the addresses PairingCode's reach kinds accept, and nothing else. lan: private IPv4 and
+        # .local names. tailnet: the CGNAT range and MagicDNS names. loopback: the simulator, which reaches
+        # the Mac's daemon there. Every other host keeps full ATS.
         NSAppTransportSecurity:
           NSExceptionDomains:
+            10.0.0.0/8:
+              NSExceptionAllowsInsecureHTTPLoads: true
+            172.16.0.0/12:
+              NSExceptionAllowsInsecureHTTPLoads: true
+            192.168.0.0/16:
+              NSExceptionAllowsInsecureHTTPLoads: true
+            local:
+              NSIncludesSubdomains: true
+              NSExceptionAllowsInsecureHTTPLoads: true
             100.64.0.0/10:
               NSExceptionAllowsInsecureHTTPLoads: true
             ts.net:

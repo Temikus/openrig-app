@@ -15,9 +15,12 @@ public struct PairingCode: Sendable, Equatable {
     public var token: String
     /// Set when the link to the Mac needs one, e.g. a relay's shared secret.
     public var pairingSecret: String?
+    /// The Mac's name to show, e.g. "Artem's MacBook Pro". Nil when the Mac didn't say.
+    public var name: String?
 
     public init(
-        reaches: [Reach], actor: String, credentialID: String, token: String, pairingSecret: String? = nil
+        reaches: [Reach], actor: String, credentialID: String, token: String, pairingSecret: String? = nil,
+        name: String? = nil
     ) throws(PairingCodeError) {
         guard !reaches.isEmpty else { throw .malformed("reach") }
         guard actor.contains("@") else { throw .malformed("actor") }
@@ -29,6 +32,7 @@ public struct PairingCode: Sendable, Equatable {
         self.credentialID = credentialID
         self.token = token
         self.pairingSecret = pairingSecret
+        self.name = name?.isEmpty == true ? nil : name
     }
 
     /// Reads a scanned or pasted link. Fields and kinds of reach this version doesn't know are skipped.
@@ -53,7 +57,8 @@ public struct PairingCode: Sendable, Equatable {
             throw .malformed("missing field")
         }
         try self.init(
-            reaches: reaches, actor: actor, credentialID: credential, token: token, pairingSecret: fields["secret"])
+            reaches: reaches, actor: actor, credentialID: credential, token: token, pairingSecret: fields["secret"],
+            name: fields["name"])
     }
 
     public var url: URL {
@@ -67,6 +72,7 @@ public struct PairingCode: Sendable, Equatable {
             URLQueryItem(name: "token", value: token),
         ]
         if let pairingSecret { items.append(URLQueryItem(name: "secret", value: pairingSecret)) }
+        if let name { items.append(URLQueryItem(name: "name", value: name)) }
         parts.queryItems = items
         // URLComponents leaves "+" alone, which form decoders read as a space.
         parts.percentEncodedQuery = parts.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")

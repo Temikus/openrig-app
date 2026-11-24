@@ -50,6 +50,16 @@ import Testing
     @Test func noSecretRoundTripsAsNone() throws {
         let decoded = try PairingCode(parsing: code().url.absoluteString)
         #expect(decoded.pairingSecret == nil)
+        #expect(decoded.name == nil)
+    }
+
+    /// The Mac's name is what the phone shows for it. Optional: a link without it still pairs.
+    @Test func carriesTheMacsName() throws {
+        var original = try code()
+        original.name = "Artem's MacBook Pro & co"
+        let decoded = try PairingCode(parsing: original.url.absoluteString)
+        #expect(decoded.name == "Artem's MacBook Pro & co")
+        #expect(try parsed("\(lan)&\(rest)&name=").name == nil)
     }
 
     @Test func linkUsesTheRemoteScheme() throws {
