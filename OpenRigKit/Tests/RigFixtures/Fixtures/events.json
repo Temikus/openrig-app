@@ -1,0 +1,230 @@
+[
+  {
+    "type": "watchdog.evaluation_fired",
+    "jobId": "01M83PHZ8T5VHDA3F1VN3MCS80",
+    "policy": "parked-owner-consumer",
+    "targetSession": "dev-b1@openrig-app",
+    "deliveryStatus": "ok",
+    "seq": 55034,
+    "createdAt": "2026-11-24 06:30:44"
+  },
+  {
+    "type": "queue.claimed",
+    "qitemId": "qitem-20261124070307-3aae0c06890cfd3d",
+    "destinationSession": "review-security@denkeeper",
+    "claimedAt": "2026-11-24T07:03:15.403Z",
+    "closureRequiredAt": null,
+    "summary": "Placeholder summary 9",
+    "seq": 55449,
+    "createdAt": "2026-11-24 07:03:15"
+  },
+  {
+    "type": "agent.activity",
+    "rigId": "01M83ZBNGAGQQ6GJNT882WQKYY",
+    "nodeId": "01M83ZBNP413YC5XQ118WC60CJ",
+    "sessionName": "orch-lead@denkeeper",
+    "runtime": "claude-code",
+    "activity": {
+      "state": "idle",
+      "reason": "idle_prompt",
+      "evidenceSource": "runtime_hook",
+      "sampledAt": "2026-11-24T07:06:21.151Z",
+      "evidence": "idle_prompt",
+      "eventAt": "2026-11-24T07:06:21.132Z",
+      "rawEvent": "Notification",
+      "rawSubtype": "idle_prompt",
+      "runtime": "claude-code",
+      "fallback": false,
+      "stale": false,
+      "generation": "85f78d50-a98a-4b12-b229-b7681cfb09c5",
+      "turnId": null,
+      "hookAgentId": null
+    },
+    "seq": 55518,
+    "createdAt": "2026-11-24 07:06:21"
+  },
+  {
+    "type": "queue.handed_off",
+    "qitemId": "qitem-20261124065040-b2fef265c8971e4b",
+    "fromSession": "dev-b1@denkeeper",
+    "toSession": "orch-lead@denkeeper",
+    "closureReason": "handed_off_to",
+    "summary": "Placeholder summary 7",
+    "seq": 55527,
+    "createdAt": "2026-11-24 07:08:39"
+  },
+  {
+    "type": "queue.updated",
+    "qitemId": "qitem-20261123105609-8cb23569",
+    "fromState": "blocked",
+    "toState": "pending",
+    "closureReason": null,
+    "closureTarget": null,
+    "actorSession": "dev-b1@denkeeper",
+    "summary": "Placeholder summary 11",
+    "seq": 55528,
+    "createdAt": "2026-11-24 07:08:39"
+  },
+  {
+    "type": "seat.activity_changed",
+    "seatNodeId": "01M83ZDPJJ3QP49GG4BFY3QM5F",
+    "sessionName": "review-security@denkeeper",
+    "seq": 55574,
+    "at": "2026-11-24T07:10:01.544Z",
+    "createdAt": "2026-11-24 07:10:01"
+  },
+  {
+    "type": "queue.created",
+    "qitemId": "qitem-20261124071409-0e4a48b68132452b",
+    "sourceSession": "orch-lead@token-harness",
+    "destinationSession": "artem@external",
+    "priority": "routine",
+    "tier": null,
+    "summary": "Placeholder summary 5",
+    "seq": 55588,
+    "createdAt": "2026-11-24 07:14:09"
+  },
+  {
+    "type": "rig.stopped",
+    "rigId": "01M83PCCXHKMW53B9SNWHQQ8WG",
+    "seq": 55627,
+    "createdAt": "2026-11-24 07:23:14"
+  },
+  {
+    "type": "queue.created",
+    "qitemId": "qitem-20261124080951-5a6ee3dd",
+    "sourceSession": "orch-lead@denkeeper",
+    "destinationSession": "orch-lead@denkeeper",
+    "priority": "routine",
+    "tier": null,
+    "summary": "Placeholder summary 4",
+    "seq": 56277,
+    "createdAt": "2026-11-24 08:09:51"
+  },
+  {
+    "type": "queue.answer_recorded",
+    "qitemId": "qitem-20261124081441-ac0a68e7e5737c06",
+    "actorSession": "artem@external",
+    "questionId": "goto-closed-tasks",
+    "answered": 1,
+    "questions": 1,
+    "complete": true,
+    "summary": "Placeholder summary 13",
+    "seq": 56344,
+    "createdAt": "2026-11-24 08:20:16"
+  },
+  {
+    "type": "mission_control.action_executed",
+    "actionId": "01M86A8BZCVJMHCQQ1VRYDFBW9",
+    "actionVerb": "answer",
+    "qitemId": "qitem-20261124081441-ac0a68e7e5737c06",
+    "actorSession": "artem@external",
+    "seq": 56347,
+    "createdAt": "2026-11-24 08:20:16"
+  },
+  {
+    "type": "node.launched",
+    "rigId": "01M867050G3XH96G7V09102VP6",
+    "nodeId": "01M86708FH4BW70JQ9Y75X6H1E",
+    "logicalId": "dev.b1",
+    "sessionName": "dev-b1@openrig-app",
+    "seq": 56388,
+    "createdAt": "2026-11-24 08:28:17"
+  },
+  {
+    "type": "queue.claimed",
+    "qitemId": "qitem-20261124082827-776c764c2bdea673",
+    "destinationSession": "dev-b1@openrig-app",
+    "claimedAt": "2026-11-24T08:28:38.231Z",
+    "closureRequiredAt": null,
+    "summary": "Placeholder summary 8",
+    "seq": 56409,
+    "createdAt": "2026-11-24 08:28:38"
+  },
+  {
+    "type": "queue.handed_off",
+    "qitemId": "qitem-20261124074651-00755706384dd8b6",
+    "fromSession": "dev-b2@openrig-app",
+    "toSession": "orch-lead@openrig-app",
+    "closureReason": "handed_off_to",
+    "summary": "Placeholder summary 6",
+    "seq": 56410,
+    "createdAt": "2026-11-24 08:28:48"
+  },
+  {
+    "type": "queue.updated",
+    "qitemId": "qitem-20261124013217-2976d59f",
+    "fromState": "blocked",
+    "toState": "pending",
+    "closureReason": null,
+    "closureTarget": null,
+    "actorSession": "dev-b2@openrig-app",
+    "summary": "Placeholder summary 10",
+    "seq": 56411,
+    "createdAt": "2026-11-24 08:28:48"
+  },
+  {
+    "type": "queue.created",
+    "qitemId": "qitem-20261124082848-3d88249d",
+    "sourceSession": "dev-b2@openrig-app",
+    "destinationSession": "orch-lead@openrig-app",
+    "priority": "routine",
+    "tier": null,
+    "summary": "Placeholder summary 3",
+    "seq": 56412,
+    "createdAt": "2026-11-24 08:28:48"
+  },
+  {
+    "type": "queue.updated",
+    "qitemId": "qitem-20261124013217-2976d59f",
+    "fromState": "pending",
+    "toState": "pending",
+    "closureReason": null,
+    "closureTarget": null,
+    "actorSession": "queue@system",
+    "summary": "Placeholder summary 12",
+    "seq": 56416,
+    "createdAt": "2026-11-24 08:28:50"
+  },
+  {
+    "type": "seat.activity_changed",
+    "seatNodeId": "01M8670D5RRAPYE1KVC91B22PC",
+    "sessionName": "dev-b2@openrig-app",
+    "seq": 56420,
+    "at": "2026-11-24T08:29:00.948Z",
+    "createdAt": "2026-11-24 08:29:00"
+  },
+  {
+    "type": "snapshot.created",
+    "rigId": "01M8678SG0T0QHM8EE8S94WD02",
+    "snapshotId": "01M86ASYX3RCAK27CWCXDVHY9S",
+    "kind": "auto-periodic",
+    "seq": 56424,
+    "createdAt": "2026-11-24 08:29:52"
+  },
+  {
+    "type": "agent.activity",
+    "rigId": "01M867050G3XH96G7V09102VP6",
+    "nodeId": "01M8670D5RRAPYE1KVC91B22PC",
+    "sessionName": "dev-b2@openrig-app",
+    "runtime": "claude-code",
+    "activity": {
+      "state": "idle",
+      "reason": "idle_prompt",
+      "evidenceSource": "runtime_hook",
+      "sampledAt": "2026-11-24T08:30:00.552Z",
+      "evidence": "idle_prompt",
+      "eventAt": "2026-11-24T08:30:00.391Z",
+      "rawEvent": "Notification",
+      "rawSubtype": "idle_prompt",
+      "runtime": "claude-code",
+      "fallback": false,
+      "stale": false,
+      "generation": "020e1afb-6161-4960-a5d5-8c182d038eba",
+      "turnId": null,
+      "hookAgentId": null
+    },
+    "seq": 56425,
+    "createdAt": "2026-11-24 08:30:00"
+  }
+]
