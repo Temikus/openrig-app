@@ -10,13 +10,14 @@ import Testing
 @Suite(
     .serialized,
     .enabled("set OPENRIG_LIVE_WRITES=1 (just test-live)") {
-        ProcessInfo.processInfo.environment["OPENRIG_LIVE_WRITES"] == "1" && RigCLI.locate() != nil
+        guard ProcessInfo.processInfo.environment["OPENRIG_LIVE_WRITES"] == "1" else { return false }
+        return await RigCLI.find() != nil
     })
 struct LiveWriteTests {
     let me = Human.session
 
     @Test(.timeLimit(.minutes(1))) func actionsComeBackThroughTheEventStream() async throws {
-        let cli = try #require(RigCLI.locate(actor: me))
+        let cli = try #require(await RigCLI.find(actor: me))
         let base = DaemonLocator().locate().baseURL
         let events = Recorder()
         let listener = Task {

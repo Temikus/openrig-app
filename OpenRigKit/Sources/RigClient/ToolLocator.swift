@@ -25,15 +25,24 @@ public enum ToolLocator {
             .map { ToolLocation(url: URL(filePath: $0), chosen: false) }
     }
 
+    /// Where to look for `name`: each folder on the shell's PATH first, then the usual install places (`fallback`).
+    public static func searchPaths(for name: String, shellPath: [String], fallback: [String]) -> [String] {
+        var seen = Set<String>()
+        return (shellPath.map { URL(filePath: $0).appending(path: name).path } + fallback)
+            .filter { seen.insert($0).inserted }
+    }
+
     /// The tool's version: the first word of its output that starts with a digit or "v<digit>" ("tmux 3.5a" gives
     /// "3.5a", "0.7.11 (6c8a6963)" gives "0.7.11"). tmux takes `-V`. Nil when it doesn't run or answer in `timeout`.
+    /// `path` goes before the usual places on its PATH, so a `rig` from nvm finds its node.
     public static func version(
-        of executable: URL, flag: String = "--version", timeout: Duration = .seconds(2)
+        of executable: URL, flag: String = "--version", path: [String] = [], timeout: Duration = .seconds(2)
     ) async -> String? {
         let process = Process()
         process.executableURL = executable
         process.arguments = [flag]
-        process.environment = ["PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", "NO_COLOR": "1"]
+        let searched = path + ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
+        process.environment = ["PATH": searched.joined(separator: ":"), "NO_COLOR": "1"]
         let out = Pipe()
         process.standardOutput = out
         process.standardError = FileHandle.nullDevice

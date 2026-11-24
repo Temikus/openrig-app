@@ -59,6 +59,178 @@ import Testing
     }
 }
 
+@Suite struct ShellPathTests {
+    @Test func readsOnlyTheMarkedLine() {
+        // Startup files can print anything, including text that looks like a PATH.
+        let output = """
+            Welcome back!
+            PATH=/decoy/bin
+            __OPENRIG_PATH__=/Users/x/.nvm/versions/node/v22/bin:/opt/homebrew/bin:/usr/bin
+
+            """
+        #expect(ShellPath.parse(output) == ["/Users/x/.nvm/versions/node/v22/bin", "/opt/homebrew/bin", "/usr/bin"])
+    }
+
+    @Test func theLastMarkedLineWins() {
+        let output = "__OPENRIG_PATH__=/early\n__OPENRIG_PATH__=/late/bin\n"
+        #expect(ShellPath.parse(output) == ["/late/bin"])
+    }
+
+    @Test func dropsBlanksRepeatsAndRelativeFolders() {
+        let output = "__OPENRIG_PATH__=/a::/b:/a:.:bin:/c\n"
+        #expect(ShellPath.parse(output) == ["/a", "/b", "/c"], "a relative folder would depend on the app's cwd")
+    }
+
+    @Test func aMarkedLineCountsOnlyOnceItsNewlineArrives() {
+        #expect(ShellPath.parse("__OPENRIG_PATH__=/usr/bin:/opt/home") == nil, "the rest of the PATH may follow")
+        #expect(ShellPath.parse("__OPENRIG_PATH__=/usr/bin:/opt/homebrew/bin\n") == ["/usr/bin", "/opt/homebrew/bin"])
+    }
+
+    @Test func noMarkerIsNil() {
+        #expect(ShellPath.parse("zsh: command not found: nvm\n") == nil)
+    }
+
+    @Test func readsAShell() async throws {
+        // A stand-in shell that prints noise, then runs the command it is given with a known PATH.
+        let dir = FileManager.default.temporaryDirectory.appending(path: "openrig-shell-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let shell = dir.appending(path: "sh")
+        try Data("#!/bin/sh\necho 'rc noise'\nPATH=/from/shell:/usr/bin:/bin exec /bin/sh -c \"$2\"\n".utf8)
+            .write(to: shell)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: shell.path)
+        #expect(await ShellPath.read(shell: shell.path) == ["/from/shell", "/usr/bin", "/bin"])
+    }
+
+    @Test func aFailingOrSlowShellIsNil() async throws {
+        #expect(await ShellPath.read(shell: "/nonexistent/sh") == nil)
+        #expect(await ShellPath.read(shell: "/usr/bin/false") == nil)
+        let dir = FileManager.default.temporaryDirectory.appending(path: "openrig-shell-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let slow = dir.appending(path: "sh")
+        try Data("#!/bin/sh\nexec sleep 10\n".utf8).write(to: slow)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: slow.path)
+        #expect(await ShellPath.read(shell: slow.path, timeout: .milliseconds(200)) == nil)
+    }
+
+    /// A stand-in shell with `body` as its script.
+    func fake(_ body: String) throws -> String {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "openrig-shell-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let sh = dir.appending(path: "sh")
+        try Data("#!/bin/sh\n\(body)\n".utf8).write(to: sh)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: sh.path)
+        return sh.path
+    }
+
+    /// Interactive zsh ignores SIGTERM, so a shell still in its startup files at the deadline is killed, and its
+    /// PATH, if it prints one later, is never used.
+    @Test func aShellThatIgnoresTERMStillTimesOut() async throws {
+        let sh = try fake("trap '' TERM\nsleep 6\nprintf '\\n__OPENRIG_PATH__=/late\\n'")
+        let start = ContinuousClock.now
+        let got = await ShellPath.read(shell: sh, timeout: .milliseconds(300))
+        let took = ContinuousClock.now - start
+        #expect(got == nil)
+        #expect(took < .seconds(2), "took \(took)")
+    }
+
+    /// Like interactive zsh, this shell leads its own process group and is stuck waiting on a startup command. At
+    /// the deadline the command dies with it, rather than living on under launchd.
+    @Test func aStuckStartupCommandDiesWithTheShell() async throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "openrig-shell-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let pidFile = dir.appending(path: "child.pid")
+        let sh = dir.appending(path: "sh")
+        let script = """
+            #!/usr/bin/perl
+            setpgrp(0, 0);
+            $SIG{TERM} = 'IGNORE';
+            my $child = fork();
+            if ($child == 0) { exec('/bin/sleep', '30'); }
+            open(my $f, '>', '\(pidFile.path)'); print $f $child; close($f);
+            waitpid($child, 0);
+
+            """
+        try Data(script.utf8).write(to: sh)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: sh.path)
+
+        #expect(await ShellPath.read(shell: sh.path, timeout: .milliseconds(500)) == nil)
+        let text = try String(contentsOf: pidFile, encoding: .utf8)
+        let child = try #require(pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines)))
+        // The killed command is reaped by launchd; until then kill(_, 0) still finds it.
+        let deadline = ContinuousClock.now + .seconds(3)
+        while kill(child, 0) == 0, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        let alive = kill(child, 0) == 0
+        if alive { kill(child, SIGKILL) }
+        #expect(!alive, "the shell's startup command outlived it")
+    }
+
+    /// A startup file that leaves a background job holding stdout: the PATH counts once the shell has exited.
+    @Test func aBackgroundChildHoldingStdoutDoesNotHoldTheRead() async throws {
+        let sh = try fake("sleep 6 &\nprintf '\\n__OPENRIG_PATH__=/usr/bin\\n'")
+        let start = ContinuousClock.now
+        let got = await ShellPath.read(shell: sh, timeout: .seconds(3))
+        let took = ContinuousClock.now - start
+        #expect(got == ["/usr/bin"])
+        #expect(took < .seconds(2), "took \(took)")
+    }
+
+    /// The same with no PATH printed: nil at the deadline, not when the background job lets go.
+    @Test func aBackgroundChildWithNoPathEndsAtTheDeadline() async throws {
+        let sh = try fake("sleep 6 &\necho 'rc noise'\nexit 0")
+        let start = ContinuousClock.now
+        let got = await ShellPath.read(shell: sh, timeout: .milliseconds(300))
+        let took = ContinuousClock.now - start
+        #expect(got == nil)
+        #expect(took < .seconds(2), "took \(took)")
+    }
+
+    @Test func loginShellPrefersSHELL() {
+        #expect(ShellPath.loginShell(environment: ["SHELL": "/opt/homebrew/bin/fish"]) == "/opt/homebrew/bin/fish")
+        #expect(ShellPath.loginShell(environment: [:]).hasPrefix("/"), "from the user database when unset")
+    }
+}
+
+@Suite struct ToolSearchOrderTests {
+    let dir: URL
+
+    init() throws {
+        dir = FileManager.default.temporaryDirectory.appending(path: "openrig-order-\(UUID().uuidString)")
+        for sub in ["nvm", "brew"] {
+            let folder = dir.appending(path: sub)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let rig = folder.appending(path: "rig")
+            try Data("#!/bin/sh\n".utf8).write(to: rig)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: rig.path)
+        }
+    }
+
+    var brew: String { dir.appending(path: "brew/rig").path }
+
+    @Test func shellFoldersComeBeforeTheUsualPlaces() {
+        let paths = ToolLocator.searchPaths(
+            for: "rig", shellPath: ["/a/bin", "/opt/homebrew/bin"],
+            fallback: ["/opt/homebrew/bin/rig", "/usr/local/bin/rig"])
+        #expect(paths == ["/a/bin/rig", "/opt/homebrew/bin/rig", "/usr/local/bin/rig"], "in order, once each")
+    }
+
+    @Test func theShellsRigBeatsHomebrew() {
+        let paths = ToolLocator.searchPaths(for: "rig", shellPath: [dir.appending(path: "nvm").path], fallback: [brew])
+        #expect(ToolLocator.resolve(override: nil, searchPaths: paths)?.url.path == dir.appending(path: "nvm/rig").path)
+    }
+
+    @Test func withoutAShellPathItIsTodaysLookup() {
+        let paths = ToolLocator.searchPaths(for: "rig", shellPath: [], fallback: [brew])
+        #expect(paths == [brew])
+    }
+
+    @Test func aPickStillBeatsTheShell() {
+        let pick = dir.appending(path: "brew/rig")
+        let paths = ToolLocator.searchPaths(for: "rig", shellPath: [dir.appending(path: "nvm").path], fallback: [])
+        #expect(ToolLocator.resolve(override: pick, searchPaths: paths) == ToolLocation(url: pick, chosen: true))
+        #expect(ToolLocator.resolve(override: dir.appending(path: "gone"), searchPaths: paths) == nil)
+    }
+}
+
 @Suite struct DaemonHTTPBearerTests {
     @Test func bearerIsSentWithEveryRequest() async throws {
         let config = URLSessionConfiguration.ephemeral

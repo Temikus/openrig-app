@@ -30,8 +30,8 @@ struct ConnectionSettings: View {
                 Text("Command-line tools")
             } footer: {
                 Text(
-                    "Apps opened from the Dock don't get your shell's PATH, so node from nvm, asdf or mise is often "
-                        + "missed. In the file picker, ⇧⌘G reaches hidden folders like /opt/homebrew/bin."
+                    "Found on your shell's PATH, as your terminal finds them (nvm, asdf, mise), then in /opt/homebrew/bin "
+                        + "and /usr/local/bin. In the file picker, ⇧⌘G reaches hidden folders like ~/.nvm."
                 )
                 .foregroundStyle(.secondary)
             }
@@ -211,40 +211,22 @@ struct ConnectionSettings: View {
 
 /// One command-line tool: where it is, its version, and a way to pick another.
 private struct ToolRow: View {
-    enum Tool: String {
-        case rig, tmux, node
-
-        var searchPaths: [String] {
-            switch self {
-            case .rig: RigCLI.searchPaths
-            case .tmux: ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux"]
-            case .node: ["/opt/homebrew/bin/node", "/usr/local/bin/node"]
-            }
-        }
-
-        /// What stops working without it.
-        var missing: String {
-            switch self {
-            case .rig: "Not found. Actions can't run; reading still works."
-            case .tmux: "Not found. Terminals and permission prompts won't show."
-            case .node: "Not found. rig can't start, so actions can't run; reading still works."
-            }
-        }
-    }
-
     let tool: Tool
     @Environment(AppStore.self) private var store
     @State private var version: String?
 
-    private var override: URL? {
+    /// What stops working without it.
+    private var missing: String {
         switch tool {
-        case .rig: store.settings.rigPath
-        case .tmux: store.settings.tmuxPath
-        case .node: store.settings.nodePath
+        case .rig: "Not found. Actions can't run; reading still works."
+        case .tmux: "Not found. Terminals and permission prompts won't show."
+        case .node: "Not found. rig can't start, so actions can't run; reading still works."
         }
     }
 
-    private var location: ToolLocation? { ToolLocator.resolve(override: override, searchPaths: tool.searchPaths) }
+    private var override: URL? { tool.override(in: store.settings) }
+
+    private var location: ToolLocation? { store.locate(tool) }
 
     var body: some View {
         LabeledContent {
@@ -259,14 +241,16 @@ private struct ToolRow: View {
                 Text(location.url.path(percentEncoded: false) + (location.chosen ? " · chosen by you" : ""))
                     .monospaced()
             } else {
-                Text(override == nil ? tool.missing : "The chosen file is missing. " + tool.missing)
+                Text(override == nil ? missing : "The chosen file is missing. " + missing)
                     .foregroundStyle(Color.attention)
             }
         }
         .task(id: location?.url) {
             version = nil
             if let url = location?.url {
-                version = await ToolLocator.version(of: url, flag: tool == .tmux ? "-V" : "--version")
+                let node = store.settings.nodePath.map { [$0.deletingLastPathComponent().path] } ?? []
+                version = await ToolLocator.version(
+                    of: url, flag: tool == .tmux ? "-V" : "--version", path: node + store.shellPath)
             }
         }
     }
