@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The asks waiting on the person, or why the phone can't show them. Task 6 makes each ask open and answerable.
 struct NeedsYouView: View {
-    @Environment(RemoteModel.self) private var model
+    @Environment(RemoteSession.self) private var model
 
     var body: some View {
         NavigationStack {

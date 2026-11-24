@@ -67,12 +67,16 @@ public struct KeychainPairingStore: PairingStore {
         return try JSONDecoder().decode(RemotePairing.self, from: data)
     }
 
+    /// Updates the item in place, so a failed save leaves the old pairing readable. Adds it the first time.
     public func save(_ pairing: RemotePairing) throws {
-        try delete()
-        var q = query
-        q[kSecValueData] = try JSONEncoder().encode(pairing)
-        q[kSecAttrAccessible] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        let status = SecItemAdd(q as CFDictionary, nil)
+        let fields: [CFString: Any] = [
+            kSecValueData: try JSONEncoder().encode(pairing),
+            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        var status = SecItemUpdate(query as CFDictionary, fields as CFDictionary)
+        if status == errSecItemNotFound {
+            status = SecItemAdd(query.merging(fields) { $1 } as CFDictionary, nil)
+        }
         guard status == errSecSuccess else { throw Failure(status: status) }
     }
 

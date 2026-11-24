@@ -1,0 +1,57 @@
+import Foundation
+import RigClient
+
+extension RemoteSession {
+    /// The Keychain and the real network. Debug builds apply `OPENRIG_DEBUG_STATE`.
+    static func live() -> RemoteSession {
+        let session = RemoteSession(
+            store: KeychainPairingStore(),
+            connector: RemoteConnector(localNetworkDenied: { await RigClient.localNetworkDenied($0) }))
+        #if DEBUG
+            session.statusOverride = DebugHooks.state
+        #endif
+        return session
+    }
+}
+
+/// The pairing flow's pushed screens. The explainer is the root.
+enum PairingStep: Hashable {
+    case scanner
+
+    static var launchPath: [PairingStep] {
+        #if DEBUG
+            if DebugHooks.screen == "scanner" { return [.scanner] }
+        #endif
+        return []
+    }
+}
+
+#if DEBUG
+    /// Launch hooks for headless captures, like the Mac app's `OPENRIG_DEBUG_*`. Pass them to `simctl launch` with
+    /// the `SIMCTL_CHILD_` prefix.
+    enum DebugHooks {
+        static var environment: [String: String] { ProcessInfo.processInfo.environment }
+
+        /// `scanner` opens the scanner, `settings` the Settings tab.
+        static var screen: String? { environment["OPENRIG_DEBUG_SCREEN"] }
+
+        /// Pairs at launch through `pair(link:)`, as a scan or paste does. `simctl openurl` would stop at the
+        /// system's "Open in OpenRig?" confirmation.
+        static var pairLink: String? { environment["OPENRIG_DEBUG_PAIR_LINK"] }
+
+        /// Handles a link as `onOpenURL` does: it waits for the person's confirmation.
+        static var openedLink: String? { environment["OPENRIG_DEBUG_OPEN_LINK"] }
+
+        /// Replaces the status after each real check, keeping what was read: `unreachable`, `local-network-denied`,
+        /// `unpaired`, `unsupported`.
+        static var state: RemoteStatus? {
+            switch environment["OPENRIG_DEBUG_STATE"] {
+            case "unreachable": .unreachable(detail: "Could not connect to the server.")
+            case "local-network-denied": .localNetworkDenied
+            case "unpaired": .unpaired
+            case "unsupported": .unsupportedDaemon
+            default: nil
+            }
+        }
+    }
+#endif

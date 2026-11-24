@@ -4,7 +4,7 @@ import SwiftUI
 
 @main
 struct OpenRigRemoteApp: App {
-    @State private var model = RemoteModel.live()
+    @State private var model = RemoteSession.live()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -33,7 +33,7 @@ enum RemoteTab: Hashable {
 }
 
 struct RootView: View {
-    @Environment(RemoteModel.self) private var model
+    @Environment(RemoteSession.self) private var model
     @State private var tab = RemoteTab.needs
 
     var body: some View {
@@ -47,7 +47,7 @@ struct RootView: View {
             } message: { code in
                 Text(pendingMessage(code))
             }
-            .alert("Can't pair", isPresented: errorBinding) {
+            .alert("OpenRig", isPresented: errorBinding) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(model.pairingError ?? "")
@@ -58,7 +58,7 @@ struct RootView: View {
         Binding(get: { model.pendingCode != nil }, set: { if !$0 { model.pendingCode = nil } })
     }
 
-    /// The pairing flow shows its own errors; once paired, an opened link's error needs an alert.
+    /// The pairing flow shows its own errors. Once paired, an opened link's error or a failed Unpair needs an alert.
     var errorBinding: Binding<Bool> {
         Binding(
             get: { model.pairing != nil && model.pairingError != nil },
@@ -90,7 +90,7 @@ struct RootView: View {
 
 /// The dot and words for where the phone stands. The words carry the state; the colour only repeats it.
 struct StatusLabel: View {
-    @Environment(RemoteModel.self) private var model
+    @Environment(RemoteSession.self) private var model
 
     var body: some View {
         Label {

@@ -1,8 +1,9 @@
+import RigClient
 import SwiftUI
 
 /// The paired Mac and Unpair.
 struct SettingsView: View {
-    @Environment(RemoteModel.self) private var model
+    @Environment(RemoteSession.self) private var model
     @State private var confirmingUnpair = false
 
     var body: some View {

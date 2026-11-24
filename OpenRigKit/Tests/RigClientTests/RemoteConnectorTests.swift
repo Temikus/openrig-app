@@ -62,16 +62,36 @@ import Testing
             return false
         })
         let outcome = await connector.connect(try code([Reach(kind: .lan, addresses: ["10.255.255.1"], port: 9)]))
-        #expect(outcome.status == .unreachable(detail: RemoteConnector.noEncryptedLink))
+        #expect(outcome.status == .unreachable(detail: RemoteConnector.noSafeAddress))
         #expect(probe.endpoints.isEmpty)
     }
 
-    @Test func defaultClientUsesPlainHTTPOnlyOnThisMacAndTheTailnet() throws {
+    /// Plain HTTP only where the path is private by construction: this Mac, or a MagicDNS name that only
+    /// Tailscale's DNS resolves. A tailnet IP is also the carrier-grade NAT range: with Tailscale off it leaves by the
+    /// default route, token and all.
+    @Test(arguments: [
+        (RemoteEndpoint(kind: .loopback, host: "127.0.0.1", port: 7433), true),
+        (RemoteEndpoint(kind: .tailnet, host: "mac.tail1234.ts.net", port: 7433), true),
+        (RemoteEndpoint(kind: .tailnet, host: "100.101.102.103", port: 7433), false),
+        (RemoteEndpoint(kind: .lan, host: "10.0.0.208", port: 7433), false),
+        (RemoteEndpoint(kind: .lan, host: "mac.local", port: 7433), false),
+    ])
+    func defaultClientUsesPlainHTTPOnlyWhereThePathIsPrivate(endpoint: RemoteEndpoint, allowed: Bool) throws {
         let pairing = try code([Reach(kind: .loopback, addresses: ["127.0.0.1"], port: 7433)])
-        for kind in PairingCode.Reach.Kind.allCases {
-            let endpoint = RemoteEndpoint(kind: kind, host: "h", port: 1)
-            #expect((RemoteConnector.httpClient(endpoint, pairing) != nil) == (kind != .lan))
-        }
+        #expect((RemoteConnector.plainHTTPClient(allowingLoopback: true)(endpoint, pairing) != nil) == allowed)
+    }
+
+    /// On a real phone, 127.0.0.1 is the phone itself: whatever listens there would get the token.
+    @Test func loopbackIsRefusedWhenItIsNotThisMac() throws {
+        let pairing = try code([Reach(kind: .loopback, addresses: ["127.0.0.1"], port: 7433)])
+        let loopback = RemoteEndpoint(kind: .loopback, host: "127.0.0.1", port: 7433)
+        #expect(RemoteConnector.plainHTTPClient(allowingLoopback: false)(loopback, pairing) == nil)
+        #expect(RemoteConnector.plainHTTPClient(allowingLoopback: true)(loopback, pairing) != nil)
+    }
+
+    /// The kit's tests run on the Mac, where loopback is this Mac.
+    @Test func loopbackIsThisMacOnTheMac() {
+        #expect(RemoteConnector.loopbackIsThisMac)
     }
 
     @Test func endpointURLIsPlainHTTPToTheAddressAndPort() {

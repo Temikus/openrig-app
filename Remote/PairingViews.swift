@@ -1,14 +1,14 @@
 import AVFoundation
+import RigClient
 import SwiftUI
 import VisionKit
 
 /// First launch: the explainer, then the scanner (visual decision 3, B).
 struct PairingFlow: View {
-    @Environment(RemoteModel.self) private var model
+    @State private var path = PairingStep.launchPath
 
     var body: some View {
-        @Bindable var model = model
-        NavigationStack(path: $model.pairingPath) {
+        NavigationStack(path: $path) {
             ExplainerView()
                 .navigationDestination(for: PairingStep.self) { _ in ScannerView() }
         }
@@ -16,7 +16,7 @@ struct PairingFlow: View {
 }
 
 struct ExplainerView: View {
-    @Environment(RemoteModel.self) private var model
+    @Environment(RemoteSession.self) private var model
 
     var body: some View {
         ScrollView {
@@ -43,9 +43,7 @@ struct ExplainerView: View {
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 12) {
                 PairingErrorText()
-                Button {
-                    model.pairingPath.append(.scanner)
-                } label: {
+                NavigationLink(value: PairingStep.scanner) {
                     Text("Scan the code").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -67,7 +65,7 @@ struct ExplainerView: View {
 }
 
 struct ScannerView: View {
-    @Environment(RemoteModel.self) private var model
+    @Environment(RemoteSession.self) private var model
     @State private var camera = AVCaptureDevice.authorizationStatus(for: .video)
 
     var body: some View {
@@ -130,7 +128,7 @@ struct ScannerView: View {
 
 /// Paste without the system's paste prompt: the person's tap on PasteButton is the permission.
 struct PasteLinkButton: View {
-    @Environment(RemoteModel.self) private var model
+    @Environment(RemoteSession.self) private var model
 
     var body: some View {
         PasteButton(payloadType: String.self) { strings in
@@ -143,7 +141,7 @@ struct PasteLinkButton: View {
 }
 
 struct PairingErrorText: View {
-    @Environment(RemoteModel.self) private var model
+    @Environment(RemoteSession.self) private var model
 
     var body: some View {
         if let error = model.pairingError {

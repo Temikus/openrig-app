@@ -114,7 +114,7 @@ extension PairingCode {
             }
 
             /// Digits only, and no leading zero: some parsers read `010` as octal 8.
-            static func ipv4(_ text: String) -> [UInt8]? {
+            public static func ipv4(_ text: String) -> [UInt8]? {
                 let parts = text.split(separator: ".", omittingEmptySubsequences: false)
                 guard parts.count == 4,
                     parts.allSatisfy({ part in

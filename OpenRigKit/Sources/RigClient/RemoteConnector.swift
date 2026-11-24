@@ -57,16 +57,40 @@ public struct RemoteConnector: Sendable {
         self.localNetworkDenied = localNetworkDenied
     }
 
-    /// Plain HTTP only where the path is already private: this Mac (loopback) or the tailnet (WireGuard). On the
-    /// Wi-Fi it would carry the token in clear, so a `lan` endpoint gets no client until an encrypted link exists.
-    /// Short per-address timeout: a dead address shouldn't hold up the next one for long.
-    public static let httpClient: @Sendable (RemoteEndpoint, PairingCode) -> AppClient? = { endpoint, code in
-        guard endpoint.kind != .lan else { return nil }
-        return AppClient(baseURL: endpoint.baseURL, token: code.token, actor: code.actor, timeout: 5)
+    public static let httpClient = plainHTTPClient()
+
+    /// Plain HTTP carries the token in clear, so it goes only where the path is private by construction:
+    /// - loopback, when that is this Mac (the simulator). On a phone it is the phone itself.
+    /// - a MagicDNS name, which only Tailscale's DNS resolves, so it travels inside WireGuard.
+    /// Not a tailnet IP: 100.64.0.0/10 is also carrier-grade NAT, and with Tailscale off it leaves by the default
+    /// route. Not `lan`: the Wi-Fi. Those wait for an encrypted link.
+    public static func plainHTTPClient(
+        allowingLoopback: Bool = loopbackIsThisMac
+    ) -> @Sendable (RemoteEndpoint, PairingCode) -> AppClient? {
+        { endpoint, code in
+            let safe =
+                switch endpoint.kind {
+                case .loopback: allowingLoopback
+                case .tailnet: PairingCode.Reach.Kind.ipv4(endpoint.host) == nil
+                case .lan: false
+                }
+            guard safe else { return nil }
+            // Short timeout: a dead address shouldn't hold up the next one for long.
+            return AppClient(baseURL: endpoint.baseURL, token: code.token, actor: code.actor, timeout: 5)
+        }
     }
 
-    public static let noEncryptedLink =
-        "This Mac is only reachable on Wi-Fi, and this version of the app has no encrypted link for Wi-Fi yet."
+    /// True on a Mac and in the iOS simulator, which shares the Mac's network.
+    public static let loopbackIsThisMac: Bool = {
+        #if os(iOS) && !targetEnvironment(simulator)
+            false
+        #else
+            true
+        #endif
+    }()
+
+    public static let noSafeAddress =
+        "This version of the app can't reach this Mac at its paired addresses without sending its key unencrypted."
 
     /// The first endpoint that answers wins. Otherwise a revoked credential outranks a stranger on an old address,
     /// which outranks denied Local Network access, which outranks silence.
@@ -77,7 +101,7 @@ public struct RemoteConnector: Sendable {
         var firstSilentLan: RemoteEndpoint?
         for endpoint in RemoteEndpoint.all(in: code) {
             guard let app = client(endpoint, code) else {
-                lastError = lastError ?? Self.noEncryptedLink
+                lastError = lastError ?? Self.noSafeAddress
                 continue
             }
             do {
