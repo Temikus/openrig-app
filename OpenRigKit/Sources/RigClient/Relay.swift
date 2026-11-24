@@ -96,6 +96,8 @@ public final class RelayServer: @unchecked Sendable {
     private let forward: Forward
     private let lock = NSLock()
     private var listener: NWListener?
+    private var connections: [ObjectIdentifier: NWConnection] = [:]
+    private var stopped = false
 
     /// - Parameters:
     ///   - keys: each paired phone's secret, by its credential id.
@@ -117,8 +119,15 @@ public final class RelayServer: @unchecked Sendable {
         }
     }
 
+    /// Stops listening and cuts every phone still connected.
     public func stop() {
-        lock.withLock { listener }?.cancel()
+        let (listener, open) = lock.withLock {
+            stopped = true
+            defer { connections = [:] }
+            return (self.listener, Array(connections.values))
+        }
+        listener?.cancel()
+        for connection in open { connection.cancel() }
     }
 
     private func listen(on port: UInt16) async throws -> UInt16 {
@@ -146,30 +155,49 @@ public final class RelayServer: @unchecked Sendable {
         return bound
     }
 
+    /// Each accepted connection is kept until it ends, so `stop()` can cut it: turning the relay off, or a restart
+    /// after Unpair, must drop a phone already connected, `/events` streams included.
     private func serve(_ connection: NWConnection) {
+        let id = ObjectIdentifier(connection)
+        let accepted = lock.withLock {
+            guard !stopped else { return false }
+            connections[id] = connection
+            return true
+        }
+        guard accepted else {
+            connection.cancel()
+            return
+        }
         let channel = RelayChannel(connection)
         connection.start(queue: .global())
         let forward = self.forward
-        Task {
-            defer { channel.close() }
-            while let frame = try? await channel.receive() {
-                guard let request = try? JSONDecoder().decode(RelayRequest.self, from: frame) else { return }
-                guard RelayPolicy.allows(request) else {
-                    try await channel.reply(RelayResponse(status: 403, body: Data("Not available to a phone".utf8)))
-                    continue
-                }
-                var last: RelayResponse?
-                do {
-                    for try await response in forward(request) {
-                        try await channel.reply(response)
-                        last = response
+        Task { [weak self] in
+            defer {
+                channel.close()
+                self?.lock.withLock { _ = self?.connections.removeValue(forKey: id) }
+            }
+            do {
+                while let frame = try? await channel.receive() {
+                    guard let request = try? JSONDecoder().decode(RelayRequest.self, from: frame) else { return }
+                    guard RelayPolicy.allows(request) else {
+                        try await channel.reply(RelayResponse(status: 403, body: Data("Not available to a phone".utf8)))
+                        continue
                     }
-                } catch {
-                    let failed = RelayResponse(status: 502, body: Data("The daemon didn't answer".utf8))
-                    try await channel.reply(failed)
-                    last = failed
+                    var last: RelayResponse?
+                    do {
+                        for try await response in forward(request) {
+                            try await channel.reply(response)
+                            last = response
+                        }
+                    } catch {
+                        let failed = RelayResponse(status: 502, body: Data("The daemon didn't answer".utf8))
+                        try await channel.reply(failed)
+                        last = failed
+                    }
+                    if last?.more != false { try await channel.reply(RelayResponse(status: last?.status ?? 502)) }
                 }
-                if last?.more != false { try await channel.reply(RelayResponse(status: last?.status ?? 502)) }
+            } catch {
+                // The phone went away mid-reply: nothing to tell it. The connection closes on the way out.
             }
         }
     }

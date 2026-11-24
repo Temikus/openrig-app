@@ -27,9 +27,10 @@ public enum RelayLink {
         tls(keys)
     }
 
-    /// TLS 1.2 with a PSK cipher suite. Each PSK is derived from its secret, so the raw secret is never the key.
-    /// No forward secrecy: a secret leaked later decrypts traffic recorded earlier. TLS 1.3's psk_dhe_ke would fix
-    /// that, but Network framework fails a 1.3 handshake keyed by an external PSK alone (-9858, tried on macOS 27).
+    /// TLS 1.2 ECDHE_PSK with ChaCha20-Poly1305 (RFC 5489): the PSK authenticates, and an ephemeral ECDH key exchange
+    /// gives forward secrecy, so a secret leaked later doesn't decrypt traffic recorded earlier. Each PSK is derived
+    /// from its secret, so the raw secret is never the key. (TLS 1.3 with an external PSK fails in Network framework,
+    /// -9858 on macOS 27; this suite needs no 1.3.)
     private static func tls(_ keys: [String: Data]) -> NWParameters {
         let tls = NWProtocolTLS.Options()
         let options = tls.securityProtocolOptions
@@ -41,7 +42,7 @@ public enum RelayLink {
             sec_protocol_options_add_pre_shared_key(options, key as __DispatchData, name as __DispatchData)
         }
         sec_protocol_options_append_tls_ciphersuite(
-            options, tls_ciphersuite_t(rawValue: UInt16(TLS_PSK_WITH_AES_128_GCM_SHA256))!)
+            options, tls_ciphersuite_t(rawValue: UInt16(TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256))!)
         return NWParameters(tls: tls)
     }
 }
@@ -118,6 +119,14 @@ public final class RelayChannel: @unchecked Sendable {
     }
 
     public func close() { connection.cancel() }
+
+    /// The cipher suite the handshake settled on, once open.
+    var negotiatedSuite: UInt16? {
+        guard let tls = connection.metadata(definition: NWProtocolTLS.definition) as? NWProtocolTLS.Metadata else {
+            return nil
+        }
+        return sec_protocol_metadata_get_negotiated_tls_ciphersuite(tls.securityProtocolMetadata).rawValue
+    }
 
     private func read(_ count: Int) async throws -> Data {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, any Error>) in

@@ -97,6 +97,27 @@ import Testing
         #expect(frames.map(\.more) == [true, true, true, false])
     }
 
+    /// Turning the switch off, or Unpair (which restarts the relay without that key), must cut a phone already
+    /// connected, not only stop new ones. review-code's probe.
+    @Test func stopDropsConnectedPhones() async throws {
+        let relay = RelayServer(keys: ["cred-a": secret], host: "127.0.0.1", port: 0) { _ in
+            AsyncThrowingStream { continuation in
+                continuation.yield(RelayResponse(status: 200))
+                continuation.finish()
+            }
+        }
+        let port = try await relay.start()
+        let phone = RelayChannel(host: "127.0.0.1", port: port, identity: "cred-a", secret: secret)
+        defer { phone.close() }
+        try await phone.open()
+        #expect(try await phone.call(Self.request("GET", "/api/apps/v1/needs-me")).map(\.status) == [200])
+        relay.stop()
+        try await Task.sleep(for: .milliseconds(300))
+        await #expect(throws: (any Error).self) {
+            _ = try await phone.call(Self.request("GET", "/api/apps/v1/needs-me"))
+        }
+    }
+
     /// A second copy of the app holds the port: the relay takes a free one, and the QR carries it.
     @Test func aTakenPortFallsBackToAFreeOne() async throws {
         let first = RelayServer(keys: ["cred-a": secret], host: "127.0.0.1", port: 0) { _ in

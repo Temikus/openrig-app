@@ -71,6 +71,17 @@ import Testing
         await #expect(throws: RelayLinkError.self) { try await unpaired.open(timeout: .seconds(3)) }
     }
 
+    /// ECDHE_PSK: the handshake adds an ephemeral key exchange to the PSK, so a secret leaked later doesn't decrypt
+    /// traffic recorded earlier.
+    @Test func theLinkNegotiatesForwardSecrecy() async throws {
+        let server = try await EchoServer.start(secret: secret)
+        defer { server.stop() }
+        let channel = RelayChannel(host: "127.0.0.1", port: server.port, secret: secret)
+        defer { channel.close() }
+        try await channel.open()
+        #expect(channel.negotiatedSuite == UInt16(TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256))
+    }
+
     @Test func aFrameOverTheLimitIsRefused() async throws {
         let server = try await EchoServer.start(secret: secret)
         defer { server.stop() }

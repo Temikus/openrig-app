@@ -65,14 +65,25 @@ final class RelayStore {
         enabled = defaults.object(forKey: Self.enabledKey) as? Bool ?? true
     }
 
-    /// Where the relay binds. OPENRIG_RELAY_LOOPBACK=1 keeps it on 127.0.0.1: seats' copies of the app must never
-    /// listen on the Wi-Fi, where macOS can ask the person about the firewall or Local Network, on screen.
+    /// Where the relay binds. A DEBUG build stays on 127.0.0.1 unless OPENRIG_RELAY_WIFI=1: seats run debug copies,
+    /// and a listener on the Wi-Fi can make macOS ask the person about the firewall, on screen. Release binds all.
     static var bindHost: String {
-        ProcessInfo.processInfo.environment["OPENRIG_RELAY_LOOPBACK"] == "1" ? "127.0.0.1" : "0.0.0.0"
+        #if DEBUG
+            ProcessInfo.processInfo.environment["OPENRIG_RELAY_WIFI"] == "1" ? "0.0.0.0" : "127.0.0.1"
+        #else
+            "0.0.0.0"
+        #endif
     }
+
+    /// One refresh at a time: two at once (Pair's, and the list's change) once started two relays and lost one.
+    @ObservationIgnored private let order = InOrder()
 
     /// Starts, restarts or stops the relay to match the paired phones on `daemon`.
     func refresh(daemon: URL) async {
+        await order.run { await self.apply(daemon: daemon) }
+    }
+
+    private func apply(daemon: URL) async {
         let phones = PairedPhones(data: defaults.data(forKey: "pairedPhones")).list(for: daemon)
         let keys = Dictionary(phones.compactMap { phone in RelaySecrets.read(phone.id).map { (phone.id, $0) } }) {
             a, _ in a
@@ -107,7 +118,7 @@ final class RelayStore {
         running = nil
     }
 
-    /// OPENRIG_RELAY_LOOPBACK=1: only the simulator on this Mac can connect, by design.
+    /// Bound to 127.0.0.1 (a DEBUG build without OPENRIG_RELAY_WIFI=1): only the simulator on this Mac can connect.
     var heldToLoopback: Bool { Self.bindHost == "127.0.0.1" }
 
     /// What a code can name for a phone on the Wi-Fi: this Mac's `.local` name, then its home-network addresses.

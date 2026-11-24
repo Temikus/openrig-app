@@ -128,7 +128,8 @@ struct PhoneSettings: View {
         guard daemonHere else { return PhoneStore.elsewhere(daemon.host() ?? daemon.absoluteString) }
         switch store.relay.state {
         case .listening(let host, _) where host == "127.0.0.1":
-            return "Held to this Mac for testing (OPENRIG_RELAY_LOOPBACK): only the simulator can connect."
+            return
+                "A debug build holds the relay to this Mac (set OPENRIG_RELAY_WIFI=1 for the Wi-Fi): only the simulator can connect."
         case .listening where !reachable: return PairingRefusal.noWiFiAddress.message
         case .listening: return "Listening on \(store.relay.address ?? "this Mac")."
         case .off where !store.relay.enabled: return "Turn on “Let paired phones connect” below."

@@ -89,14 +89,17 @@ final class PhoneStore {
             // The phone's own key to the relay. The relay restarts with it before the code is drawn, so the code
             // carries the port it actually got.
             let secret = RelayLink.newSecret()
-            RelaySecrets.save(secret, for: credential.id)
+            let saved = RelaySecrets.save(secret, for: credential.id)
             await relay.refresh(daemon: daemon)
-            let reach = relay.reach(for: secret)
-            if let refusal = phones.refusesCode(relay: reach, heldToLoopback: relay.heldToLoopback) {
-                // No way in after all (the relay couldn't listen on the Wi-Fi): take back what was just issued.
+            let reach = saved ? relay.reach(for: secret) : nil
+            let refusal = saved ? phones.refusesCode(relay: reach, heldToLoopback: relay.heldToLoopback) : nil
+            if !saved || refusal != nil {
+                // No way in after all (the Keychain refused the key, or the relay couldn't listen on the Wi-Fi):
+                // take back what was just issued.
                 await unpair(phone, daemon: daemon, bearer: bearer)
                 await relay.refresh(daemon: daemon)
-                code = .failed(phones.list.contains { $0.id == phone.id } ? Self.leftOver : refusal.message)
+                let why = refusal?.message ?? "The Keychain didn't save the phone's key, so it couldn't connect."
+                code = .failed(phones.list.contains { $0.id == phone.id } ? Self.leftOver : why)
                 return
             }
             code = .showing(
