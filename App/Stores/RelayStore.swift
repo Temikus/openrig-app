@@ -56,6 +56,8 @@ final class RelayStore {
     private let defaults: UserDefaults
     @ObservationIgnored private var server: RelayServer?
     @ObservationIgnored private var running: (keys: [String: Data], daemon: URL)?
+    /// Runs the phone's Mac-side calls (prompts, replies, messages, tasks). Set by AppStore.
+    @ObservationIgnored var desk: (any RelayDesk)?
     private static let enabledKey = "relayEnabled"
     /// Tried first; a taken port falls back to a free one.
     static let preferredPort: UInt16 = 7434
@@ -100,7 +102,7 @@ final class RelayStore {
         if let running, running.keys == keys, running.daemon == daemon, case .listening = state { return }
         stop()
         let server = RelayServer(
-            keys: keys, host: Self.bindHost, port: Self.preferredPort,
+            keys: keys, host: Self.bindHost, port: Self.preferredPort, desk: desk,
             forward: RelayServer.daemonForwarder(daemon))
         do {
             let port = try await server.start()

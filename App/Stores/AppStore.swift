@@ -145,6 +145,7 @@ final class AppStore {
         loops = [Task { await runPolling() }, Task { await runEvents() }]
         Task { await loadToken() }
         Task { await loadShellPath() }
+        relay.desk = MacRelayDesk(store: self)
         Task { await relay.refresh(daemon: endpoint.baseURL) }
         // NSApp exists once the run loop has started.
         Task { NSApp.appearance = settings.appearance.nsAppearance }
@@ -313,7 +314,7 @@ final class AppStore {
             bearer: token, extraPath: settings.nodePath?.deletingLastPathComponent().path, shellPath: shellPath)
     }
 
-    private func tmux() -> Tmux? {
+    func tmux() -> Tmux? {
         Tmux.locate(
             openRigHome: locator.openRigHome, executable: settings.tmuxPath,
             searchPaths: ToolLocator.searchPaths(for: "tmux", shellPath: shellPath, fallback: Tmux.searchPaths))

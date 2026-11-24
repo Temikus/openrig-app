@@ -137,7 +137,8 @@ import Testing
         #expect(list.map(\.status) == [200])
         #expect(list.first?.body == Data("[]".utf8))
         let always = try await phone.call(
-            RelayRequest(method: "POST", path: "/relay/v1/prompts/dev-b1@openrig-app/always-allow", body: Data("{}".utf8)))
+            RelayRequest(
+                method: "POST", path: "/relay/v1/prompts/dev-b1@openrig-app/always-allow", body: Data("{}".utf8)))
         #expect(always.map(\.status) == [403])
         #expect(seen.paths.isEmpty, "nothing reached the daemon")
 
