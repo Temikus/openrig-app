@@ -128,6 +128,43 @@ import Testing
         #expect(remote.unsentAnswers == 0)
     }
 
+    /// Unpair in the middle of a send of two answers: the second is neither saved nor sent under the old credential.
+    @Test func unpairDuringASendStopsTheRest() async throws {
+        let outbox = HookedOutbox()
+        let (remote, script) = try await session(
+            [
+                .status(200, try appFixture("app-receipt-recorded")),
+                .status(200, try appFixture("app-receipt-returned")),
+            ], outbox: outbox)
+        let ask = try #require(remote.shownRequests?.first)
+        remote.setDraft(AppAnswerDraft(picks: ["notify": "push", "reach": "wifi"]), for: ask)
+        // The first receipt clears its entry; the person unpairs right then.
+        outbox.onRemove = { MainActor.assumeIsolated { remote.unpair() } }
+        await remote.send(ask)
+
+        #expect(try bodies(script).map { $0["questionId"] as? String } == ["reach"])
+        #expect(try outbox.load().isEmpty)
+        #expect(remote.sent.isEmpty)
+    }
+
+    /// The count Unpair's confirmation shows is kept, not read from the outbox each time a view asks.
+    @Test func theUnsentCountDoesNotReadTheOutboxEachTime() async throws {
+        let outbox = HookedOutbox()
+        let unsaved = try appFixture("app-error-503-unsaved")
+        let (remote, _) = try await session(
+            [
+                .status(503, unsaved), .status(503, unsaved), .status(503, unsaved), .status(200, try needsMe()),
+                .status(503, unsaved),
+            ], outbox: outbox)
+        let ask = try #require(remote.shownRequests?.first)
+        remote.setDraft(AppAnswerDraft(reply: "Held."), for: ask)
+        await remote.send(ask)
+        #expect(remote.unsentAnswers == 1)
+        let loads = outbox.loads
+        for _ in 0..<5 { _ = remote.unsentAnswers }
+        #expect(outbox.loads == loads)
+    }
+
     /// An entry saved under another pairing's credential is dropped, never sent to this Mac.
     @Test func anotherPairingsAnswerIsDroppedUnsent() async throws {
         let outbox = MemoryAnswerOutbox()
@@ -263,6 +300,28 @@ import Testing
     }
 }
 
+/// A memory outbox that counts reads and runs `onRemove` once, after the first removal.
+final class HookedOutbox: AnswerOutbox, @unchecked Sendable {
+    private let inner = MemoryAnswerOutbox()
+    private let reads = Mutex(0)
+    var onRemove: (@Sendable () -> Void)?
+
+    var loads: Int { reads.withLock { $0 } }
+
+    func load() throws -> [PendingAnswer] {
+        reads.withLock { $0 += 1 }
+        return try inner.load()
+    }
+    func add(_ answer: PendingAnswer) throws { try inner.add(answer) }
+    func remove(id: String) throws {
+        try inner.remove(id: id)
+        let hook = onRemove
+        onRemove = nil
+        hook?()
+    }
+    func removeAll() throws { try inner.removeAll() }
+}
+
 @Suite struct AnswerOutboxTests {
     let entry = PendingAnswer(id: "answer1234", credentialID: "c", requestID: "qitem-1", body: Data(#"{"a":1}"#.utf8))
 
@@ -310,6 +369,18 @@ import Testing
         #expect(try outbox.load() == [entry])
         let names = try FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))
         #expect(names.contains { $0.hasPrefix("pending-answers.damaged-") })
+    }
+
+    /// Saving the same id again replaces the entry, in memory as on file.
+    @Test(arguments: [true, false]) func addingTheSameIDReplacesIt(onFile: Bool) throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let outbox: any AnswerOutbox = onFile ? FileAnswerOutbox(url: url) : MemoryAnswerOutbox()
+        try outbox.add(entry)
+        var again = entry
+        again.body = Data(#"{"a":2}"#.utf8)
+        try outbox.add(again)
+        #expect(try outbox.load() == [again])
     }
 
     @Test func removingAllEmptiesIt() throws {

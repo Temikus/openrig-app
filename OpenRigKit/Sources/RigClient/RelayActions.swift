@@ -79,9 +79,10 @@ public enum RelayCall: Equatable, Sendable {
         }
     }
 
-    /// A name, row id or session: letters, digits, "-", "_", ".", ":" and "@"; never "." or "..".
+    /// A name, row id or session: letters, digits, "-", "_", ".", ":" and "@"; never "." or "..", and never a
+    /// leading "-", which `rig send` would read as an option.
     static func isSegment(_ segment: String) -> Bool {
-        !segment.isEmpty && segment != "." && segment != ".."
+        !segment.isEmpty && segment != "." && segment != ".." && !segment.hasPrefix("-")
             && segment.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || "-_.:@".contains($0)) }
     }
 }

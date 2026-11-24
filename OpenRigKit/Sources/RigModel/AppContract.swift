@@ -42,6 +42,11 @@ public struct AppSource: Decodable, Sendable, Equatable {
     public var source: String
     public var state: String
     public var detail: String?
+
+    /// Entry by entry. One that won't decode stays as "unreadable", so the list can't read as complete.
+    static func each<K: CodingKey>(_ c: KeyedDecodingContainer<K>, _ key: K) -> [AppSource] {
+        (c.lenient([Lossy<AppSource>].self, key) ?? []).map { $0.value ?? AppSource(source: "", state: "unreadable") }
+    }
 }
 
 /// `GET /needs-me`: the person's current structured asks.
@@ -56,8 +61,9 @@ public struct AppNeedsMe: Decodable, Sendable, Equatable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        requests = c.lenient([AppRequest].self, .requests) ?? []
-        sources = c.lenient([AppSource].self, .sources) ?? []
+        // One ask that won't decode (no requestId) drops only itself.
+        requests = (c.lenient([Lossy<AppRequest>].self, .requests) ?? []).compactMap(\.value)
+        sources = AppSource.each(c, .sources)
     }
 }
 
@@ -164,7 +170,7 @@ public struct AppResult: Decodable, Sendable, Equatable {
             (try? c.nestedContainer(keyedBy: StatusKeys.self, forKey: .permissionDecision))?.lenient(
                 String.self, .status)
         workStatus = (try? c.nestedContainer(keyedBy: StatusKeys.self, forKey: .work))?.lenient(String.self, .status)
-        sources = c.lenient([AppSource].self, .sources) ?? []
+        sources = AppSource.each(c, .sources)
     }
 }
 

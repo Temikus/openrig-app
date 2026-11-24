@@ -49,6 +49,18 @@ import Testing
         #expect(request.questions.isEmpty)
     }
 
+    /// One bad entry drops only itself. A source that can't be read still keeps the list from counting as complete.
+    @Test func aBadEntryHidesOnlyItself() throws {
+        let json = #"""
+            {"requests": [{"asker": "no-id@openrig-app"}, {"requestId": "qitem-ok", "questions": []}],
+             "sources": [{"source": "queue", "state": "available"}, {"source": 7}]}
+            """#
+        let needs = try JSONDecoder().decode(AppNeedsMe.self, from: Data(json.utf8))
+        #expect(needs.requests.map(\.id) == ["qitem-ok"])
+        #expect(needs.sources.count == 2)
+        #expect(!needs.isComplete)
+    }
+
     @Test func emptyNeedsMeFromAnAvailableSourceIsComplete() throws {
         let needs: AppNeedsMe = try fixture("app-needs-me-empty")
         #expect(needs.requests.isEmpty)

@@ -32,6 +32,8 @@ public final class RemoteSession {
     private let connect: @Sendable (PairingCode) async -> RemoteConnector.Outcome
     /// The client of the endpoint that last answered. Nil while not connected.
     private var client: AppClient?
+    /// The open event stream, cancelled when the pairing changes.
+    private var eventStream: Task<Void, Never>?
     /// Outbox entries being sent now, so a check doesn't resend them alongside.
     private var inFlight: Set<String> = []
     /// Asks whose unconfirmed answer just landed with more of the draft still to send.
@@ -58,7 +60,10 @@ public final class RemoteSession {
         self.deskFor = desk
         self.connect = connect
         pairing = try? store.load()
+        countUnsent()
     }
+
+    private func countUnsent() { unsentAnswers = (try? outbox.load().count) ?? 0 }
 
     public convenience init(
         store: any PairingStore, outbox: any AnswerOutbox, connector: RemoteConnector,
@@ -88,8 +93,9 @@ public final class RemoteSession {
         }
     }
 
-    /// Answers saved but not yet confirmed. Unpair drops them, so its confirmation says how many.
-    public var unsentAnswers: Int { (try? outbox.load().count) ?? 0 }
+    /// Answers saved but not yet confirmed. Unpair drops them, so its confirmation says how many. Counted after each
+    /// change and each check, not on each read.
+    public private(set) var unsentAnswers = 0
 
     /// `artem@external` shows as `artem`.
     public var answeringAs: String? { pairing.map { String($0.code.actor.prefix { $0 != "@" }) } }
@@ -164,6 +170,10 @@ public final class RemoteSession {
         needs = nil
         lastReached = nil
         client = nil
+        // The old client's stream would otherwise stay open until the Mac closes it.
+        eventStream?.cancel()
+        eventStream = nil
+        countUnsent()
         // Closed, so a screen still holding it can't send to the Mac for the old pairing.
         if let old = desk { Task { await old.close() } }
         desk = nil
@@ -209,11 +219,15 @@ public final class RemoteSession {
     private func listen() async {
         while !Task.isCancelled {
             if let client {
-                do {
-                    for try await event in client.events() where event != .heartbeat {
-                        await refresh()
-                    }
-                } catch {}
+                let stream = Task {
+                    do {
+                        for try await event in client.events() where event != .heartbeat {
+                            await refresh()
+                        }
+                    } catch {}
+                }
+                eventStream = stream
+                await withTaskCancellationHandler { await stream.value } onCancel: { stream.cancel() }
             }
             try? await Task.sleep(for: .seconds(5))
         }
@@ -254,6 +268,7 @@ public final class RemoteSession {
         }
         status = statusOverride ?? next
         if let client { await resendPending(with: client) }
+        countUnsent()
         return true
     }
 
@@ -280,6 +295,8 @@ public final class RemoteSession {
         var lines = SentAnswer.lines(submissions, in: request)
         var outcome = SentAnswer.Outcome.stillOpen
         for (index, submission) in submissions.enumerated() {
+            // Unpair or a new pairing emptied the outbox: nothing more goes under the old credential.
+            guard self.pairing == pairing else { break }
             let binding = submission.binding(on: request, at: revision, as: pairing.code.actor)
             let pending: PendingAnswer
             do {
@@ -306,6 +323,11 @@ public final class RemoteSession {
                 if outcome == .notFinished { lines[index].state = .unconfirmed }
             }
             break
+        }
+        countUnsent()
+        guard self.pairing == pairing else {
+            sending.remove(request.id)
+            return
         }
 
         sent[request.id] = SentAnswer(outcome: outcome, answers: earlier + lines, asker: request.asker, at: .now)

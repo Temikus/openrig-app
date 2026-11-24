@@ -79,7 +79,13 @@ public final class MemoryAnswerOutbox: AnswerOutbox {
     public init() {}
 
     public func load() throws -> [PendingAnswer] { answers.withLock { $0 } }
-    public func add(_ answer: PendingAnswer) throws { answers.withLock { $0.append(answer) } }
+    /// Replaces an entry with the same id, as the file outbox does.
+    public func add(_ answer: PendingAnswer) throws {
+        answers.withLock {
+            $0.removeAll { $0.id == answer.id }
+            $0.append(answer)
+        }
+    }
     public func remove(id: String) throws { answers.withLock { $0.removeAll { $0.id == id } } }
     public func removeAll() throws { answers.withLock { $0.removeAll() } }
 }

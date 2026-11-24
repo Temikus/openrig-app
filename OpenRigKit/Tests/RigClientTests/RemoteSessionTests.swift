@@ -103,6 +103,30 @@ import Testing
         #expect(remote.status == nil)
     }
 
+    /// Unpair closes the open event stream at once, not when the Mac next closes it.
+    @Test func unpairClosesTheEventStream() async throws {
+        let needs = try appFixture("app-needs-me")
+        let script = Script([.status(200, needs), .held, .status(200, needs), .status(200, needs)])
+        let client = script.client()
+        let endpoint = RemoteEndpoint(kind: .loopback, host: "127.0.0.1", port: 7433)
+        let remote = RemoteSession(
+            store: MemoryPairingStore(),
+            connect: { _ in RemoteConnector.Outcome(status: .connected(endpoint), client: client) })
+        remote.pair(link: linkA)
+        await remote.refresh()
+        let running = Task { await remote.keepFresh(every: .seconds(60)) }
+        defer { running.cancel() }
+        for _ in 0..<100 where !script.requests.contains(where: { $0.path.hasSuffix("/events") }) {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        try #require(script.requests.contains { $0.path.hasSuffix("/events") })
+        #expect(script.stops == 0)
+
+        remote.unpair()
+        for _ in 0..<100 where script.stops == 0 { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(script.stops == 1)
+    }
+
     @Test func aFailedSaveKeepsTheOldPairing() throws {
         let old = RemotePairing(code: try PairingCode(parsing: linkA), pairedAt: .now)
         let store = FailingStore(old, failing: .save)

@@ -72,6 +72,9 @@ import Testing
             Self.post("/relay/v1/seats/\(Self.seat)/message", ["text": "  "]),
             Self.post("/relay/v1/seats/\(Self.seat)/task", ["summary": ""]),
             Self.post("/relay/v1/seats/../message", ["text": "x"]),
+            // `rig send` would read a leading "-" as an option.
+            Self.post("/relay/v1/seats/--reason=x/message", ["text": "x"]),
+            Self.post("/relay/v1/seats/-x/task", ["summary": "S"]),
             Self.post("/relay/v1/rigs/openrig-app/down"),
             RelayRequest(method: "GET", path: "/relay/v1/rigs/a%2F..%2Fb/seats"),
         ]

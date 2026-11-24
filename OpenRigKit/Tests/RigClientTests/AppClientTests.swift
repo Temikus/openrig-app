@@ -23,6 +23,9 @@ struct Script {
 
     var requests: [ScriptedProtocol.Seen] { ScriptedProtocol.seen.withLock { $0[host] ?? [] } }
 
+    /// How many `/events` streams to this host were closed.
+    var stops: Int { ScriptedProtocol.stopped.withLock { $0[host] ?? 0 } }
+
     var session: URLSession {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [ScriptedProtocol.self]
@@ -42,6 +45,9 @@ final class ScriptedProtocol: URLProtocol, @unchecked Sendable {
         case events(Data)
         /// The connection drops before any response: the "lost response" case.
         case drop
+        /// An `/events` stream that sends its headers and stays open. It answers the first `/events` request,
+        /// wherever it sits in the script.
+        case held
     }
     struct Seen {
         var method: String
@@ -54,6 +60,7 @@ final class ScriptedProtocol: URLProtocol, @unchecked Sendable {
 
     static let scripts = Mutex<[String: [Reply]]>([:])
     static let seen = Mutex<[String: [Seen]]>([:])
+    static let stopped = Mutex<[String: Int]>([:])
 
     override class func canInit(with request: URLRequest) -> Bool { request.url?.host?.hasSuffix(".test") == true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -68,7 +75,13 @@ final class ScriptedProtocol: URLProtocol, @unchecked Sendable {
                     authorization: request.value(forHTTPHeaderField: "Authorization"),
                     lastEventID: request.value(forHTTPHeaderField: "Last-Event-ID"), body: body))
         }
-        let reply = Self.scripts.withLock { $0[host]?.isEmpty == false ? $0[host]!.removeFirst() : .status(500) }
+        let events = request.url?.path().hasSuffix("/events") == true
+        let reply = Self.scripts.withLock { scripts -> Reply in
+            if events, let i = scripts[host]?.firstIndex(where: { if case .held = $0 { true } else { false } }) {
+                return scripts[host]!.remove(at: i)
+            }
+            return scripts[host]?.isEmpty == false ? scripts[host]!.removeFirst() : .status(500)
+        }
         switch reply {
         case .drop:
             client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
@@ -84,9 +97,18 @@ final class ScriptedProtocol: URLProtocol, @unchecked Sendable {
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
             client?.urlProtocolDidFinishLoading(self)
+        case .held:
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: 200, httpVersion: nil,
+                headerFields: ["Content-Type": "text/event-stream"])!
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         }
     }
-    override func stopLoading() {}
+    /// URLSession calls this after every request, finished or not; only an `/events` stream's stop is counted.
+    override func stopLoading() {
+        guard request.url?.path().hasSuffix("/events") == true else { return }
+        Self.stopped.withLock { $0[request.url?.host ?? "", default: 0] += 1 }
+    }
 
     static func read(_ stream: InputStream) -> Data {
         stream.open()
