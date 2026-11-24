@@ -410,9 +410,14 @@ final class AppStore {
 
     private func remove(_ asked: RigSummary, _ action: RigAction, verb: String, doing: String, done: String) async {
         // The rig as it is now, from a fresh read, not as it was when the menu opened: one started meanwhile
-        // must not be deleted, and `rig down --delete` would stop its seats first.
+        // must not be deleted, and `rig down --delete` would stop its seats first. Read here, not through
+        // refreshNow(): that keeps the old list when the read fails, and this check must not run on it.
         await refreshNow()
-        guard let summary = rigs.first(where: { $0.id == asked.id }) else { return }
+        guard let fresh = try? await client.rigs() else {
+            announce("Couldn't check \(asked.name) before trying to \(verb) it. Try again.", urgent: true)
+            return
+        }
+        guard let summary = fresh.first(where: { $0.id == asked.id }) else { return }
         guard canRemove(summary) else {
             if !isStopped(summary) { announce("\(summary.name) is running; stop it first", urgent: true) }
             return
