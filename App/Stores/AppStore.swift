@@ -423,8 +423,8 @@ final class AppStore {
 
     private func remove(_ asked: RigSummary, _ action: RigAction, verb: String, doing: String, done: String) async {
         // The rig as it is now, from a fresh read, not as it was when the menu opened: one started meanwhile
-        // must not be deleted, and `rig down --delete` would stop its seats first. Read here, not through
-        // refreshNow(): that keeps the old list when the read fails, and this check must not run on it.
+        // must not be deleted, and `rig down --delete` would stop its seats first. refreshNow() updates isUp and
+        // the sidebar; the check uses its own read, because refreshNow() keeps the old list when its read fails.
         await refreshNow()
         guard let fresh = try? await client.rigs() else {
             announce("Couldn't check \(asked.name) before trying to \(verb) it. Try again.", urgent: true)
