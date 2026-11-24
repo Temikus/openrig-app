@@ -62,6 +62,10 @@ final class ActionStore {
     /// Records one answer on an ask through the daemon's HTTP API, under `key` like `perform`.
     @discardableResult
     func answer(_ answer: AskAnswer, on id: QItem.ID, key: String, success: String) async -> Bool {
+        if MadeUpRows.launch.contains(id) {
+            status[key] = .failed(Self.madeUp)
+            return false
+        }
         if offline {
             status[key] = .failed("The daemon isn't running. Start it from the sidebar, then try again.")
             return false
@@ -83,11 +87,18 @@ final class ActionStore {
         }
     }
 
+    static let madeUp = "A made-up row (OPENRIG_DEBUG_ROW): nothing is sent or changed."
+
     func isRunning(_ key: String) -> Bool { status[key] == .running }
 
     /// Runs `action`, recording the outcome under `key` (one key per control). Returns true on success.
     @discardableResult
     func perform(_ action: RigAction, key: String, success: String = "Done", allowOffline: Bool = false) async -> Bool {
+        // Its source is often a real seat: a Tell or a reply would type into that seat's terminal.
+        if MadeUpRows.launch.refuses(action, key: key) {
+            status[key] = .failed(Self.madeUp)
+            return false
+        }
         if offline && !allowOffline {
             status[key] = .failed("The daemon isn't running. Start it from the sidebar, then try again.")
             return false

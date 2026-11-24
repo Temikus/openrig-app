@@ -31,26 +31,12 @@ final class RigStore {
     let terminals: TerminalStore
     #if DEBUG
         private let launched = Date.now
-        /// OPENRIG_DEBUG_ROW=<file>: rows from a JSON file (one row or an array, as `rig queue show --json` prints
-        /// them) join this rig's queue, to see an ask nobody sent. Answering one fails at the daemon.
-        private let madeUpRows: [QItem] = {
-            guard let path = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_ROW"],
-                let data = FileManager.default.contents(atPath: path)
-            else { return [] }
-            let decoder = JSONDecoder()
-            return (try? decoder.decode([QItem].self, from: data))
-                ?? (try? decoder.decode(QItem.self, from: data)).map { [$0] } ?? []
-        }()
     #endif
+    /// The OPENRIG_DEBUG_ROW rows the last refresh added (a real row with the same id wins).
+    private var madeUpIDs: Set<QItem.ID> = []
 
-    /// A row from OPENRIG_DEBUG_ROW: it never posts a banner.
-    func isMadeUp(_ id: QItem.ID) -> Bool {
-        #if DEBUG
-            madeUpRows.contains { $0.id == id }
-        #else
-            false
-        #endif
-    }
+    /// A row from OPENRIG_DEBUG_ROW: it never posts a banner, and nothing on it reaches a seat (ActionStore refuses).
+    func isMadeUp(_ id: QItem.ID) -> Bool { madeUpIDs.contains(id) }
 
     /// Seat heights measured by the canvas. Layout depends on them, so changes re-run layout.
     private var seatSizes: [String: CGSize] = [:]
@@ -101,13 +87,15 @@ final class RigStore {
         return PromptScreen(lines: lines)
     }
 
-    /// Each seat's launch folder, read once. Nil for a seat the daemon can't report (gone, or the daemon is down).
-    @ObservationIgnored private var launchFolders: [String: String] = [:]
+    /// Each seat's launch folder, or nil when the daemon couldn't say (seat gone, daemon down or slow). Kept 30 s:
+    /// a restarted seat may have a new folder, and a slow daemon isn't asked again for every row.
+    @ObservationIgnored private var launchFolders: [String: (folder: String?, at: Date)] = [:]
 
     func launchFolder(session: String) async -> String? {
-        if let known = launchFolders[session] { return known }
-        guard let folder = try? await client.seatStatus(session: session).launchCwd else { return nil }
-        launchFolders[session] = folder
+        guard daemonIsLocal else { return nil }
+        if let known = launchFolders[session], Date.now.timeIntervalSince(known.at) < 30 { return known.folder }
+        let folder = try? await client.seatStatus(session: session).launchCwd
+        launchFolders[session] = (folder, .now)
         return folder
     }
 
@@ -117,10 +105,9 @@ final class RigStore {
         ["127.0.0.1", "localhost", "::1", "[::1]"].contains(client.baseURL.host()?.lowercased() ?? "")
     }
 
-    /// The images `item` points at, resolved against its source seat's launch folder. Reads the disk off the main thread.
-    func images(for item: QItem) async -> RowImages {
+    /// The images `item` points at; relative paths resolve only with a launch folder. Reads the disk off the main thread.
+    func images(for item: QItem, launchFolder folder: String?) async -> RowImages {
         let local = daemonIsLocal
-        let folder = local ? await launchFolder(session: item.source) : nil
         let (ref, body) = (item.evidenceRef, item.body)
         return await Task.detached(priority: .userInitiated) {
             RowImages.find(evidenceRef: ref, body: body, launchFolder: folder, local: local)
@@ -177,10 +164,9 @@ final class RigStore {
         do {
             async let graphRequest = client.graph(rigID: rigID)
             async let queueRequest = client.queue(rigName: rigName)
-            var (fresh, rows) = try await (graphRequest, queueRequest)
-            #if DEBUG
-                rows += madeUpRows.filter { row in !rows.contains { $0.id == row.id } }
-            #endif
+            let (fresh, real) = try await (graphRequest, queueRequest)
+            let (rows, added) = MadeUpRows.launch.merge(into: real)
+            madeUpIDs = added
             error = nil
             lastUpdated = .now
             if fresh != graph || rows != items {

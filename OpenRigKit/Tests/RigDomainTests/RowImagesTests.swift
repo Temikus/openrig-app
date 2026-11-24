@@ -138,6 +138,18 @@ import Testing
         #expect(found.images.map(\.lastPathComponent) == ["2.png", "3.png", "1.png"])
     }
 
+    /// The panel keeps the evidence line unless the ref itself gave the images.
+    @Test func whetherTheEvidenceRefGaveTheImages() throws {
+        try make(["shots/a.png", "docs/report.md"])
+        #expect(find("shots").evidenceGaveImages)
+        #expect(find("shots/a.png").evidenceGaveImages)
+        let branch = find("task/x@abc1234", body: "Capture: shots/a.png")
+        #expect(branch.images.map(\.lastPathComponent) == ["a.png"])
+        #expect(!branch.evidenceGaveImages)
+        #expect(!find("docs/report.md", body: "shots/").evidenceGaveImages)
+        #expect(!find(nil, body: "shots/").evidenceGaveImages)
+    }
+
     /// Rule 6: today's line with Open, now for a relative path too.
     @Test func anEvidenceFileThatIsNotAnImage() throws {
         try make(["docs/report.md"])

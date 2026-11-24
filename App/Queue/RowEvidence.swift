@@ -10,8 +10,8 @@ extension EnvironmentValues {
     @Entry var rowImages: RowImages?
 }
 
-/// What a row points at: a thumbnail of each image, which opens in Quick Look. A row without images keeps its
-/// evidence line where `showsLine` (the For You panel) and shows nothing elsewhere, as before.
+/// What a row points at: its evidence line where `showsLine` (the For You panel), and a thumbnail of each image,
+/// which opens in Quick Look. Other rows show only images, as they showed no evidence before.
 struct RowEvidence: View {
     let item: QItem
     var title: String?
@@ -19,14 +19,27 @@ struct RowEvidence: View {
     @Environment(\.rowImages) private var found
     @State private var preview: URL?
 
-    /// More would push the questions far down; Quick Look still steps through all of them.
-    static let cap = 12
+    /// More would push Approve and Deny below a 900 pt window; Quick Look still steps through all of them.
+    static let cap = 6
+
+    /// Shown at once, before the images are found, and kept unless the ref itself named the images: a branch or a
+    /// report is what the agent asked the person to judge.
+    private var line: String? {
+        guard showsLine, found?.evidenceGaveImages != true else { return nil }
+        return item.evidenceRef
+    }
 
     var body: some View {
-        if let found, !found.images.isEmpty {
-            thumbnails(found.images)
-        } else if showsLine, found != nil, let ref = item.evidenceRef {
-            EvidenceLine(ref: ref, file: found?.evidence)
+        let images = found?.images ?? []
+        if let line, !images.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                EvidenceLine(ref: line, file: found?.evidence)
+                thumbnails(images)
+            }
+        } else if let line {
+            EvidenceLine(ref: line, file: found?.evidence)
+        } else if !images.isEmpty {
+            thumbnails(images)
         }
     }
 

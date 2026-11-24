@@ -28,7 +28,8 @@ struct ForYouPanel: View {
         change(&next)
         actions.answers.set(next, for: key)
     }
-    private var askerSeat: Seat? { rig.seat(session: item.source) }
+    /// None on a made-up row, so Tell and Reply… never offer to type into a real seat.
+    private var askerSeat: Seat? { rig.isMadeUp(item.id) ? nil : rig.seat(session: item.source) }
     private var busy: Bool { actions.isRunning(key) || actions.offline }
     /// Tell only reaches a seat in this rig; anywhere else the answer is only recorded on the row.
     private var canTell: Bool { askerSeat != nil }
@@ -80,9 +81,12 @@ struct ForYouPanel: View {
                     .toggleStyle(.checkbox)
                     .help("Also sends your answer to \(asker) with rig send. Closing alone only records it on the row.")
             } else {
-                Text("\(asker) isn't in this rig, so your answer is only recorded on the row.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    rig.isMadeUp(item.id)
+                        ? ActionStore.madeUp : "\(asker) isn't in this rig, so your answer is only recorded on the row."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             HStack {
                 ActionStatusLine(key: key)

@@ -7,10 +7,14 @@ public struct RowImages: Equatable, Sendable {
     public var images: [URL] = []
     /// `evidenceRef` names something on disk that gives no image. The inspector keeps its line with Open.
     public var evidence: URL?
+    /// `evidenceRef` itself named the images (a folder or an image). Otherwise the ref is something else the agent
+    /// asked the person to judge, like a branch or a report, and its line stays beside any images from the body.
+    public var evidenceGaveImages = false
 
-    public init(images: [URL] = [], evidence: URL? = nil) {
+    public init(images: [URL] = [], evidence: URL? = nil, evidenceGaveImages: Bool = false) {
         self.images = images
         self.evidence = evidence
+        self.evidenceGaveImages = evidenceGaveImages
     }
 
     static let imageExtensions: Set<String> = [
@@ -29,14 +33,16 @@ public struct RowImages: Equatable, Sendable {
         let launchFolder = launchFolder?.trimmingCharacters(in: .whitespaces).isEmpty == false ? launchFolder : nil
         var found = Found()
         var evidence: URL?
+        var gave = false
         let ref = evidenceRef?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if let url = resolve(ref, launchFolder: launchFolder, home: home), found.add(url) == .nothing {
-            evidence = url
+        if let url = resolve(ref, launchFolder: launchFolder, home: home) {
+            gave = found.add(url) == .images
+            if !gave { evidence = url }
         }
         for path in paths(in: body ?? "") {
             if let url = resolve(path, launchFolder: launchFolder, home: home) { _ = found.add(url) }
         }
-        return RowImages(images: found.images, evidence: evidence)
+        return RowImages(images: found.images, evidence: evidence, evidenceGaveImages: gave)
     }
 
     /// An absolute path, a `~/` path, or one relative to the launch folder, if it exists. Symlinks are resolved so a

@@ -141,7 +141,13 @@ struct QItemInspector: View {
         }
         // Margins on the scroll content, not padding inside it, so the inspector's own insets are respected.
         .contentMargins(16, for: .scrollContent)
-        .task(id: item.id) { images = await rig.images(for: item) }
+        .task(id: item.id) {
+            // Absolute and ~/ paths need no launch folder, so they show without waiting on the daemon.
+            images = await rig.images(for: item, launchFolder: nil)
+            if let folder = await rig.launchFolder(session: item.source) {
+                images = await rig.images(for: item, launchFolder: folder)
+            }
+        }
         .environment(\.rowImages, images)
     }
 
