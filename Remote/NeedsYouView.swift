@@ -51,9 +51,7 @@ struct NeedsYouView: View {
                         Button("Pair Again…") { confirmingPairAgain = true }
                     }
                 }
-                .unpairConfirmation(
-                    isPresented: $confirmingPairAgain, title: "Forget \(model.macName) and pair again?",
-                    confirm: "Forget and Pair Again")
+                .unpairConfirmation(isPresented: $confirmingPairAgain, .pairAgain)
             case .localNetworkDenied:
                 unavailable(
                     "Local Network access is off", systemImage: "network.slash",

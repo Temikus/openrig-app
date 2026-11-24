@@ -18,6 +18,7 @@ struct OpenRigRemoteApp: App {
                     .task {
                         if let link = DebugHooks.pairLink { model.pair(link: link) }
                         if let link = DebugHooks.openedLink { model.receive(openedLink: link) }
+                        DebugHooks.seedUnsent(for: model.pairing?.code.credentialID)
                     }
                 #endif
                 // While the app is open: every five seconds, and on each event from the Mac. Cancelled in the

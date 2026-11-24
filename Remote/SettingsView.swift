@@ -30,7 +30,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .unpairConfirmation(isPresented: $confirmingUnpair, title: "Unpair this phone?", confirm: "Unpair")
+            .unpairConfirmation(isPresented: $confirmingUnpair, .unpair)
         }
     }
 }

@@ -64,6 +64,19 @@ enum PairingStep: Hashable {
         /// `1` opens Pair Again's confirmation at launch, for a capture.
         static var confirmPairAgain: Bool { environment["OPENRIG_DEBUG_CONFIRM_PAIR_AGAIN"] == "1" }
 
+        /// `OPENRIG_DEBUG_UNSENT=<n>` puts n made-up unconfirmed answers in the outbox, under this pairing, so the
+        /// Unpair confirmation can be seen with answers waiting.
+        static func seedUnsent(for credential: String?) {
+            guard let credential, let count = environment["OPENRIG_DEBUG_UNSENT"].flatMap(Int.init) else { return }
+            let outbox = FileAnswerOutbox.standard()
+            for n in 0..<count {
+                try? outbox.add(
+                    PendingAnswer(
+                        id: "debugunsent\(n)", credentialID: credential, requestID: "qitem-made-up-\(n)",
+                        body: Data("{}".utf8)))
+            }
+        }
+
         /// A draft for the opened ask: `reply:<text>`, or `picks:<question>=<option>,…`.
         static var draft: AppAnswerDraft? {
             guard let raw = environment["OPENRIG_DEBUG_DRAFT"] else { return nil }
