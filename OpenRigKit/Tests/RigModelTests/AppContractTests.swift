@@ -62,8 +62,8 @@ import Testing
         #expect(request.unsupportedReason == "request_not_pending")
         #expect(request.questions.count == 4)
         #expect(request.humanAnswers.count == 4)
-        #expect(request.humanAnswers["ios-reach"] == .typedReply("Reply text."))
-        #expect(request.humanAnswers["ios-approvals"] == .option("both"))
+        #expect(request.humanAnswers["q1"] == .typedReply("Reply text."))
+        #expect(request.humanAnswers["q4"] == .option("a"))
         #expect(request.unansweredQuestions.isEmpty)
     }
 

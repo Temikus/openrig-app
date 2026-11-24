@@ -5,8 +5,11 @@ import Testing
 @testable import RigClient
 
 /// The phone-app contract on the real daemon. Opt-in only, with the person's yes: it issues an app credential for
-/// OPENRIG_APP_ACTOR, reads, answers nothing, and revokes the credential before finishing.
-/// Run: OPENRIG_LIVE_APP=1 OPENRIG_APP_ACTOR=<person>@external swift test --filter LiveAppContractTests
+/// OPENRIG_APP_ACTOR, reads, answers nothing, and revokes the credential before finishing. It reads the first open
+/// ask, and the ask OPENRIG_APP_REQUEST names (any of the person's asks, answered or not) with its result.
+/// Run (the Command Line Tools have no Testing macros, so name Xcode):
+/// DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer OPENRIG_LIVE_APP=1 OPENRIG_APP_ACTOR=<person>@external \
+///   OPENRIG_APP_REQUEST=<qitem id> swift test --package-path OpenRigKit --filter LiveAppContractTests
 @Suite(
     .serialized,
     .enabled("set OPENRIG_LIVE_APP=1 and OPENRIG_APP_ACTOR=<person>@external") {
@@ -32,6 +35,14 @@ struct LiveAppContractTests {
             #expect(!needs.sources.isEmpty)
             if let first = needs.requests.first {
                 #expect(try await app.request(id: first.id).id == first.id)
+            } else {
+                print("LiveAppContractTests: no ask is open for \(actor), so no open request was read")
+            }
+            if let named = env["OPENRIG_APP_REQUEST"], !named.isEmpty {
+                #expect(try await app.request(id: named).id == named)
+                #expect(try await app.result(requestID: named).request?.id == named)
+            } else {
+                print("LiveAppContractTests: OPENRIG_APP_REQUEST is unset, so no result was read")
             }
         } catch {
             readError = error

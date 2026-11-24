@@ -15,91 +15,91 @@
     "humanDetail": null,
     "questions": [
       {
-        "id": "ios-reach",
+        "id": "q1",
         "question": "Question 1?",
         "options": [
           {
-            "id": "tailscale",
+            "id": "a",
             "label": "Option A",
             "recommended": true
           },
           {
-            "id": "wifi",
+            "id": "b",
             "label": "Option B"
           },
           {
-            "id": "relay",
+            "id": "c",
             "label": "Option C"
           }
         ]
       },
       {
-        "id": "ios-first-version",
+        "id": "q2",
         "question": "Question 2?",
         "options": [
           {
-            "id": "answer",
+            "id": "a",
             "label": "Option A",
             "recommended": true
           },
           {
-            "id": "answer-prompts",
+            "id": "b",
             "label": "Option B"
           },
           {
-            "id": "answer-prompts-steer",
+            "id": "c",
             "label": "Option C"
           }
         ]
       },
       {
-        "id": "ios-notifications",
+        "id": "q3",
         "question": "Question 3?",
         "options": [
           {
-            "id": "none",
+            "id": "a",
             "label": "Option A",
             "recommended": true
           },
           {
-            "id": "background",
+            "id": "b",
             "label": "Option B"
           },
           {
-            "id": "push",
+            "id": "c",
             "label": "Option C"
           }
         ]
       },
       {
-        "id": "ios-approvals",
+        "id": "q4",
         "question": "Question 4?",
         "options": [
           {
-            "id": "both",
+            "id": "a",
             "label": "Option A",
             "recommended": true
           },
           {
-            "id": "simulator-only",
+            "id": "b",
             "label": "Option B"
           },
           {
-            "id": "credential-only",
+            "id": "c",
             "label": "Option C"
           },
           {
-            "id": "neither",
+            "id": "d",
             "label": "Option D"
           }
         ]
       }
     ],
     "humanAnswers": {
-      "ios-first-version": "answer-prompts-steer",
-      "ios-notifications": "none",
-      "ios-approvals": "both",
-      "ios-reach": {
+      "q2": "c",
+      "q3": "a",
+      "q4": "a",
+      "q1": {
         "kind": "typed-reply",
         "text": "Reply text.",
         "placement": "first-unanswered",
