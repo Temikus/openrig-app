@@ -171,6 +171,43 @@ import Testing
         }
     }
 
+    /// A debug copy's made-up row (OPENRIG_DEBUG_ROW) often names a real seat as its source. The phone never sees it,
+    /// and a Reply to it must not reach that seat.
+    @Test func aMadeUpRowIsNeitherListedNorAnswered() async throws {
+        let row = Self.row(to: "you@external")
+        let desk = FakeDesk(prompt: nil, row: row)
+        desk.madeUp = ["qitem-1"]
+        desk.list = RelayNeedsYou(items: [
+            RelayNeedsYouItem(kind: "ask", id: "qitem:qitem-1", rig: "openrig-app", title: "Made up", row: "qitem-1"),
+            RelayNeedsYouItem(kind: "ask", id: "qitem:qitem-2", rig: "openrig-app", title: "Real", row: "qitem-2"),
+            RelayNeedsYouItem(kind: "prompt", id: "prompt:x", rig: "openrig-app", title: "Asks", session: Self.seat),
+        ])
+        let read = await RelayActions.handle(.needsYou, desk: desk)
+        let listed = try JSONDecoder().decode(RelayNeedsYou.self, from: read.body)
+        #expect(listed.items.map(\.id) == ["qitem:qitem-2", "prompt:x"])
+
+        for call in [
+            RelayCall.reply(row: "qitem-1", text: "x"), .gotIt(row: "qitem-1"), .done(row: "qitem-1", replied: false),
+        ] {
+            let response = await RelayActions.handle(call, desk: desk)
+            #expect(response.status == 404, "\(call)")
+            #expect(RelayActions.errorCode(response) == "no_such_row")
+        }
+
+        #expect(desk.done.isEmpty)
+
+        // Answering the seat's prompt resolves its held row, but not a made-up one.
+        let prompted = FakeDesk(prompt: Self.reading("npm test"))
+        prompted.madeUp = ["qitem-1"]
+        prompted.held = "qitem-1"
+        _ = await RelayActions.handle(
+            .allowOnce(session: Self.seat, command: "npm test", observedAt: Self.asked), desk: prompted)
+        #expect(
+            prompted.done == [
+                .answerPrompt(session: Self.seat, keys: "1", reason: "OpenRig phone: allow once npm test")
+            ])
+    }
+
     /// The Mac acts as its own person. If a phone was paired to answer as someone else, it refuses to act for it.
     @Test func actionsStopWhenThePersonDiffers() async {
         let desk = FakeDesk(prompt: Self.reading("npm test"))
@@ -207,6 +244,8 @@ final class FakeDesk: RelayDesk, @unchecked Sendable {
     var held: String?
     var actorMismatch: String?
     var result = RelayOutcome.done
+    var list = RelayNeedsYou()
+    var madeUp: Set<String> = []
     private(set) var done: [RigAction] = []
 
     init(prompt: RelayPromptReading?, row: QItem? = nil) {
@@ -214,7 +253,8 @@ final class FakeDesk: RelayDesk, @unchecked Sendable {
         self.row = row
     }
 
-    func needsYou() async -> RelayNeedsYou { RelayNeedsYou() }
+    func needsYou() async -> RelayNeedsYou { list }
+    func isMadeUp(_ row: String) async -> Bool { madeUp.contains(row) }
     func prompt(session: String) async -> RelayPromptReading? { reading }
     func waitForNoPrompt(session: String) async -> (paneClear: Bool, daemonHolds: Bool) { (true, daemonStillHolds) }
     func heldRow(session: String) async -> String? { held }

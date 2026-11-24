@@ -357,6 +357,7 @@ final class ClientDesk: RelayDesk, @unchecked Sendable {
     func prompt(session: String) async -> RelayPromptReading? { lock.withLock { reading } }
     func waitForNoPrompt(session: String) async -> (paneClear: Bool, daemonHolds: Bool) { (true, false) }
     func heldRow(session: String) async -> String? { nil }
+    func isMadeUp(_ row: String) async -> Bool { false }
     func row(_ id: String) async -> QItem? {
         try? JSONDecoder().decode(
             QItem.self,

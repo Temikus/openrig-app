@@ -248,6 +248,8 @@ public protocol RelayDesk: Sendable {
     /// Why the Mac won't act for the phone now (its person differs from the pairing's), or nil.
     func refusesActing() async -> String?
     func row(_ id: String) async -> QItem?
+    /// A row a debug copy made up (OPENRIG_DEBUG_ROW). Its source is often a real seat, so the phone never sees one.
+    func isMadeUp(_ row: String) async -> Bool
     func rigs() async -> [RelayRig]
     func seats(rig: String) async -> [RelaySeat]?
     func perform(_ action: RigAction) async -> RelayOutcome
@@ -258,7 +260,15 @@ public enum RelayActions {
     public static func handle(_ call: RelayCall, desk: some RelayDesk) async -> RelayResponse {
         if call.acts, let why = await desk.refusesActing() { return error(403, "actor_mismatch", why) }
         switch call {
-        case .needsYou: return json(await desk.needsYou())
+        case .needsYou:
+            var list = await desk.needsYou()
+            var shown: [RelayNeedsYouItem] = []
+            for item in list.items {
+                if let row = item.row, await desk.isMadeUp(row) { continue }
+                shown.append(item)
+            }
+            list.items = shown
+            return json(list)
         case .rigs: return json(await desk.rigs())
         case .seats(let rig):
             guard let seats = await desk.seats(rig: rig) else { return error(404, "no_such_rig", "No rig \(rig).") }
@@ -355,7 +365,11 @@ public enum RelayActions {
 
     /// A row the Mac's Needs you lists for its person; any other row is refused, whatever its id.
     private static func forPerson(_ id: String, _ desk: some RelayDesk) async -> Result<QItem, Refusal> {
-        guard let row = await desk.row(id) else { return .failure(Refusal(error(404, "no_such_row", "No row \(id)."))) }
+        // A made-up row reads as missing: a Reply sends to its source seat under no key naming the row, so the Mac's
+        // own made-up gate wouldn't stop it.
+        guard !(await desk.isMadeUp(id)), let row = await desk.row(id) else {
+            return .failure(Refusal(error(404, "no_such_row", "No row \(id).")))
+        }
         guard await desk.isForPerson(row) else {
             return .failure(Refusal(error(403, "not_for_you", "This row isn't waiting on you.")))
         }
@@ -363,7 +377,7 @@ public enum RelayActions {
     }
 
     private static func resolveHeld(_ session: String, _ decision: String, _ desk: some RelayDesk) async {
-        guard let row = await desk.heldRow(session: session) else { return }
+        guard let row = await desk.heldRow(session: session), !(await desk.isMadeUp(row)) else { return }
         _ = await desk.perform(.resolve(id: row, decision: decision))
     }
 

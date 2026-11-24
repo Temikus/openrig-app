@@ -155,6 +155,8 @@ final class MacRelayDesk: RelayDesk {
 
     // MARK: Rows, rigs, seats
 
+    func isMadeUp(_ row: String) async -> Bool { store?.rig?.isMadeUp(row) ?? false }
+
     func row(_ id: String) async -> QItem? {
         if let row = store?.rig?.item(id) ?? store?.elsewhere.first(where: { $0.id == id }) { return row }
         return try? await client?.qitem(id: id)
