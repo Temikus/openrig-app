@@ -45,21 +45,28 @@ public struct RemoteConnector: Sendable {
         public var client: AppClient?
     }
 
-    var client: @Sendable (RemoteEndpoint, PairingCode) -> AppClient
+    /// Nil when this endpoint can't be reached safely, so nothing is sent to it.
+    var client: @Sendable (RemoteEndpoint, PairingCode) -> AppClient?
     var localNetworkDenied: @Sendable (RemoteEndpoint) async -> Bool
 
     public init(
-        client: @escaping @Sendable (RemoteEndpoint, PairingCode) -> AppClient = Self.httpClient,
+        client: @escaping @Sendable (RemoteEndpoint, PairingCode) -> AppClient? = Self.httpClient,
         localNetworkDenied: @escaping @Sendable (RemoteEndpoint) async -> Bool
     ) {
         self.client = client
         self.localNetworkDenied = localNetworkDenied
     }
 
+    /// Plain HTTP only where the path is already private: this Mac (loopback) or the tailnet (WireGuard). On the
+    /// Wi-Fi it would carry the token in clear, so a `lan` endpoint gets no client until an encrypted link exists.
     /// Short per-address timeout: a dead address shouldn't hold up the next one for long.
-    public static let httpClient: @Sendable (RemoteEndpoint, PairingCode) -> AppClient = { endpoint, code in
-        AppClient(baseURL: endpoint.baseURL, token: code.token, actor: code.actor, timeout: 5)
+    public static let httpClient: @Sendable (RemoteEndpoint, PairingCode) -> AppClient? = { endpoint, code in
+        guard endpoint.kind != .lan else { return nil }
+        return AppClient(baseURL: endpoint.baseURL, token: code.token, actor: code.actor, timeout: 5)
     }
+
+    public static let noEncryptedLink =
+        "This Mac is only reachable on Wi-Fi, and this version of the app has no encrypted link for Wi-Fi yet."
 
     /// The first endpoint that answers wins. Otherwise a revoked credential outranks a stranger on an old address,
     /// which outranks denied Local Network access, which outranks silence.
@@ -69,7 +76,10 @@ public struct RemoteConnector: Sendable {
         var lastError: String?
         var firstSilentLan: RemoteEndpoint?
         for endpoint in RemoteEndpoint.all(in: code) {
-            let app = client(endpoint, code)
+            guard let app = client(endpoint, code) else {
+                lastError = lastError ?? Self.noEncryptedLink
+                continue
+            }
             do {
                 if try await app.capabilities().supportsAnswering {
                     return Outcome(status: .connected(endpoint), client: app)

@@ -51,14 +51,33 @@ final class RemoteModel {
     /// `artem@external` shows as `artem`.
     var answeringAs: String? { pairing.map { String($0.code.actor.prefix { $0 != "@" }) } }
 
+    /// A link opened from outside the app, waiting for the person's yes.
+    var pendingCode: PairingCode?
+
+    /// A scan or paste inside the app: the person chose it, so it pairs at once.
     func pair(link: String) {
-        let code: PairingCode
         do {
-            code = try PairingCode(parsing: link)
+            save(try PairingCode(parsing: link))
         } catch {
             pairingError = Self.message(for: error)
-            return
         }
+    }
+
+    /// A link from another app or a web page. Anyone can send one, so it pairs only after the person confirms.
+    func receive(openedLink link: String) {
+        do {
+            pendingCode = try PairingCode(parsing: link)
+        } catch {
+            pairingError = Self.message(for: error)
+        }
+    }
+
+    func confirmPending() {
+        if let pendingCode { save(pendingCode) }
+        pendingCode = nil
+    }
+
+    private func save(_ code: PairingCode) {
         let new = RemotePairing(code: code, pairedAt: .now)
         do {
             try store.save(new)
@@ -127,6 +146,9 @@ final class RemoteModel {
         /// Pairs at launch through `pair(link:)`, as a scanned, pasted or opened link does. `simctl openurl` would
         /// stop at the system's "Open in OpenRig?" confirmation.
         static var pairLink: String? { environment["OPENRIG_DEBUG_PAIR_LINK"] }
+
+        /// Handles a link as `onOpenURL` does: it waits for the person's confirmation.
+        static var openedLink: String? { environment["OPENRIG_DEBUG_OPEN_LINK"] }
 
         /// Replaces the status after each real check, keeping what was read: `unreachable`, `local-network-denied`,
         /// `unpaired`, `unsupported`.

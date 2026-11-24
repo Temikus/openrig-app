@@ -53,6 +53,27 @@ import Testing
         #expect(third.requests.first?.authorization == "Bearer \(token)")
     }
 
+    /// Plain HTTP on the Wi-Fi would carry the token in clear. The default client won't, so nothing is sent and the
+    /// Local Network check isn't asked either.
+    @Test func defaultClientSendsNothingInClearToAWiFiAddress() async throws {
+        let probe = Probe()
+        let connector = RemoteConnector(localNetworkDenied: { endpoint in
+            probe.record(endpoint)
+            return false
+        })
+        let outcome = await connector.connect(try code([Reach(kind: .lan, addresses: ["10.255.255.1"], port: 9)]))
+        #expect(outcome.status == .unreachable(detail: RemoteConnector.noEncryptedLink))
+        #expect(probe.endpoints.isEmpty)
+    }
+
+    @Test func defaultClientUsesPlainHTTPOnlyOnThisMacAndTheTailnet() throws {
+        let pairing = try code([Reach(kind: .loopback, addresses: ["127.0.0.1"], port: 7433)])
+        for kind in PairingCode.Reach.Kind.allCases {
+            let endpoint = RemoteEndpoint(kind: kind, host: "h", port: 1)
+            #expect((RemoteConnector.httpClient(endpoint, pairing) != nil) == (kind != .lan))
+        }
+    }
+
     @Test func endpointURLIsPlainHTTPToTheAddressAndPort() {
         let endpoint = RemoteEndpoint(kind: .lan, host: "10.0.0.208", port: 52_100)
         #expect(endpoint.baseURL == URL(string: "http://10.0.0.208:52100"))

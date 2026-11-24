@@ -1,4 +1,5 @@
 import RigClient
+import RigModel
 import SwiftUI
 
 @main
@@ -10,11 +11,14 @@ struct OpenRigRemoteApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
-                // A pairing link opened from the camera, Messages or `simctl openurl`.
-                .onOpenURL { model.pair(link: $0.absoluteString) }
+                // A pairing link opened from the camera, Messages or a web page. It waits for a confirmation.
+                .onOpenURL { model.receive(openedLink: $0.absoluteString) }
                 #if DEBUG
                     // Here, not in the model's init: SwiftUI may build an App's @State value more than once.
-                    .task { if let link = DebugHooks.pairLink { model.pair(link: link) } }
+                    .task {
+                        if let link = DebugHooks.pairLink { model.pair(link: link) }
+                        if let link = DebugHooks.openedLink { model.receive(openedLink: link) }
+                    }
                 #endif
                 .onChange(of: scenePhase, initial: true) { _, phase in
                     if phase == .active { Task { await model.refresh() } }
@@ -33,6 +37,42 @@ struct RootView: View {
     @State private var tab = RemoteTab.needs
 
     var body: some View {
+        content
+            .confirmationDialog(
+                "Pair with \(model.pendingCode?.name ?? "this Mac")?", isPresented: pendingBinding,
+                titleVisibility: .visible, presenting: model.pendingCode
+            ) { _ in
+                Button("Pair") { model.confirmPending() }
+                Button("Cancel", role: .cancel) {}
+            } message: { code in
+                Text(pendingMessage(code))
+            }
+            .alert("Can't pair", isPresented: errorBinding) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(model.pairingError ?? "")
+            }
+    }
+
+    var pendingBinding: Binding<Bool> {
+        Binding(get: { model.pendingCode != nil }, set: { if !$0 { model.pendingCode = nil } })
+    }
+
+    /// The pairing flow shows its own errors; once paired, an opened link's error needs an alert.
+    var errorBinding: Binding<Bool> {
+        Binding(
+            get: { model.pairing != nil && model.pairingError != nil },
+            set: { if !$0 { model.pairingError = nil } })
+    }
+
+    func pendingMessage(_ code: PairingCode) -> String {
+        let address = RemoteEndpoint.all(in: code).first?.description ?? ""
+        let replaces = model.pairing.map { _ in " This replaces \(model.macName)." } ?? ""
+        return
+            "A link asks this phone to answer as \(code.actor) through \(address).\(replaces) Pair only if it came from your own Mac."
+    }
+
+    @ViewBuilder var content: some View {
         if model.pairing == nil {
             PairingFlow()
         } else {
