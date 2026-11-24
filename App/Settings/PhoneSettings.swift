@@ -17,8 +17,12 @@ struct PhoneSettings: View {
 
     private var daemon: URL { store.endpoint.baseURL }
     private var daemonHere: Bool { PairingCode.Reach.Kind.loopback.accepts(daemon.host() ?? "") }
-    /// Only this daemon's: another daemon's credentials can't be revoked from here.
-    private var list: [PairedPhone] { phones.phones.list(for: daemon) }
+    /// This daemon's phones first, then any other daemon's. Those can't be revoked from here, but stay in sight: this
+    /// list is the only place that revokes them.
+    private var list: [PairedPhone] {
+        let here = phones.phones.list(for: daemon)
+        return here + phones.phones.list.filter { phone in !here.contains { $0.id == phone.id } }
+    }
 
     var body: some View {
         Form {
@@ -95,17 +99,25 @@ struct PhoneSettings: View {
         }
     }
 
+    /// Why this phone can't be unpaired from here (another daemon's), or nil.
+    private func elsewhere(_ phone: PairedPhone) -> String? {
+        guard case .otherDaemon = phones.phones.refusesRevoke(phone, at: daemon) else { return nil }
+        return phones.phones.refusesRevoke(phone, at: daemon)?.message
+    }
+
     private func row(_ phone: PairedPhone) -> some View {
         LabeledContent {
             Button("Unpair") { confirming = phone }
-                .disabled(phones.unpairing.contains(phone.id))
+                .disabled(phones.unpairing.contains(phone.id) || elsewhere(phone) != nil)
                 .accessibilityLabel("Unpair \(phone.title)")
         } label: {
             Text(phone.title)
             if let error = phones.unpairErrors[phone.id] {
                 Text(error).foregroundStyle(Color.attention)
+            } else if let elsewhere = elsewhere(phone) {
+                Text(elsewhere).foregroundStyle(.secondary)
             } else {
-                Text("answers as \(phone.actor)")
+                Text("Answers as \(phone.actor)")
             }
         }
     }

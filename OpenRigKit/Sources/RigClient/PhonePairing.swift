@@ -34,9 +34,23 @@ public struct PairedPhone: Codable, Sendable, Equatable, Identifiable {
         self.daemon = Self.key(daemon)
     }
 
-    /// "host:port", so a trailing slash or a default port doesn't make one daemon look like two.
+    /// "host:port", so a trailing slash, a default port or `localhost` doesn't make one daemon look like two.
     public static func key(_ daemon: URL) -> String {
-        "\(daemon.host()?.lowercased() ?? ""):\(daemon.port ?? 7433)"
+        let host = daemon.host()?.lowercased() ?? ""
+        return "\(host == "localhost" ? "127.0.0.1" : host):\(daemon.port ?? 7433)"
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, name, actor, paired, daemon }
+
+    /// Fields added after the first record default, so an older row still reads. A row from before `daemon` was
+    /// stored was paired on this Mac's own daemon: pairing refused any other.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        actor = try c.decode(String.self, forKey: .actor)
+        paired = try c.decode(Date.self, forKey: .paired)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        daemon = try c.decodeIfPresent(String.self, forKey: .daemon) ?? "127.0.0.1:7433"
     }
 
     /// Until a phone is seen to connect, the row is the code that was shown: "Code from 24 Nov, 14:01".

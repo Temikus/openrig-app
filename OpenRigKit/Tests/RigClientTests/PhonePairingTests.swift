@@ -79,6 +79,8 @@ import Testing
         #expect(phones.list(for: Self.here).map(\.id) == ["cred-here"])
         #expect(phones.list(for: URL(string: "http://127.0.0.1:7433/")!).map(\.id) == ["cred-here"])
         #expect(
+            phones.list(for: URL(string: "http://localhost:7433")!).map(\.id) == ["cred-here"], "one daemon, one key")
+        #expect(
             phones.refusesRevoke(phone("cred-there", at: Self.other), at: Self.here) == .otherDaemon("127.0.0.1:7500"))
         #expect(phones.refusesRevoke(phone("cred-here"), at: Self.here) == nil)
         #expect(phones.refusesIssue == nil)
@@ -92,6 +94,19 @@ import Testing
         #expect(phones.refusesIssue == .madeUp)
         #expect(phones.refusesRevoke(phone("debug-1"), at: Self.here) == .madeUp)
         #expect(PairedPhones(data: phones.data).isMadeUp == false, "never saved as made up")
+    }
+
+    /// The record grows (the relay adds a phone's name). A row written before a field existed still reads, so no
+    /// live credential drops out of the only list that revokes it.
+    @Test func anOlderRecordStillReads() throws {
+        let older = Data(#"[{"id": "cred-1", "actor": "a@external", "paired": 0}]"#.utf8)
+        let row = try #require(PairedPhones(data: older).list.first)
+        #expect(row.id == "cred-1")
+        #expect(row.name == "")
+        #expect(row.daemon == "127.0.0.1:7433", "pairing only ever ran against this Mac's own daemon")
+        let newer = Data(
+            #"[{"id": "cred-2", "actor": "a@external", "paired": 0, "daemon": "127.0.0.1:7500", "x": 1}]"#.utf8)
+        #expect(PairedPhones(data: newer).list.first?.daemon == "127.0.0.1:7500")
     }
 
     @Test func aDamagedRecordReadsAsEmpty() {
