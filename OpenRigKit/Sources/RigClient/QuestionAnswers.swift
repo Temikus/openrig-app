@@ -50,8 +50,6 @@ public struct QuestionAnswers: Sendable, Equatable {
         return true
     }
 
-    var isEmpty: Bool { picks.isEmpty && other.isEmpty }
-
     /// Only answers to questions still open on the row, and picks of options it still offers.
     func kept(for item: QItem) -> QuestionAnswers {
         let open = Dictionary(open(in: item).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
@@ -65,19 +63,41 @@ public struct QuestionAnswers: Sendable, Equatable {
     }
 }
 
-/// Half-answered rows, by the panel's action key, so picks outlive the panel that showed them. Memory only.
+/// What the person set on a row's For You panel and hasn't sent yet. The typed note is in `ActionStore.drafts`.
+public struct AnswerDraft: Sendable, Equatable {
+    public var answers = QuestionAnswers()
+    /// Also send the answer to the asker. Kept with the note: off, the note is for the row only.
+    public var tell = true
+    /// The message that already reached the asker, so a retry after a failed close doesn't send it twice.
+    public var sent: RigAction?
+    /// A reply went out from the panel, so Done can record the question as answered.
+    public var replied = false
+
+    public init(
+        answers: QuestionAnswers = QuestionAnswers(), tell: Bool = true, sent: RigAction? = nil, replied: Bool = false
+    ) {
+        self.answers = answers
+        self.tell = tell
+        self.sent = sent
+        self.replied = replied
+    }
+}
+
+/// Half-answered rows, by the panel's action key, so they outlive the panel that showed them. Memory only.
 public struct AnswerDrafts: Sendable, Equatable {
-    private var byKey: [String: QuestionAnswers] = [:]
+    private var byKey: [String: AnswerDraft] = [:]
 
     public init() {}
 
     /// The draft as the row stands now: a question it no longer asks, or already records, shows no pick.
-    public func draft(_ key: String, on item: QItem) -> QuestionAnswers {
-        byKey[key]?.kept(for: item) ?? QuestionAnswers()
+    public func draft(_ key: String, on item: QItem) -> AnswerDraft {
+        guard var draft = byKey[key] else { return AnswerDraft() }
+        draft.answers = draft.answers.kept(for: item)
+        return draft
     }
 
-    public mutating func set(_ answers: QuestionAnswers, for key: String) {
-        byKey[key] = answers.isEmpty ? nil : answers
+    public mutating func set(_ draft: AnswerDraft, for key: String) {
+        byKey[key] = draft == AnswerDraft() ? nil : draft
     }
 
     public mutating func clear(_ key: String) { byKey[key] = nil }

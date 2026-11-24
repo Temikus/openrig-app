@@ -35,7 +35,7 @@ final class ActionStore {
     /// Text typed into composers and forms, by "<action key>|<field>". It outlives the popover, panel or tile that
     /// showed it and goes when that action succeeds.
     var drafts: [String: String] = [:]
-    /// Picks on a row's questions, by the For You panel's key; they go with the drafts.
+    /// The For You panel's picks, Tell and what already went out, by its key; they go with the drafts.
     var answers = AnswerDrafts()
 
     func clearDrafts(for key: String) {
