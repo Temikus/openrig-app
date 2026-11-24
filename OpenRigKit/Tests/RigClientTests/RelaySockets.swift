@@ -26,7 +26,7 @@ extension Trait where Self == RelaySockets {
 
 /// Two suites with the trait, each with tests that stay inside for a moment: no two may be inside at once. Without
 /// the lock, Swift Testing runs the suites side by side.
-enum RelaySocketsProbe {
+enum RelaySocketsTraitTests {
     static let lock = NSLock()
     nonisolated(unsafe) static var inside = 0
     nonisolated(unsafe) static var most = 0
@@ -40,14 +40,14 @@ enum RelaySocketsProbe {
         lock.withLock { inside -= 1 }
         #expect(lock.withLock { most } == 1, "two relay-socket tests ran at once")
     }
-}
 
-@Suite(.relaySockets) struct RelaySocketsProbeA {
-    @Test func one() async throws { try await RelaySocketsProbe.stay() }
-    @Test func two() async throws { try await RelaySocketsProbe.stay() }
-}
+    @Suite(.relaySockets) struct First {
+        @Test func one() async throws { try await RelaySocketsTraitTests.stay() }
+        @Test func two() async throws { try await RelaySocketsTraitTests.stay() }
+    }
 
-@Suite(.relaySockets) struct RelaySocketsProbeB {
-    @Test func one() async throws { try await RelaySocketsProbe.stay() }
-    @Test func two() async throws { try await RelaySocketsProbe.stay() }
+    @Suite(.relaySockets) struct Second {
+        @Test func one() async throws { try await RelaySocketsTraitTests.stay() }
+        @Test func two() async throws { try await RelaySocketsTraitTests.stay() }
+    }
 }

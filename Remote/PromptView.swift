@@ -15,6 +15,8 @@ struct PromptView: View {
     /// A newer prompt found by a re-read, kept until the person asks to see it.
     @State private var newer: RelayPrompt?
     @State private var endSeen = false
+    /// Bumped by `showNewPrompt`, so the command is a new view even when the new prompt reads the same.
+    @State private var promptsShown = 0
     /// The command's bottom edge in the scroll content's coordinates, and where the scroll view stands.
     @State private var commandEnd: Double?
     @State private var viewport: Viewport?
@@ -92,7 +94,7 @@ struct PromptView: View {
                         checkEnd()
                     }
                     .accessibilityLabel("Command: \(prompt.command)")
-                    .id(prompt.observedAt + prompt.command)
+                    .id("\(promptsShown) \(prompt.observedAt) \(prompt.command)")
                 Text("Allow once lets this one command run. “Always allow” is on the Mac.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -335,6 +337,7 @@ struct PromptView: View {
             return
         }
         shown = next
+        promptsShown += 1
         newer = nil
         outcome = nil
         answeredAt = nil

@@ -87,5 +87,19 @@ import Testing
         let json = #"{"session":"a@r","name":"a","state":"running","active":0,"blocked":0,"atPrompt":false}"#
         let seat = try JSONDecoder().decode(RelaySeat.self, from: Data(json.utf8))
         #expect(seat.activity == nil)
+        #expect(seat.promptObservedAt == nil)
+    }
+
+    /// A card's command is read again when a new prompt follows the one it showed, not only when the seat first stops.
+    @Test func aNewPromptOnTheSameSeatIsReadAgain() {
+        var seat = Self.seat(atPrompt: true)
+        seat.promptObservedAt = "2026-11-24T08:00:00.000Z"
+        #expect(seat.promptReadNeeded(readFor: nil))
+        #expect(!seat.promptReadNeeded(readFor: "2026-11-24T08:00:00.000Z"))
+        #expect(seat.promptReadNeeded(readFor: "2026-11-24T07:59:00.000Z"))
+        // An older Mac sends no time: the first read stands until the seat leaves the prompt.
+        seat.promptObservedAt = nil
+        #expect(!seat.promptReadNeeded(readFor: ""))
+        #expect(!Self.seat(atPrompt: false).promptReadNeeded(readFor: nil))
     }
 }

@@ -18,7 +18,9 @@ import Testing
         let words = UnpairWording(.pairAgain, mac: "Studio Mac", unsent: 2)
         #expect(words.title == "Drop 2 unsent answers and pair again?")
         #expect(words.message == "They haven't reached Studio Mac. " + tail)
-        #expect(UnpairWording(.pairAgain, mac: "Studio Mac", unsent: 1).title == "Drop 1 unsent answer and pair again?")
+        let one = UnpairWording(.pairAgain, mac: "Studio Mac", unsent: 1)
+        #expect(one.title == "Drop 1 unsent answer and pair again?")
+        #expect(one.message == "It hasn't reached Studio Mac. " + tail)
     }
 
     @Test func unpairWithAndWithoutAnswersWaiting() {

@@ -96,8 +96,7 @@ final class PhoneStore {
             if !saved || refusal != nil {
                 // No way in after all (the Keychain refused the key, or the relay couldn't listen on the Wi-Fi):
                 // take back what was just issued.
-                await unpair(phone, daemon: daemon, bearer: bearer)
-                await relay.refresh(daemon: daemon)
+                await unpair(phone, daemon: daemon, bearer: bearer, relay: relay)
                 let why = refusal?.message ?? "The Keychain didn't save the phone's key, so it couldn't connect."
                 code = .failed(phones.list.contains { $0.id == phone.id } ? Self.leftOver : why)
                 return
@@ -117,18 +116,19 @@ final class PhoneStore {
     func hideCode() { if case .showing = code { code = .hidden } }
 
     /// The code shown was not used: revoke its credential and drop its row, as Unpair does.
-    func cancelCode(daemon: URL, bearer: String?) async {
+    func cancelCode(daemon: URL, bearer: String?, relay: RelayStore) async {
         guard case .showing(let shown) = code, let phone = phones.list.first(where: { $0.id == shown.credentialID })
         else { return }
-        await unpair(phone, daemon: daemon, bearer: bearer)
+        await unpair(phone, daemon: daemon, bearer: bearer, relay: relay)
         if phones.list.contains(where: { $0.id == phone.id }) {
             // The revoke failed: the row stays with its error, and the code closes so it isn't scanned meanwhile.
             code = .hidden
         }
     }
 
-    /// Revokes the phone's credential, then forgets it. A failed revoke keeps the phone listed, so it can be tried again.
-    func unpair(_ phone: PairedPhone, daemon: URL, bearer: String?) async {
+    /// Revokes the phone's credential, then forgets it and drops its key from the running relay. A failed revoke keeps
+    /// the phone listed, so it can be tried again.
+    func unpair(_ phone: PairedPhone, daemon: URL, bearer: String?, relay: RelayStore) async {
         unpairErrors[phone.id] = nil
         if let refusal = phones.refusesRevoke(phone, at: daemon) {
             // A made-up row was never issued: forget it. Another daemon's row stays, with why.
@@ -140,6 +140,8 @@ final class PhoneStore {
         do {
             try await DaemonHTTP(baseURL: daemon, timeout: 5, bearer: bearer).revokeAppCredential(id: phone.id)
             forget(phone)
+            // Here, not only from the Settings window: it may close while the revoke is in flight.
+            await relay.refresh(daemon: daemon)
         } catch {
             unpairErrors[phone.id] = Self.message(error)
         }

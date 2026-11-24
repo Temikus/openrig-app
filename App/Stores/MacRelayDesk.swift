@@ -173,15 +173,15 @@ final class MacRelayDesk: RelayDesk {
         let rows = (try? await client.queue(rigName: name)) ?? []
         // Each Claude seat's own daemon stop, for whichever rig is asked: not only the one open on the Mac.
         let sessions = graph.seats.filter { $0.runtime == "claude-code" }.compactMap(\.sessionName)
-        let atPrompt = await withTaskGroup(of: (String, Bool).self) { group in
+        // Each seat at a prompt, with when the daemon saw it, so the phone reads a new prompt's command again.
+        let atPrompt = await withTaskGroup(of: (String, PermissionStop?).self) { group in
             for session in sessions {
-                group.addTask {
-                    let stop = try? await client.seatStatus(session: session).permissionStop
-                    return (session, stop?.state == .requestObserved)
-                }
+                group.addTask { (session, try? await client.seatStatus(session: session).permissionStop) }
             }
-            var found: Set<String> = []
-            for await (session, waiting) in group where waiting { found.insert(session) }
+            var found: [String: String] = [:]
+            for await (session, stop) in group where stop?.state == .requestObserved {
+                found[session] = stop?.observedAt.map { Self.time.format($0) } ?? ""
+            }
             return found
         }
         return graph.seats.compactMap { seat in
@@ -193,7 +193,8 @@ final class MacRelayDesk: RelayDesk {
                 session: session, name: seat.displayName, state: seat.status.rawValue, currentRow: current?.summary,
                 active: mine.count, blocked: blocked.count,
                 contextUsed: seat.contextUsedPercent.map { Double($0) / 100 },
-                runtime: seat.runtime, atPrompt: atPrompt.contains(session), activity: seat.activity?.state.rawValue)
+                runtime: seat.runtime, atPrompt: atPrompt[session] != nil, activity: seat.activity?.state.rawValue,
+                promptObservedAt: atPrompt[session])
         }
     }
 

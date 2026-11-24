@@ -51,12 +51,14 @@ import Testing
 
     /// One bad entry drops only itself. A source that can't be read still keeps the list from counting as complete.
     @Test func aBadEntryHidesOnlyItself() throws {
-        let json = #"""
-            {"requests": [{"asker": "no-id@openrig-app"}, {"requestId": "qitem-ok", "questions": []}],
-             "sources": [{"source": "queue", "state": "available"}, {"source": 7}]}
-            """#
-        let needs = try JSONDecoder().decode(AppNeedsMe.self, from: Data(json.utf8))
-        #expect(needs.requests.map(\.id) == ["qitem-ok"])
+        // The recorded list, with the first ask's id and a second source's fields broken.
+        var json = try JSONSerialization.jsonObject(with: RigFixtures.data("app-needs-me")) as! [String: Any]
+        var requests = json["requests"] as! [[String: Any]]
+        requests[0]["requestId"] = nil
+        json["requests"] = requests
+        json["sources"] = (json["sources"] as! [[String: Any]]) + [["source": 7]]
+        let needs = try JSONDecoder().decode(AppNeedsMe.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(needs.requests.map(\.id) == ["qitem-20261123102200-9c2e"])
         #expect(needs.sources.count == 2)
         #expect(!needs.isComplete)
     }

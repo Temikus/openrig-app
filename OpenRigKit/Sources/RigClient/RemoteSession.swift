@@ -227,7 +227,11 @@ public final class RemoteSession {
                     } catch {}
                 }
                 eventStream = stream
-                await withTaskCancellationHandler { await stream.value } onCancel: { stream.cancel() }
+                await withTaskCancellationHandler {
+                    await stream.value
+                } onCancel: {
+                    stream.cancel()
+                }
             }
             try? await Task.sleep(for: .seconds(5))
         }

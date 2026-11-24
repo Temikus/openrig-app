@@ -200,12 +200,15 @@ public struct RelaySeat: Codable, Sendable, Equatable {
     public var atPrompt: Bool
     /// The daemon's activity: "running", "idle", "needs_input" or "unknown". Nil from a Mac that doesn't send it.
     public var activity: String?
+    /// When the daemon saw the prompt, as `RelayPromptReading.observedAt` gives it. Nil from a Mac that doesn't send it.
+    public var promptObservedAt: String?
 
     public init(
         session: String, name: String, state: String, currentRow: String?, active: Int, blocked: Int,
-        contextUsed: Double?, runtime: String?, atPrompt: Bool, activity: String? = nil
+        contextUsed: Double?, runtime: String?, atPrompt: Bool, activity: String? = nil, promptObservedAt: String? = nil
     ) {
         self.activity = activity
+        self.promptObservedAt = promptObservedAt
         self.session = session
         self.name = name
         self.state = state
@@ -215,6 +218,14 @@ public struct RelaySeat: Codable, Sendable, Equatable {
         self.contextUsed = contextUsed
         self.runtime = runtime
         self.atPrompt = atPrompt
+    }
+
+    /// The prompt's command needs reading: none was read yet (`readFor` nil), or it was read for another prompt.
+    /// `readFor` is the `promptObservedAt` the last read was made for, "" when the Mac sent none.
+    public func promptReadNeeded(readFor: String?) -> Bool {
+        guard atPrompt else { return false }
+        guard let readFor else { return true }
+        return readFor != (promptObservedAt ?? "")
     }
 }
 

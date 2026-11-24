@@ -12,6 +12,8 @@ final class RigsStore {
     var seats: [String: [RelaySeat]] = [:]
     /// The command a seat at a prompt asks to run, by session.
     var prompts: [String: String] = [:]
+    /// The prompt each command was read for (`RelaySeat.promptObservedAt`), by session.
+    private var promptsReadFor: [String: String] = [:]
     /// The last read that failed, in words. Cleared by the next one that works.
     var readError: String?
     /// Drafts by session, kept until sent.
@@ -32,6 +34,7 @@ final class RigsStore {
         rigs = nil
         seats = [:]
         prompts = [:]
+        promptsReadFor = [:]
         results = [:]
     }
 
@@ -62,12 +65,16 @@ final class RigsStore {
             guard current(client) else { return }
             seats[rig] = list
             readError = nil
-            for seat in list where seat.atPrompt && prompts[seat.session] == nil {
+            for seat in list where seat.promptReadNeeded(readFor: promptsReadFor[seat.session]) {
                 let command = try? await client.prompt(session: seat.session).command
                 guard current(client) else { return }
                 prompts[seat.session] = command
+                promptsReadFor[seat.session] = command == nil ? nil : seat.promptObservedAt ?? ""
             }
-            for seat in list where !seat.atPrompt { prompts[seat.session] = nil }
+            for seat in list where !seat.atPrompt {
+                prompts[seat.session] = nil
+                promptsReadFor[seat.session] = nil
+            }
         } catch {
             if current(client) { note(error, macName: macName) }
         }
@@ -177,7 +184,8 @@ struct RigsView: View {
                 if let readError = store.readError { ReadErrorRow(words: readError) }
                 ForEach(rigs, id: \.id) { rig in
                     NavigationLink(value: RigsLink.rig(rig.name)) {
-                        // What Needs you lists for this rig, so the rows add up to its tab badge.
+                        // What Needs you lists for this rig. The rows can fall short of the tab badge: an item whose
+                        // rig has no row here counts only there.
                         RigRow(rig: rig, waiting: model.needsYouList?.count(inRig: rig.name) ?? 0)
                     }
                 }
@@ -512,10 +520,13 @@ enum SeatSheet: String, Identifiable {
 /// The seat is stopped at a prompt: what it asks to run. It opens the prompt screen, where it's answered.
 struct PromptCard: View {
     var command: String?
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Stopped at a prompt · asks to run").font(.subheadline.weight(.semibold))
+            // Shorter at accessibility sizes, so the card's last line clears the tab bar.
+            Text(typeSize.isAccessibilitySize ? "Asks to run" : "Stopped at a prompt · asks to run")
+                .font(.subheadline.weight(.semibold))
             if let command {
                 Text(command).font(.footnote.monospaced()).lineLimit(3)
             }

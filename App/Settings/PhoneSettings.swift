@@ -76,7 +76,7 @@ struct PhoneSettings: View {
             presenting: confirming
         ) { phone in
             Button("Unpair", role: .destructive) {
-                Task { await phones.unpair(phone, daemon: daemon, bearer: store.token) }
+                Task { await phones.unpair(phone, daemon: daemon, bearer: store.token, relay: store.relay) }
             }
         } message: { _ in
             Text("It stops answering at once.")
@@ -88,8 +88,10 @@ struct PhoneSettings: View {
         LabeledContent {
             if case .showing = phones.code {
                 HStack {
-                    Button("Cancel Code") { Task { await phones.cancelCode(daemon: daemon, bearer: store.token) } }
-                        .help("Revokes this code. Use it if no phone has scanned it.")
+                    Button("Cancel Code") {
+                        Task { await phones.cancelCode(daemon: daemon, bearer: store.token, relay: store.relay) }
+                    }
+                    .help("Revokes this code. Use it if no phone has scanned it.")
                     Button("Hide Code") { phones.hideCode() }
                         .help("Hides the code. It still works until you unpair it.")
                 }
@@ -184,9 +186,9 @@ private struct CodePanel: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Scan this with OpenRig on your iPhone")
                 Text(
-                    "Anyone with this code can act as you: answer questions and permission prompts, message seats, "
-                        + "queue tasks and close rows waiting on you. Leaving this tab hides the code. It still works "
-                        + "until you unpair it."
+                    "Anyone with this code can act as you: answer questions, allow or decline permission prompts, "
+                        + "message seats, queue tasks and close rows waiting on you. Leaving this tab hides the code. "
+                        + "It still works until you unpair it."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)

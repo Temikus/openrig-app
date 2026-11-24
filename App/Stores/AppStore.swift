@@ -62,7 +62,15 @@ final class AppStore {
         case unreachable(reason: String, since: Date)
     }
 
-    private(set) var endpoint: DaemonEndpoint
+    /// The relay forwards to this daemon and acts through it, so it follows every change: a daemon on another
+    /// machine turns it off, and it never forwards to an old address.
+    private(set) var endpoint: DaemonEndpoint {
+        didSet {
+            guard endpoint.baseURL != oldValue.baseURL else { return }
+            let url = endpoint.baseURL
+            Task { await relay.refresh(daemon: url) }
+        }
+    }
     private(set) var daemon: DaemonState = .connecting
     private(set) var rigs: [RigSummary] = []
     /// True while the event stream is connected; otherwise the views rely on polling.

@@ -67,9 +67,9 @@ import Testing
         #expect(remote.shownRequests?.isEmpty == true)
     }
 
-    /// review-code's probe: the first of two answers is never confirmed. Only it is sent, the record says the second
-    /// wasn't, and the second pick waits.
-    @Test func probeUnfinishedChainKeepsTheRest() async throws {
+    /// The first of two answers is never confirmed. Only it is sent, the record says the second wasn't, and the
+    /// second pick waits.
+    @Test func anUnconfirmedFirstAnswerHoldsBackTheRest() async throws {
         let unsaved = try appFixture("app-error-503-unsaved")
         let (remote, script) = try await session([
             .status(503, unsaved), .status(503, unsaved), .status(503, unsaved), .status(200, try needsMe()),

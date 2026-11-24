@@ -19,6 +19,7 @@ public struct UnpairWording: Equatable, Sendable {
             title = unsent > 0 ? "Drop \(answers) and unpair?" : "Unpair this phone?"
             confirm = "Unpair"
         }
-        message = unsent > 0 ? "They haven't reached \(mac). " + tail : tail
+        let reached = unsent == 1 ? "It hasn't reached \(mac). " : "They haven't reached \(mac). "
+        message = unsent > 0 ? reached + tail : tail
     }
 }
