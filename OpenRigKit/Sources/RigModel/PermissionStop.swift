@@ -47,15 +47,22 @@ public struct PermissionStopState: OpenString {
 /// The slice of `GET /api/seat/status/:seat` the app uses.
 public struct SeatStatusReport: Decodable, Sendable, Equatable {
     public var permissionStop: PermissionStop
+    /// The folder the seat was launched in: a row's relative paths resolve against its source seat's.
+    public var launchCwd: String?
 
-    public init(permissionStop: PermissionStop) {
+    public init(permissionStop: PermissionStop, launchCwd: String? = nil) {
         self.permissionStop = permissionStop
+        self.launchCwd = launchCwd
     }
 
-    private enum CodingKeys: String, CodingKey { case permissionStop = "permission_stop" }
+    private enum CodingKeys: String, CodingKey {
+        case permissionStop = "permission_stop"
+        case launchCwd = "launch_cwd"
+    }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         permissionStop = c.lenient(PermissionStop.self, .permissionStop) ?? .unavailable
+        launchCwd = c.lenient(String.self, .launchCwd)
     }
 }
