@@ -17,11 +17,16 @@ struct CanvasView: View {
     @Environment(\.appearsActive) private var appearsActive
     /// Zoom to Fit was asked for, so refits may shrink the whole rig into view.
     @State private var fitsWhole = false
+    @State private var placements = ChipPlacements()
 
     var body: some View {
-        if let graph = rig.graph, let layout = rig.layout {
+        if let graph = rig.graph, let placed = rig.layout {
+            let routes = rig.routes(selected: selection.qitemID)
+            let chips = placements.chips(for: routes, in: placed, rig: rig)
+            // The layout's bounds grown to hold labels past the last column; everything below sizes by it.
+            let layout = placed.with(bounds: chips.bounds)
             ScrollView([.horizontal, .vertical]) {
-                CanvasContent(graph: graph, layout: layout, routes: rig.routes(selected: selection.qitemID))
+                CanvasContent(graph: graph, layout: layout, routes: routes, chips: chips.chips)
                     .frame(width: layout.bounds.width, height: layout.bounds.height)
                     .scaleEffect(zoom, anchor: .topLeading)
                     .frame(
@@ -72,7 +77,8 @@ struct CanvasView: View {
                         fit(layout)
                     })
             )
-            .onChange(of: layout.bounds.size) { if !userZoomed { fit(layout) } }
+            // Only when seats move: labels come and go with rows and selection, and a refit scrolls to the top.
+            .onChange(of: placed.bounds.size) { if !userZoomed { fit(layout) } }
             .gesture(
                 MagnifyGesture()
                     .onChanged { value in
@@ -145,6 +151,7 @@ struct CanvasContent: View {
     let graph: RigGraph
     let layout: CanvasLayout
     let routes: RouteResult
+    let chips: [PlacedChip]
     @Environment(RigStore.self) private var rig
     @Environment(AppStore.self) private var app
     @Environment(SelectionStore.self) private var selection
@@ -169,13 +176,6 @@ struct CanvasContent: View {
             WireLayer(
                 routes: routes, selectedQItem: selection.qitemID,
                 focus: Set([selection.seatID, hoveredSeat].compactMap(\.self)))
-            ForEach(chips, id: \.wire.id) { chip in
-                WireChip(
-                    item: chip.item, kind: chip.wire.kind, label: chip.label,
-                    isSelected: chip.wire.kind != .next && chip.item.id == selection.qitemID
-                ) { selection.select(qitem: chip.item.id) }
-                .position(chip.anchor)
-            }
             ForEach(graph.seats) { seat in
                 if let frame = layout.seats[seat.id] {
                     // Not wrapped in a Button: the node holds its own buttons (the permission control).
@@ -205,6 +205,16 @@ struct CanvasContent: View {
                     .accessibilityFocused($voiceOverSeat, equals: seat.id)
                 }
             }
+            // Above a card's edge if a label still meets one, but below a prompt card (zIndex 1): in a held layout it
+            // can grow over a label, and its Allow and No buttons must stay on top.
+            ForEach(chips, id: \.wire.id) { chip in
+                WireChip(
+                    item: chip.item, kind: chip.wire.kind, label: chip.label,
+                    isSelected: chip.wire.kind != .next && chip.item.id == selection.qitemID
+                ) { selection.select(qitem: chip.item.id) }
+                .position(x: chip.frame.midX, y: chip.frame.midY)
+                .zIndex(0.5)
+            }
         }
         .onChange(of: voiceOverSeat != nil) { _, on in rig.canvasVoiceOver = on }
         .onDisappear { rig.canvasVoiceOver = false }
@@ -233,22 +243,6 @@ struct CanvasContent: View {
         return order
     }
 
-    /// One label per work wire and next hop (not past hops), placed clear of the seats.
-    private var chips: [(wire: Wire, item: QItem, label: String?, anchor: CGPoint)] {
-        let seats = Array(layout.seats.values)
-        return routes.wires.compactMap { wire in
-            if wire.id.hasPrefix("q:"), let item = rig.item(String(wire.id.dropFirst(2))) {
-                return (wire, item, nil, chipAnchor(for: wire, avoiding: seats))
-            }
-            if wire.id.hasPrefix("next:"), let item = rig.item(String(wire.id.dropFirst(5))),
-                let hop = rig.nextHop(for: item.id)
-            {
-                return (wire, item, "next: \(hop.nextStepID)", chipAnchor(for: wire, avoiding: seats))
-            }
-            return nil
-        }
-    }
-
     private var podFrames: [(id: String, title: String, count: Int, frame: CGRect)] {
         var out = graph.pods.compactMap { pod in
             layout.pods[pod.id].map { (pod.id, pod.label, graph.seats(in: pod.id).count, $0) }
@@ -257,6 +251,61 @@ struct CanvasContent: View {
             out.append((unassignedPodID, "Unassigned", 0, frame))
         }
         return out
+    }
+}
+
+/// A wire label with its box on the canvas.
+struct PlacedChip {
+    let wire: Wire
+    let item: QItem
+    let label: String?
+    let frame: CGRect
+}
+
+/// Places the canvas's wire labels, and keeps the last result: the canvas redraws on every zoom and scroll step.
+@MainActor final class ChipPlacements {
+    private var last: (wires: [Wire], labels: [WireLabel], layout: CanvasLayout, placement: LabelPlacement)?
+
+    /// One label per work wire and next hop (not past hops), placed clear of the seats and of each other.
+    func chips(for routes: RouteResult, in layout: CanvasLayout, rig: RigStore) -> (chips: [PlacedChip], bounds: CGRect)
+    {
+        let found: [(wire: Wire, item: QItem, label: String?)] = routes.wires.compactMap { wire in
+            if wire.id.hasPrefix("q:"), let item = rig.item(String(wire.id.dropFirst(2))) {
+                return (wire, item, nil)
+            }
+            if wire.id.hasPrefix("next:"), let item = rig.item(String(wire.id.dropFirst(5))),
+                let hop = rig.nextHop(for: item.id)
+            {
+                return (wire, item, "next: \(hop.nextStepID)")
+            }
+            return nil
+        }
+        let labels = found.map {
+            WireLabel(
+                wireID: $0.wire.id,
+                size: WireChip.size(of: WireChip.text(item: $0.item, kind: $0.wire.kind, label: $0.label)))
+        }
+        let placement: LabelPlacement
+        if let last, last.wires == routes.wires, last.labels == labels, last.layout == layout {
+            placement = last.placement
+        } else {
+            placement = placeLabels(labels, on: routes.wires, in: layout)
+            last = (routes.wires, labels, layout, placement)
+        }
+        let chips = found.compactMap { chip in
+            placement.frames[chip.wire.id].map {
+                PlacedChip(wire: chip.wire, item: chip.item, label: chip.label, frame: $0)
+            }
+        }
+        return (chips, placement.bounds)
+    }
+}
+
+extension CanvasLayout {
+    func with(bounds: CGRect) -> CanvasLayout {
+        var copy = self
+        copy.bounds = bounds
+        return copy
     }
 }
 

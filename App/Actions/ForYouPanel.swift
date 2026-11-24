@@ -12,19 +12,22 @@ struct ForYouPanel: View {
     @Environment(RigStore.self) private var rig
     @Environment(ActionStore.self) private var actions
     @State private var note = ""
-    @State private var tell = true
     @State private var replying = false
-    /// The message that already reached the asker, so a retry after a failed close doesn't send it twice.
-    @State private var sent: RigAction?
-    /// A reply went out from this panel, so Done can record the question as answered.
-    @State private var replied = false
-    /// The person's picks for a row with questions, sent together.
-    @State private var choices = QuestionAnswers()
 
     /// Shared with QItemInspector, which shows the outcome once the closed row drops this panel.
     static func key(_ item: QItem) -> String { "answer:\(item.id)" }
     private var key: String { Self.key(item) }
     private var asker: String { rig.displayName(session: item.source) }
+    /// Picks, Tell and what already went out, kept in ActionStore: the inspector rebuilds this panel for each row.
+    private var draft: AnswerDraft { actions.answers.draft(key, on: item) }
+    private func kept<Value>(_ field: WritableKeyPath<AnswerDraft, Value>) -> Binding<Value> {
+        Binding(get: { draft[keyPath: field] }, set: { value in update { $0[keyPath: field] = value } })
+    }
+    private func update(_ change: (inout AnswerDraft) -> Void) {
+        var next = draft
+        change(&next)
+        actions.answers.set(next, for: key)
+    }
     private var askerSeat: Seat? { rig.seat(session: item.source) }
     private var busy: Bool { actions.isRunning(key) || actions.offline }
     /// Tell only reaches a seat in this rig; anywhere else the answer is only recorded on the row.
@@ -53,33 +56,27 @@ struct ForYouPanel: View {
             if replying, let askerSeat {
                 MessageComposer(seat: askerSeat, inline: true, autofocus: true) {
                     replying = false
-                    replied = true
+                    update { $0.replied = true }
                 }
             }
         }
         .padding(12)
         .background((kind == .decision ? Color.attention : .secondary).opacity(0.06), in: .rect(cornerRadius: 10))
-        .onChange(of: item.id) {
-            note = ""
-            tell = true
-            replying = false
-            sent = nil
-            replied = false
-            choices = QuestionAnswers()
-        }
     }
 
     private var decision: some View {
         VStack(alignment: .leading, spacing: 8) {
             TextField(
-                canTell && tell ? "Reason or next step (optional)" : "Note (recorded on the row)", text: $note,
+                canTell && draft.tell ? "Reason or next step (optional)" : "Note (recorded on the row)", text: $note,
                 axis: .vertical
             )
             .lineLimit(1...4)
+            .keepsDraft($note, key, "note")
             .help(
-                canTell && tell ? "Goes to \(asker) with your answer, and onto the row." : "Recorded on the row only.")
+                canTell && draft.tell
+                    ? "Goes to \(asker) with your answer, and onto the row." : "Recorded on the row only.")
             if canTell {
-                Toggle("Tell \(asker)", isOn: $tell)
+                Toggle("Tell \(asker)", isOn: kept(\.tell))
                     .toggleStyle(.checkbox)
                     .help("Also sends your answer to \(asker) with rig send. Closing alone only records it on the row.")
             } else {
@@ -107,10 +104,11 @@ struct ForYouPanel: View {
         if item.humanQuestions.isEmpty {
             questionsWithoutShape
         } else {
-            let missing = choices.missing(in: item).count
+            let missing = draft.answers.missing(in: item).count
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(item.humanQuestions) { question in
-                    QuestionPicker(question: question, recorded: item.humanAnswers[question.id], answers: $choices)
+                    QuestionPicker(
+                        question: question, recorded: item.humanAnswers[question.id], answers: kept(\.answers))
                 }
                 HStack {
                     ActionStatusLine(key: key)
@@ -132,15 +130,17 @@ struct ForYouPanel: View {
     }
 
     private func sendAnswers() async {
-        let calls = choices.calls(for: item)
+        let answers = draft.answers
+        let calls = answers.calls(for: item)
         var sentCount = 0
-        _ = await choices.run(on: item) { call in
+        let done = await answers.run(on: item) { call in
             sentCount += 1
             // Only the last call finishes the ask; earlier ones only record a pick.
             let last = sentCount == calls.count
             return await actions.answer(
                 call, on: item.id, key: key, success: last ? "Answers sent to \(asker)" : "Recorded")
         }
+        if done { actions.clearDrafts(for: key) }
     }
 
     /// A row whose questions didn't decode: answer in your own words, then close.
@@ -185,16 +185,21 @@ struct ForYouPanel: View {
 
     /// A failed message or close shows its error beside the buttons and leaves the row open.
     private func answer(_ verdict: Answer.Verdict) async {
-        let answer = Answer(verdict, note: note, tell: tell && canTell, replied: replied)
-        let outcome = answer.outcome(asker: asker, told: answer.message(for: item) != nil || sent != nil)
-        let result = await answer.run(on: item, alreadySent: sent) { action in
+        let draft = draft
+        let answer = Answer(verdict, note: note, tell: draft.tell && canTell, replied: draft.replied)
+        let outcome = answer.outcome(asker: asker, told: answer.message(for: item) != nil || draft.sent != nil)
+        let result = await answer.run(on: item, alreadySent: draft.sent) { action in
             // The outcome waits for the close, so a close that then fails never shows a success first.
             if case .send = action {
                 return await actions.perform(action, key: key, success: "\(asker) told; closing…")
             }
             return await actions.perform(action, key: key, success: outcome)
         }
-        sent = result.closed ? nil : result.sent
+        if result.closed {
+            actions.clearDrafts(for: key)
+        } else {
+            update { $0.sent = result.sent }
+        }
     }
 }
 

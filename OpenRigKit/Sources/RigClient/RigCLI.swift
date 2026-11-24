@@ -134,33 +134,48 @@ public struct RigCLI: Sendable {
     public var bearer: String?
     /// Prepended to PATH: the folder of a node the person picked (nvm, asdf, mise).
     public var extraPath: String?
+    /// The person's shell PATH (`ShellPath`), after `extraPath`, so `rig` finds the node their terminal uses.
+    public var shellPath: [String]
 
     public init(
-        executable: URL, actor: String, daemonURL: URL? = nil, bearer: String? = nil, extraPath: String? = nil
+        executable: URL, actor: String, daemonURL: URL? = nil, bearer: String? = nil, extraPath: String? = nil,
+        shellPath: [String] = []
     ) {
         self.executable = executable
         self.actor = actor
         self.daemonURL = daemonURL
         self.bearer = bearer
         self.extraPath = extraPath
+        self.shellPath = shellPath
     }
 
+    /// The usual install places, searched after the shell's PATH.
     public static let searchPaths = ["/opt/homebrew/bin/rig", "/usr/local/bin/rig"]
 
-    /// GUI apps don't inherit the shell's PATH, so look in the usual install places.
+    /// The first `rig` in `searchPaths`.
     public static func locate(searchPaths: [String] = searchPaths, actor: String = Human.session) -> RigCLI? {
         ToolLocator.resolve(override: nil, searchPaths: searchPaths).map { RigCLI(executable: $0.url, actor: actor) }
     }
 
+    /// The `rig` the person's shell finds, else one in the usual install places, run with the shell's PATH.
+    public static func find(actor: String = Human.session) async -> RigCLI? {
+        let shellPath = await ShellPath.load()
+        let paths = ToolLocator.searchPaths(for: "rig", shellPath: shellPath, fallback: searchPaths)
+        var cli = locate(searchPaths: paths, actor: actor)
+        cli?.shellPath = shellPath
+        return cli
+    }
+
     static func environment(
-        base: [String: String], actor: String, daemonURL: URL? = nil, bearer: String? = nil, extraPath: String? = nil
+        base: [String: String], actor: String, daemonURL: URL? = nil, bearer: String? = nil, extraPath: String? = nil,
+        shellPath: [String] = []
     ) -> [String: String] {
         var env = base
         env["OPENRIG_SESSION_NAME"] = actor
         if let daemonURL { env["OPENRIG_URL"] = daemonURL.absoluteString }
         if let bearer, !bearer.isEmpty { env["OPENRIG_AUTH_BEARER_TOKEN"] = bearer }
         // rig is a Node script: its `#!/usr/bin/env node` needs node on PATH.
-        let prefix = (extraPath.map { [$0] } ?? []) + ["/opt/homebrew/bin", "/usr/local/bin"]
+        let prefix = (extraPath.map { [$0] } ?? []) + shellPath + ["/opt/homebrew/bin", "/usr/local/bin"]
         env["PATH"] = (prefix + [base["PATH"] ?? "/usr/bin:/bin"]).joined(separator: ":")
         env["NO_COLOR"] = "1"
         return env
@@ -176,7 +191,7 @@ public struct RigCLI: Sendable {
         process.arguments = arguments
         process.environment = Self.environment(
             base: ProcessInfo.processInfo.environment, actor: actor, daemonURL: daemonURL, bearer: bearer,
-            extraPath: extraPath)
+            extraPath: extraPath, shellPath: shellPath)
         let input = Pipe()
         let out = Pipe()
         let err = Pipe()

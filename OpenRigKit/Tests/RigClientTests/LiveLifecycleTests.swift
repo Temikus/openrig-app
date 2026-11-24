@@ -12,7 +12,8 @@ import Testing
 @Suite(
     .serialized,
     .enabled("set OPENRIG_TEST_RIG=<throwaway rig> (just test-lifecycle)") {
-        ProcessInfo.processInfo.environment["OPENRIG_TEST_RIG"] != nil && RigCLI.locate() != nil
+        guard ProcessInfo.processInfo.environment["OPENRIG_TEST_RIG"] != nil else { return false }
+        return await RigCLI.find() != nil
     })
 struct LiveLifecycleTests {
     let rigName = ProcessInfo.processInfo.environment["OPENRIG_TEST_RIG"] ?? ""
@@ -20,7 +21,7 @@ struct LiveLifecycleTests {
 
     @Test(.timeLimit(.minutes(3))) func stopStartAndResumeOneSeat() async throws {
         let me = Human.address(in: try? await http.participants())
-        let cli = try #require(RigCLI.locate(actor: me))
+        let cli = try #require(await RigCLI.find(actor: me))
         let tmux = try #require(Tmux.locate())
         let id = try #require(try await http.rigs().first { $0.name == rigName }?.id, "no rig named \(rigName)")
 
