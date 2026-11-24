@@ -35,9 +35,12 @@ final class ActionStore {
     /// Text typed into composers and forms, by "<action key>|<field>". It outlives the popover, panel or tile that
     /// showed it and goes when that action succeeds.
     var drafts: [String: String] = [:]
+    /// The For You panel's picks, Tell and what already went out, by its key; they go with the drafts.
+    var answers = AnswerDrafts()
 
     func clearDrafts(for key: String) {
         drafts = drafts.filter { !$0.key.hasPrefix(key + "|") }
+        answers.clear(key)
     }
 
     init(cli: RigCLI? = nil) {
