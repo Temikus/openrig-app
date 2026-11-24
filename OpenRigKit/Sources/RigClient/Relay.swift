@@ -241,10 +241,18 @@ public final class RelayServer: @unchecked Sendable {
                         let type = http?.value(forHTTPHeaderField: "Content-Type") ?? ""
                         let headers = type.isEmpty ? [:] : ["Content-Type": type]
                         if type.hasPrefix("text/event-stream") {
-                            for try await line in bytes.lines {
+                            // Split by hand: AsyncBytes.lines drops the blank line that ends each event.
+                            var line = Data()
+                            for try await byte in bytes {
+                                line.append(byte)
+                                guard byte == UInt8(ascii: "\n") else { continue }
                                 continuation.yield(
-                                    RelayResponse(
-                                        status: status, headers: headers, body: Data((line + "\n").utf8), more: true))
+                                    RelayResponse(status: status, headers: headers, body: line, more: true))
+                                line.removeAll(keepingCapacity: true)
+                            }
+                            if !line.isEmpty {
+                                continuation.yield(
+                                    RelayResponse(status: status, headers: headers, body: line, more: true))
                             }
                             continuation.yield(RelayResponse(status: status, headers: headers))
                         } else {

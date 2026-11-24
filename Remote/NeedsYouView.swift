@@ -32,7 +32,8 @@ struct NeedsYouView: View {
                 unavailable(
                     "Can't reach \(model.macName)", systemImage: "wifi.exclamationmark",
                     description:
-                        "Check that the Mac is awake with OpenRig open, and that this phone is on the same Wi-Fi.",
+                        "Check that the Mac is awake with OpenRig open, and that this phone is on the same Wi-Fi."
+                        + (viaRelay ? " If you unpaired this phone on the Mac, pair it again." : ""),
                     detail: detail
                 ) { retry }
             case .localNetworkDenied:
@@ -93,6 +94,10 @@ struct NeedsYouView: View {
             }
         }
     }
+
+    /// Paired through the Mac's relay. After Unpair the relay refuses the phone's key, and iOS doesn't always report
+    /// the refusal: sometimes the handshake just stalls, which reads as out of reach.
+    var viaRelay: Bool { model.pairing?.code.reaches.contains { $0.kind == .lan } == true }
 
     var retry: some View {
         Button("Try again") { Task { await model.refresh() } }.disabled(model.checking)

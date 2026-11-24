@@ -52,7 +52,7 @@ public struct RemoteConnector: Sendable {
     var localNetworkDenied: @Sendable (RemoteEndpoint) async -> Bool
 
     public init(
-        client: @escaping @Sendable (RemoteEndpoint, PairingCode) -> AppClient? = Self.httpClient,
+        client: @escaping @Sendable (RemoteEndpoint, PairingCode) -> AppClient? = Self.standardClient(),
         localNetworkDenied: @escaping @Sendable (RemoteEndpoint) async -> Bool
     ) {
         self.client = client
@@ -60,6 +60,23 @@ public struct RemoteConnector: Sendable {
     }
 
     public static let httpClient = plainHTTPClient()
+
+    /// A `lan` endpoint goes through the Mac's relay, encrypted and keyed by the pairing secret, under the
+    /// credential id; without a usable secret it gets nothing. Every other kind follows `plainHTTPClient`.
+    public static func standardClient(
+        allowingLoopback: Bool = loopbackIsThisMac
+    ) -> @Sendable (RemoteEndpoint, PairingCode) -> AppClient? {
+        let plain = plainHTTPClient(allowingLoopback: allowingLoopback)
+        return { endpoint, code in
+            guard endpoint.kind == .lan else { return plain(endpoint, code) }
+            guard let secret = code.pairingSecret.flatMap(RelayLink.decode),
+                let port = UInt16(exactly: endpoint.port)
+            else { return nil }
+            return RelayTransport.client(
+                host: endpoint.host, port: port, identity: code.credentialID, secret: secret, token: code.token,
+                actor: code.actor, timeout: 5)
+        }
+    }
 
     /// Plain HTTP carries the token in clear, so it goes only where the path is private by construction:
     /// - loopback, when that is this Mac (the simulator). On a phone it is the phone itself.

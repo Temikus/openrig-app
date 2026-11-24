@@ -92,19 +92,18 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSCameraUsageDescription: The camera reads the pairing code that OpenRig shows on your Mac.
+        # The relay link opens a connection to the Mac's home-network address, which needs Local Network access.
         NSLocalNetworkUsageDescription: OpenRig connects to your Mac on this Wi-Fi to show what your seats ask you.
         # Pairing links: openrig-remote://pair?… (RigModel's PairingCode).
         CFBundleURLTypes:
           - CFBundleURLName: dev.openrig.Remote.pair
             CFBundleURLSchemes: [openrig-remote]
-        # The daemon serves plain HTTP. iOS 17+ blocks HTTP to IP addresses unless an exception names them.
-        # Allowed: the tailnet (CGNAT range and MagicDNS names), and loopback for the simulator, which
-        # reaches the Mac's daemon there. Every other host keeps full ATS. Wi-Fi needs no entry: the relay
-        # link is TLS over NWConnection, which ATS doesn't govern.
+        # The daemon serves plain HTTP. Allowed: MagicDNS names (the phone sends plain HTTP to no tailnet IP,
+        # RigClient's plainHTTPClient), and loopback for the simulator, which reaches the Mac's daemon there.
+        # Every other host keeps full ATS. Wi-Fi needs no entry: the relay link is TLS over NWConnection,
+        # which ATS doesn't govern.
         NSAppTransportSecurity:
           NSExceptionDomains:
-            100.64.0.0/10:
-              NSExceptionAllowsInsecureHTTPLoads: true
             ts.net:
               NSIncludesSubdomains: true
               NSExceptionAllowsInsecureHTTPLoads: true

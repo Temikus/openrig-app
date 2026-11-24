@@ -5,9 +5,20 @@ import RigModel
 extension RemoteSession {
     /// The Keychain and the real network. Debug builds apply `OPENRIG_DEBUG_STATE`.
     static func live() -> RemoteSession {
+        let standard = RemoteConnector.standardClient()
+        #if DEBUG
+            let relayHost = DebugHooks.relayHost
+        #endif
+        let client: @Sendable (RemoteEndpoint, PairingCode) -> AppClient? = { endpoint, code in
+            var endpoint = endpoint
+            #if DEBUG
+                if endpoint.kind == .lan, let relayHost { endpoint.host = relayHost }
+            #endif
+            return standard(endpoint, code)
+        }
         let session = RemoteSession(
             store: KeychainPairingStore(), outbox: FileAnswerOutbox.standard(),
-            connector: RemoteConnector(localNetworkDenied: { await RigClient.localNetworkDenied($0) }))
+            connector: RemoteConnector(client: client, localNetworkDenied: { await RigClient.localNetworkDenied($0) }))
         #if DEBUG
             session.statusOverride = DebugHooks.state
         #endif
@@ -45,6 +56,10 @@ enum PairingStep: Hashable {
 
         /// Opens this ask's question screen once the list has it.
         static var openAsk: String? { environment["OPENRIG_DEBUG_OPEN_ASK"] }
+
+        /// Sends every `lan` reach to this host instead, still through the relay: `127.0.0.1` reaches a relay a
+        /// seat runs on loopback, so nothing listens on the Wi-Fi and macOS never asks about the firewall.
+        static var relayHost: String? { environment["OPENRIG_DEBUG_RELAY_HOST"] }
 
         /// A draft for the opened ask: `reply:<text>`, or `picks:<question>=<option>,…`.
         static var draft: AppAnswerDraft? {

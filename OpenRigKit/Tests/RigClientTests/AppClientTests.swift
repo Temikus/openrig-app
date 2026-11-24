@@ -38,6 +38,8 @@ struct Script {
 final class ScriptedProtocol: URLProtocol, @unchecked Sendable {
     enum Reply {
         case status(Int, Data = Data())
+        /// A 200 `text/event-stream`, as the daemon sends `/events`.
+        case events(Data)
         /// The connection drops before any response: the "lost response" case.
         case drop
     }
@@ -72,6 +74,13 @@ final class ScriptedProtocol: URLProtocol, @unchecked Sendable {
             client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
         case .status(let code, let data):
             let response = HTTPURLResponse(url: request.url!, statusCode: code, httpVersion: nil, headerFields: nil)!
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        case .events(let data):
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: 200, httpVersion: nil,
+                headerFields: ["Content-Type": "text/event-stream"])!
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
             client?.urlProtocolDidFinishLoading(self)

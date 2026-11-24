@@ -48,8 +48,10 @@ public enum RelayLink {
 }
 
 public enum RelayLinkError: Error, Equatable, Sendable {
-    /// The handshake didn't finish: a wrong secret, or nothing listening.
+    /// Nothing answered, or the connection broke before the handshake.
     case notConnected(String)
+    /// The relay answered but refused the key: a wrong secret, or one the Mac forgot at Unpair.
+    case refused(String)
     case closed
     case tooLarge(Int)
 }
@@ -83,7 +85,9 @@ public final class RelayChannel: @unchecked Sendable {
                 switch state {
                 case .ready: once.run { continuation.resume() }
                 case .failed(let error), .waiting(let error):
-                    once.run { continuation.resume(throwing: RelayLinkError.notConnected("\(error)")) }
+                    let failure: RelayLinkError =
+                        if case .tls = error { .refused("\(error)") } else { .notConnected("\(error)") }
+                    once.run { continuation.resume(throwing: failure) }
                 case .cancelled: once.run { continuation.resume(throwing: RelayLinkError.closed) }
                 default: break
                 }
