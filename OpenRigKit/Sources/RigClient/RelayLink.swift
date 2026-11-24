@@ -8,25 +8,40 @@ import Network
 /// handshake. The secret itself never crosses the network, and everything after the handshake is encrypted.
 /// URLSession can't speak TLS-PSK, so the phone talks to the relay over `RelayChannel`, not HTTP.
 public enum RelayLink {
-    /// Names the key in the handshake. Not secret.
-    static let identity = "openrig-remote"
+    /// Names the key in the handshake when there is only one. Not secret; a paired phone uses its credential id.
+    public static let defaultIdentity = "openrig-remote"
 
     /// A new pairing secret: 256 random bits.
     public static func newSecret() -> Data {
         SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) }
     }
 
-    /// TLS parameters keyed by `secret`. The PSK is derived from it, so the raw secret is never the key on the wire.
-    public static func parameters(secret: Data) -> NWParameters {
+    /// A phone's side: its identity (its credential id) and the secret from the QR code.
+    public static func parameters(identity: String = defaultIdentity, secret: Data) -> NWParameters {
+        tls([identity: secret])
+    }
+
+    /// The relay's side: one key per paired phone, picked by the identity the phone presents. A phone not listed
+    /// can't finish the handshake.
+    public static func serverParameters(keys: [String: Data]) -> NWParameters {
+        tls(keys)
+    }
+
+    /// TLS 1.2 with a PSK cipher suite. Each PSK is derived from its secret, so the raw secret is never the key.
+    /// No forward secrecy: a secret leaked later decrypts traffic recorded earlier. TLS 1.3's psk_dhe_ke would fix
+    /// that, but Network framework fails a 1.3 handshake keyed by an external PSK alone (-9858, tried on macOS 27).
+    private static func tls(_ keys: [String: Data]) -> NWParameters {
         let tls = NWProtocolTLS.Options()
-        let psk = HMAC<SHA256>.authenticationCode(
-            for: Data("openrig relay psk v1".utf8), using: SymmetricKey(data: secret))
-        let key = Data(psk).withUnsafeBytes { DispatchData(bytes: $0) }
-        let name = Data(identity.utf8).withUnsafeBytes { DispatchData(bytes: $0) }
-        sec_protocol_options_add_pre_shared_key(
-            tls.securityProtocolOptions, key as __DispatchData, name as __DispatchData)
+        let options = tls.securityProtocolOptions
+        for (identity, secret) in keys.sorted(by: { $0.key < $1.key }) {
+            let psk = HMAC<SHA256>.authenticationCode(
+                for: Data("openrig relay psk v1".utf8), using: SymmetricKey(data: secret))
+            let key = Data(psk).withUnsafeBytes { DispatchData(bytes: $0) }
+            let name = Data(identity.utf8).withUnsafeBytes { DispatchData(bytes: $0) }
+            sec_protocol_options_add_pre_shared_key(options, key as __DispatchData, name as __DispatchData)
+        }
         sec_protocol_options_append_tls_ciphersuite(
-            tls.securityProtocolOptions, tls_ciphersuite_t(rawValue: UInt16(TLS_PSK_WITH_AES_128_GCM_SHA256))!)
+            options, tls_ciphersuite_t(rawValue: UInt16(TLS_PSK_WITH_AES_128_GCM_SHA256))!)
         return NWParameters(tls: tls)
     }
 }
@@ -50,11 +65,13 @@ public final class RelayChannel: @unchecked Sendable {
         self.connection = connection
     }
 
-    public convenience init(host: String, port: UInt16, secret: Data) {
+    public convenience init(
+        host: String, port: UInt16, identity: String = RelayLink.defaultIdentity, secret: Data
+    ) {
         self.init(
             NWConnection(
                 host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port)!,
-                using: RelayLink.parameters(secret: secret)))
+                using: RelayLink.parameters(identity: identity, secret: secret)))
     }
 
     /// Starts the connection and waits for the handshake. A wrong secret fails here.

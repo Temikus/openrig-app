@@ -49,6 +49,28 @@ import Testing
         #expect(wire.range(of: Data("q-f0af".utf8)) == nil)
     }
 
+    /// One listener, one key per paired phone, picked by the identity the phone presents (its credential id). A phone
+    /// can't borrow another's identity, and a phone no longer listed can't connect.
+    @Test func eachPhoneHasItsOwnKey() async throws {
+        let other = RelayLink.newSecret()
+        let server = try await EchoServer.start(keys: ["cred-a": secret, "cred-b": other])
+        defer { server.stop() }
+        for (identity, key) in [("cred-a", secret), ("cred-b", other)] {
+            let phone = RelayChannel(host: "127.0.0.1", port: server.port, identity: identity, secret: key)
+            defer { phone.close() }
+            try await phone.open()
+            try await phone.send(Data(identity.utf8))
+            #expect(try await phone.receive() == Data(identity.utf8))
+        }
+        let borrowed = RelayChannel(host: "127.0.0.1", port: server.port, identity: "cred-a", secret: other)
+        defer { borrowed.close() }
+        await #expect(throws: RelayLinkError.self) { try await borrowed.open(timeout: .seconds(3)) }
+        let unpaired = RelayChannel(
+            host: "127.0.0.1", port: server.port, identity: "cred-c", secret: RelayLink.newSecret())
+        defer { unpaired.close() }
+        await #expect(throws: RelayLinkError.self) { try await unpaired.open(timeout: .seconds(3)) }
+    }
+
     @Test func aFrameOverTheLimitIsRefused() async throws {
         let server = try await EchoServer.start(secret: secret)
         defer { server.stop() }
@@ -76,7 +98,11 @@ final class EchoServer: @unchecked Sendable {
     private init(listener: NWListener) { self.listener = listener }
 
     static func start(secret: Data) async throws -> EchoServer {
-        let parameters = RelayLink.parameters(secret: secret)
+        try await start(keys: [RelayLink.defaultIdentity: secret])
+    }
+
+    static func start(keys: [String: Data]) async throws -> EchoServer {
+        let parameters = RelayLink.serverParameters(keys: keys)
         parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any)
         let server = EchoServer(listener: try NWListener(using: parameters))
         server.listener.newConnectionHandler = { connection in server.serve(RelayChannel(connection), connection) }
