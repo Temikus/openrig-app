@@ -33,26 +33,44 @@ public struct RelayResponse: Codable, Sendable, Equatable {
     }
 }
 
-/// What the relay passes on: the app contract, and nothing that issues or revokes credentials.
+/// What the relay passes on: exactly the app-contract routes `AppClient` calls. Credentials and every other daemon
+/// route are not on the list.
 public enum RelayPolicy {
     static let prefix = "/api/apps/v1/"
-    static let methods: Set<String> = ["GET", "POST"]
     /// The headers the phone's client sends. Anything else (cookies, `X-OpenRig-Session`) stays behind.
     static let headers: Set<String> = ["authorization", "accept", "content-type", "last-event-id"]
 
-    public static func allows(_ request: RelayRequest) -> Bool {
-        guard methods.contains(request.method), request.path.hasPrefix(prefix),
-            let parts = URLComponents(string: request.path), parts.scheme == nil, parts.host == nil
-        else { return false }
-        // Decoded, so "%2e%2e" can't stand in for "..".
-        let path = parts.percentEncodedPath.removingPercentEncoding ?? ""
-        let segments = path.split(separator: "/", omittingEmptySubsequences: false).dropFirst()
-        guard path.hasPrefix(prefix),
-            !segments.contains(where: { $0 == ".." || $0 == "." || $0.isEmpty && $0 != segments.last })
-        else {
-            return false
-        }
-        return !path.hasPrefix(prefix + "credentials")
+    /// Method and segments after the prefix; "*" is one id.
+    static let routes: [(method: String, segments: [String])] = [
+        ("GET", ["capabilities"]), ("GET", ["needs-me"]), ("GET", ["events"]),
+        ("GET", ["requests", "*"]), ("GET", ["requests", "*", "result"]),
+        ("GET", ["answers", "*"]), ("POST", ["answers", "*"]),
+    ]
+
+    public static func allows(_ request: RelayRequest) -> Bool { route(request) != nil }
+
+    /// The checked path and query, rebuilt from the decoded segments, or nil when the call isn't on the list.
+    static func route(_ request: RelayRequest) -> String? {
+        guard request.path.hasPrefix(prefix), let parts = URLComponents(string: request.path), parts.scheme == nil,
+            parts.host == nil,
+            // Decoded first, so "%2e%2e" or "%2F" can't stand in for ".." or "/".
+            let path = parts.percentEncodedPath.removingPercentEncoding, path.hasPrefix(prefix)
+        else { return nil }
+        let segments = path.dropFirst(prefix.count).split(separator: "/", omittingEmptySubsequences: false)
+            .map(String.init)
+        guard
+            routes.contains(where: { route in
+                route.method == request.method && route.segments.count == segments.count
+                    && zip(route.segments, segments).allSatisfy { want, got in want == "*" ? isID(got) : want == got }
+            })
+        else { return nil }
+        return prefix + segments.joined(separator: "/") + (parts.percentEncodedQuery.map { "?" + $0 } ?? "")
+    }
+
+    /// A row, request or answer id: letters, digits, "-", "_", ":" and inner dots; never "." or "..".
+    static func isID(_ segment: String) -> Bool {
+        !segment.isEmpty && segment != "." && segment != ".."
+            && segment.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || "-_.:".contains($0)) }
     }
 }
 
@@ -156,10 +174,11 @@ public final class RelayServer: @unchecked Sendable {
         }
     }
 
-    /// The daemon's request for a phone's call: same method, path, query and body, and only the contract's headers.
+    /// The daemon's request for a phone's call: the checked path (a call off the list gets "/", which the daemon
+    /// refuses), the same method, query and body, and only the contract's headers.
     public static func urlRequest(for request: RelayRequest, daemon: URL) -> URLRequest {
         var url = URLComponents(url: daemon, resolvingAgainstBaseURL: false)!
-        let parts = URLComponents(string: request.path)
+        let parts = URLComponents(string: RelayPolicy.route(request) ?? "/")
         url.percentEncodedPath = parts?.percentEncodedPath ?? ""
         url.percentEncodedQuery = parts?.percentEncodedQuery
         var built = URLRequest(url: url.url!, timeoutInterval: 30)

@@ -12,26 +12,46 @@ import Testing
         RelayRequest(method: method, path: path, headers: ["Authorization": "Bearer orapp_x"], body: body)
     }
 
+    /// An allowlist of the routes `AppClient` calls, nothing else.
     @Test func policyAllowsOnlyTheAppContract() {
         let allowed = [
+            Self.request("GET", "/api/apps/v1/capabilities"),
             Self.request("GET", "/api/apps/v1/needs-me"),
             Self.request("GET", "/api/apps/v1/events?after=Y3Vy"),
-            Self.request("POST", "/api/apps/v1/requests/qitem-1/answers"),
+            Self.request("GET", "/api/apps/v1/requests/qitem-20261124-1a2b"),
+            Self.request("GET", "/api/apps/v1/requests/qitem-1/result"),
+            Self.request("GET", "/api/apps/v1/answers/7f3c2a1e-0b9d-4c5e-8f6a-1b2c3d4e5f60"),
+            Self.request("POST", "/api/apps/v1/answers/7f3c2a1e-0b9d-4c5e-8f6a-1b2c3d4e5f60"),
         ]
-        for request in allowed { #expect(RelayPolicy.allows(request), "\(request.path)") }
+        for request in allowed { #expect(RelayPolicy.allows(request), "\(request.method) \(request.path)") }
         let refused = [
             Self.request("GET", "/api/queue/list"),
             Self.request("POST", "/api/seat/send"),
             Self.request("GET", "/api/apps/v1/../queue/list"),
             Self.request("GET", "/api/apps/v1/%2e%2e/queue/list"),
             Self.request("GET", "/api/apps/v1//../../api/ps"),
+            Self.request("GET", "/api/apps/v1/requests/a%2F..%2F..%2Fps"),
+            Self.request("GET", "/api/apps/v1/requests//result/"),
+            Self.request("GET", "/api/apps/v1/requests/./result"),
             Self.request("POST", "/api/apps/v1/credentials"),
+            Self.request("POST", "/api/apps/v1/Credentials"),
             Self.request("DELETE", "/api/apps/v1/credentials/cred-1"),
-            Self.request("DELETE", "/api/apps/v1/needs-me"),
+            Self.request("DELETE", "/api/apps/v1/answers/a-1"),
+            Self.request("POST", "/api/apps/v1/needs-me"),
+            Self.request("GET", "/api/apps/v1/needs-me/extra"),
+            Self.request("GET", "/api/apps/v1/NEEDS-ME"),
             Self.request("GET", "http://evil.test/api/apps/v1/needs-me"),
             Self.request("GET", "api/apps/v1/needs-me"),
         ]
         for request in refused { #expect(!RelayPolicy.allows(request), "\(request.method) \(request.path)") }
+    }
+
+    /// The daemon gets the path that was checked, rebuilt from its segments, not the phone's raw text.
+    @Test func theCheckedPathIsWhatIsForwarded() {
+        let built = RelayServer.urlRequest(
+            for: Self.request("GET", "/api/apps/v1/requests/qitem-1/result?x=1"),
+            daemon: URL(string: "http://127.0.0.1:7433")!)
+        #expect(built.url?.absoluteString == "http://127.0.0.1:7433/api/apps/v1/requests/qitem-1/result?x=1")
     }
 
     @Test func anAllowedCallIsForwardedAndTheRestRefused() async throws {
@@ -96,7 +116,7 @@ import Testing
     @Test func theDaemonForwarderPassesOnlyTheContractsHeaders() async throws {
         let script = Script([.status(409, Data(#"{"error":"returned"}"#.utf8))])
         let forward = RelayServer.daemonForwarder(script.baseURL, session: script.session)
-        var request = Self.request("POST", "/api/apps/v1/requests/q-1/answers?x=1", body: Data(#"{"a":1}"#.utf8))
+        var request = Self.request("POST", "/api/apps/v1/answers/a-1?x=1", body: Data(#"{"a":1}"#.utf8))
         request.headers["Cookie"] = "session=abc"
         request.headers["X-OpenRig-Session"] = "orch-lead@openrig-app"
         var frames: [RelayResponse] = []
@@ -105,7 +125,7 @@ import Testing
         #expect(frames.last?.more == false)
         let sent = try #require(script.requests.first)
         #expect(sent.method == "POST")
-        #expect(sent.path == "/api/apps/v1/requests/q-1/answers")
+        #expect(sent.path == "/api/apps/v1/answers/a-1")
         #expect(sent.query == "x=1")
         #expect(sent.authorization == "Bearer orapp_x")
         #expect(sent.body == Data(#"{"a":1}"#.utf8))
