@@ -211,7 +211,7 @@ final class FakeDesk: RelayDesk, @unchecked Sendable {
         self.row = row
     }
 
-    func needsYou() async -> [RelayNeedsYouItem] { [] }
+    func needsYou() async -> RelayNeedsYou { RelayNeedsYou() }
     func prompt(session: String) async -> RelayPromptReading? { reading }
     func waitForNoPrompt(session: String) async -> (paneClear: Bool, daemonHolds: Bool) { (true, daemonStillHolds) }
     func heldRow(session: String) async -> String? { held }

@@ -122,6 +122,28 @@ public struct RelayPrompt: Codable, Sendable, Equatable {
     public var canDecline: Bool
 }
 
+/// The Mac's Needs-you list. Prompts in rigs other than the one open on the Mac aren't listed one by one; they show
+/// as a count per rig, and each is on that rig's seat list (`atPrompt`).
+public struct RelayNeedsYou: Codable, Sendable, Equatable {
+    public var items: [RelayNeedsYouItem]
+    public var promptsElsewhere: [RigCount]
+
+    public struct RigCount: Codable, Sendable, Equatable {
+        public var rig: String
+        public var count: Int
+
+        public init(rig: String, count: Int) {
+            self.rig = rig
+            self.count = count
+        }
+    }
+
+    public init(items: [RelayNeedsYouItem] = [], promptsElsewhere: [RigCount] = []) {
+        self.items = items
+        self.promptsElsewhere = promptsElsewhere
+    }
+}
+
 /// One row of the Mac's Needs-you list.
 public struct RelayNeedsYouItem: Codable, Sendable, Equatable {
     /// "ask", "prompt", "fyi", "held" or "seat".
@@ -200,7 +222,7 @@ public enum RelayOutcome: Sendable, Equatable {
 /// The Mac's side of the relay's actions: reads what the Mac app already knows and runs its existing actions. The
 /// seam tests replace, so no test reaches a daemon or a seat.
 public protocol RelayDesk: Sendable {
-    func needsYou() async -> [RelayNeedsYouItem]
+    func needsYou() async -> RelayNeedsYou
     func prompt(session: String) async -> RelayPromptReading?
     /// After a decline: waits briefly for the pane to show no prompt, and says whether the daemon still holds one.
     func waitForNoPrompt(session: String) async -> (paneClear: Bool, daemonHolds: Bool)

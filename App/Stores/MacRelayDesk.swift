@@ -20,8 +20,8 @@ final class MacRelayDesk: RelayDesk {
 
     // MARK: Needs you
 
-    func needsYou() async -> [RelayNeedsYouItem] {
-        guard let store else { return [] }
+    func needsYou() async -> RelayNeedsYou {
+        guard let store else { return RelayNeedsYou() }
         let me = store.me
         var items: [RelayNeedsYouItem] = []
         if let rig = store.rig {
@@ -47,7 +47,9 @@ final class MacRelayDesk: RelayDesk {
         for row in store.elsewhere where !shown.contains(row.id) {
             items.append(Self.item(row, rig: Self.rig(of: row.source), me: me))
         }
-        return items
+        // Other rigs' prompts and down seats, as the Mac's sidebar counts them; each is on that rig's seat list.
+        let elsewhere = store.attentionElsewhere.map { RelayNeedsYou.RigCount(rig: $0.rig, count: $0.count) }
+        return RelayNeedsYou(items: items, promptsElsewhere: elsewhere)
     }
 
     private static func item(_ row: QItem, rig: String, me: String) -> RelayNeedsYouItem {
@@ -169,7 +171,19 @@ final class MacRelayDesk: RelayDesk {
             let graph = try? await client.graph(rigID: summary.id)
         else { return nil }
         let rows = (try? await client.queue(rigName: name)) ?? []
-        let open = store?.rig?.rigName == name ? store?.rig : nil
+        // Each Claude seat's own daemon stop, for whichever rig is asked: not only the one open on the Mac.
+        let sessions = graph.seats.filter { $0.runtime == "claude-code" }.compactMap(\.sessionName)
+        let atPrompt = await withTaskGroup(of: (String, Bool).self) { group in
+            for session in sessions {
+                group.addTask {
+                    let stop = try? await client.seatStatus(session: session).permissionStop
+                    return (session, stop?.state == .requestObserved)
+                }
+            }
+            var found: Set<String> = []
+            for await (session, waiting) in group where waiting { found.insert(session) }
+            return found
+        }
         return graph.seats.compactMap { seat in
             guard let session = seat.sessionName else { return nil }
             let mine = rows.filter { $0.destination == session && workStatus($0).isActive }
@@ -179,7 +193,7 @@ final class MacRelayDesk: RelayDesk {
                 session: session, name: seat.displayName, state: seat.status.rawValue, currentRow: current?.summary,
                 active: mine.count, blocked: blocked.count,
                 contextUsed: seat.contextUsedPercent.map { Double($0) / 100 },
-                runtime: seat.runtime, atPrompt: open?.prompts.contains { $0.session == session } ?? false)
+                runtime: seat.runtime, atPrompt: atPrompt.contains(session))
         }
     }
 

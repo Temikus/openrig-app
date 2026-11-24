@@ -135,7 +135,7 @@ import Testing
         try await phone.open()
         let list = try await phone.call(RelayRequest(method: "GET", path: "/relay/v1/needs-you"))
         #expect(list.map(\.status) == [200])
-        #expect(list.first?.body == Data("[]".utf8))
+        #expect(try JSONDecoder().decode(RelayNeedsYou.self, from: list.first?.body ?? Data()) == RelayNeedsYou())
         let always = try await phone.call(
             RelayRequest(
                 method: "POST", path: "/relay/v1/prompts/dev-b1@openrig-app/always-allow", body: Data("{}".utf8)))
