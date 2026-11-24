@@ -8,6 +8,8 @@ struct QItemInspector: View {
     @Environment(SelectionStore.self) private var selection
     /// Who finished a closed row, from its transitions: the row itself doesn't say.
     @State private var closedBy: String?
+    /// Found off the main thread after the inspector shows; the view is rebuilt per row, so none carry over.
+    @State private var images: RowImages?
 
     /// "Approved by you · 11:42".
     private func endedLine(_ ended: Outcome) -> String {
@@ -108,9 +110,11 @@ struct QItemInspector: View {
                     }
                 }
 
+                // The images sit in the panel, above the questions they belong to; on any other row, here.
                 if let kind = forYou(item, me: rig.me) {
                     ForYouPanel(item: item, kind: kind)
                 } else {
+                    RowEvidence(item: item, title: "Images", showsLine: false)
                     ActionStatusLine(key: ForYouPanel.key(item))
                 }
                 if workStatus(item).isActive {
@@ -137,6 +141,8 @@ struct QItemInspector: View {
         }
         // Margins on the scroll content, not padding inside it, so the inspector's own insets are respected.
         .contentMargins(16, for: .scrollContent)
+        .task(id: item.id) { images = await rig.images(for: item) }
+        .environment(\.rowImages, images)
     }
 
     /// "3 minutes ago". Re-evaluated whenever the inspector redraws, which the 30 s timeline forces.

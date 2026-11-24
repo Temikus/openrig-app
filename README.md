@@ -29,6 +29,8 @@ just lint     # swift format lint
 just --list   # everything else
 ```
 
+A queue row shows a thumbnail of each image it points at; click one to open it in Quick Look, and use the arrow keys to see the rest. To attach images to a row, put them in one folder, named in the order you'll talk about them (`1-app-shape.png`, `2-question-screen.png`). Pass the folder as `--evidence-ref`, or name it or the files in the body. Paths can be absolute, `~/`, or relative to the folder the sending seat was launched in. The app reads them from disk, so it shows them only when the daemon runs on the same Mac.
+
 ## Releasing
 
 `just release [patch|minor|major] ["notes"]` runs on a clean, pushed `main`. It tags the next version, builds a Developer ID-signed, notarised DMG, pushes the tag and publishes it as a [GitHub release](https://github.com/Temikus/openrig-app/releases). Without notes, GitHub generates them. The first release uses `MARKETING_VERSION` from `project.yml`.

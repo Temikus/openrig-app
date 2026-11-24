@@ -47,7 +47,7 @@ struct ForYouPanel: View {
                     .foregroundStyle(kind == .decision ? Color.attention : .secondary)
             }
             .font(.callout.weight(.semibold))
-            if let evidence = item.evidenceRef { EvidenceLine(ref: evidence) }
+            RowEvidence(item: item)
             switch kind {
             case .decision where item.asksHuman: questions
             case .decision: decision
@@ -269,33 +269,6 @@ private struct QuestionPicker: View {
                     )
                     .lineLimit(1...3)
                 }
-            }
-        }
-    }
-}
-
-/// The artifact the agent asked the person to judge: a file opens in its app; anything else is shown to copy.
-private struct EvidenceLine: View {
-    let ref: String
-
-    private var file: URL? {
-        guard ref.hasPrefix("/") else { return nil }
-        let url = URL(filePath: ref)
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
-    }
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: file == nil ? "text.quote" : "doc.text").foregroundStyle(.secondary)
-            Text(file?.lastPathComponent ?? ref)
-                .font(file == nil ? .caption : .caption.monospaced())
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .textSelection(.enabled)
-                .help(ref)
-            Spacer()
-            if let file {
-                Button("Open") { NSWorkspace.shared.open(file) }.buttonStyle(.link).font(.caption)
             }
         }
     }
