@@ -55,7 +55,8 @@ struct ForYouPanel: View {
             case .update: update
             }
             if replying, let askerSeat {
-                MessageComposer(seat: askerSeat, inline: true, autofocus: true) {
+                // Under the row's key, so a made-up row's reply is refused even if the seat above lets it show.
+                MessageComposer(seat: askerSeat, inline: true, autofocus: true, key: "\(key)|reply") {
                     replying = false
                     update { $0.replied = true }
                 }

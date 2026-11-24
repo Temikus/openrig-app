@@ -87,12 +87,15 @@ struct MessageComposer: View {
     /// Put the cursor in the field on appear: only when the user just asked for it (opened a tile's footer),
     /// never because a tile gained focus.
     var autofocus = false
+    /// The control's action key. A reply from a row's panel passes one under that row, so ActionStore can refuse
+    /// it on a made-up row; elsewhere it is the seat's own.
+    var key: String?
     var onSent: () -> Void = {}
     @Environment(ActionStore.self) private var actions
     @State private var text = ""
     @FocusState private var fieldFocused: Bool
 
-    private var key: String { "send:\(seat.id)" }
+    private var actionKey: String { key ?? "send:\(seat.id)" }
     /// No session to type into; `rig send` would fail.
     private var isDown: Bool { SeatPhase(seat).isDown }
     private var isEmpty: Bool { text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -110,7 +113,7 @@ struct MessageComposer: View {
                 .background(.background, in: .rect(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color(nsColor: .separatorColor)))
                 .onAppear { if autofocus { fieldFocused = true } }
-                ActionStatusLine(key: key)
+                ActionStatusLine(key: actionKey)
             } else {
                 HStack(alignment: .bottom, spacing: 8) {
                     field.textFieldStyle(.roundedBorder).lineLimit(1...5)
@@ -119,7 +122,7 @@ struct MessageComposer: View {
                 HStack {
                     Text("rig send · ⌘↩").font(.caption.monospaced()).foregroundStyle(.secondary)
                     Spacer()
-                    ActionStatusLine(key: key)
+                    ActionStatusLine(key: actionKey)
                 }
             }
         }
@@ -131,7 +134,7 @@ struct MessageComposer: View {
         )
         .focused($fieldFocused)
         .disabled(isDown)
-        .keepsDraft($text, key, "text")
+        .keepsDraft($text, actionKey, "text")
     }
 
     private var sendButton: some View {
@@ -150,7 +153,7 @@ struct MessageComposer: View {
     private func send() {
         guard let action else { return }
         Task {
-            if await actions.perform(action, key: key, success: "Sent") {
+            if await actions.perform(action, key: actionKey, success: "Sent") {
                 text = ""
                 onSent()
             }

@@ -17,7 +17,11 @@ struct RowEvidence: View {
     var title: String?
     var showsLine = true
     @Environment(\.rowImages) private var found
+    @Environment(RigStore.self) private var rig
     @State private var preview: URL?
+
+    /// `RowImages.find` already looked on disk, off the main thread: the line can trust its answer.
+    private var looked: Bool { found != nil && rig.daemonIsLocal }
 
     /// More would push Approve and Deny below a 900 pt window; Quick Look still steps through all of them.
     static let cap = 6
@@ -33,11 +37,11 @@ struct RowEvidence: View {
         let images = found?.images ?? []
         if let line, !images.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                EvidenceLine(ref: line, file: found?.evidence)
+                EvidenceLine(ref: line, file: found?.evidence, looked: looked)
                 thumbnails(images)
             }
         } else if let line {
-            EvidenceLine(ref: line, file: found?.evidence)
+            EvidenceLine(ref: line, file: found?.evidence, looked: looked)
         } else if !images.isEmpty {
             thumbnails(images)
         }
@@ -114,11 +118,14 @@ struct EvidenceLine: View {
     let ref: String
     /// Found on disk by `RowImages`, so a relative path opens too.
     var file: URL?
+    /// `RowImages` already looked: trust `file`, and don't touch the disk while drawing.
+    var looked = false
 
-    /// With a remote daemon nothing is looked up, and an absolute path is checked here as before.
+    /// Until the lookup is done, or with a remote daemon (nothing is looked up), an absolute path is checked here as
+    /// before.
     private var openable: URL? {
         if let file { return file }
-        guard ref.hasPrefix("/") else { return nil }
+        guard !looked, ref.hasPrefix("/") else { return nil }
         let url = URL(filePath: ref)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }

@@ -54,6 +54,15 @@ import Testing
         #expect(!result.closed)
     }
 
+    /// The panel's Reply… composer sends under "answer:<id>|reply". Under the seat's own key ("send:<seat>") the
+    /// same message would pass: the key is what ties a reply to its row.
+    @Test func aReplyFromAMadeUpRowsPanelIsRefused() throws {
+        let item = try #require(madeUp.rows.first)
+        let reply = RigAction.send(session: item.source, text: "Can you say more?")
+        #expect(madeUp.refuses(reply, key: "answer:\(item.id)|reply"))
+        #expect(!madeUp.refuses(reply, key: "send:seat-orch-lead"))
+    }
+
     @Test func refusesByKeyOrByTheRowTheActionNames() {
         let send = RigAction.send(session: "orch-lead@openrig-app", text: "hi")
         #expect(madeUp.refuses(send, key: "answer:qitem-made-up-1"))
