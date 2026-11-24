@@ -62,7 +62,7 @@ import Testing
 }
 
 /// The session reads the relay's list beside the contract's, through a real relay on 127.0.0.1.
-@MainActor @Suite(.serialized) struct RelayNeedsYouSessionTests {
+@MainActor @Suite(.serialized, .relaySockets) struct RelayNeedsYouSessionTests {
     @Test func aRelayPairingListsTheMacsPromptsAndOtherRigs() async throws {
         let secret = RelayLink.newSecret()
         let credential = "cred-\(UUID().uuidString)"

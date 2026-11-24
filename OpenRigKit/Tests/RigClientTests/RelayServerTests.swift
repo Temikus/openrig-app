@@ -5,7 +5,7 @@ import Testing
 @testable import RigClient
 
 /// The Mac's relay, on 127.0.0.1 only. A phone reaches the app contract through it and nothing else.
-@Suite(.serialized) struct RelayServerTests {
+@Suite(.serialized, .relaySockets) struct RelayServerTests {
     let secret = RelayLink.newSecret()
 
     static func request(_ method: String, _ path: String, body: Data? = nil) -> RelayRequest {

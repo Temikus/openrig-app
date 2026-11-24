@@ -5,7 +5,7 @@ import Testing
 @testable import RigClient
 
 /// Every listener here binds 127.0.0.1 only: a listener on the Wi-Fi address can make macOS ask the person, on screen.
-@Suite(.serialized) struct RelayLinkTests {
+@Suite(.serialized, .relaySockets) struct RelayLinkTests {
     let secret = RelayLink.newSecret()
 
     @Test func aClientWithTheSecretGetsAnAnswer() async throws {

@@ -8,7 +8,7 @@ import Testing
 
 /// The phone's client for the relay's Mac-side calls, against a real `RelayServer` on 127.0.0.1 and a test desk. No
 /// daemon, no seat.
-@Suite(.serialized) struct RelayDeskClientTests {
+@Suite(.serialized, .relaySockets) struct RelayDeskClientTests {
     static let seat = "dev-b1@openrig-app"
     static let asked = "2026-11-24T04:00:00.000Z"
     let secret = RelayLink.newSecret()

@@ -7,7 +7,7 @@ import Testing
 
 /// The phone's app-contract client through the Mac's relay, end to end: `AppClient` → `RelayTransport` →
 /// `RelayChannel` (TLS-PSK) → `RelayServer` → a scripted daemon. Every listener binds 127.0.0.1 only.
-@Suite(.serialized) struct RelayTransportTests {
+@Suite(.serialized, .relaySockets) struct RelayTransportTests {
     let secret = RelayLink.newSecret()
     let credential = "cred-phone-1"
 
