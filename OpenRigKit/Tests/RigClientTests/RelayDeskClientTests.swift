@@ -28,10 +28,10 @@ import Testing
     }
 
     /// A client whose first channel goes to the first port and every later one to the last.
-    func client(ports: [UInt16], keep: ChannelBox? = nil) -> RelayDeskClient {
+    func client(ports: [UInt16], keep: ChannelBox? = nil, timeout: Duration = .seconds(15)) -> RelayDeskClient {
         let opened = Counter()
         let secret = self.secret
-        return RelayDeskClient {
+        return RelayDeskClient(timeout: timeout) {
             let port = ports[min(opened.next(), ports.count - 1)]
             let channel = RelayChannel(host: "127.0.0.1", port: port, identity: "cred-a", secret: secret)
             try await channel.open()
@@ -202,6 +202,45 @@ import Testing
         #expect(desk.done.count == 20)
     }
 
+    /// review-code's probe: a call that never gets an answer (lid shut, relay stalled) must not hold every call behind
+    /// it. It times out, its channel closes, and the next call runs on a new one.
+    @Test func aStuckCallTimesOutAndFreesTheLine() async throws {
+        let desk = ClientDesk()
+        desk.hangReads = true
+        let (relay, port) = try await serve(desk)
+        defer { relay.stop() }
+        let client = client(ports: [port], timeout: .milliseconds(400))
+        let stuck = Task { try await client.rigs() }
+        try await Task.sleep(for: .milliseconds(100))
+        let started = ContinuousClock.now
+        try await client.message(session: Self.seat, text: "behind a stuck read")
+        #expect(ContinuousClock.now - started < .seconds(2), "waited for one timeout, not for TCP")
+        #expect(desk.done == [.send(session: Self.seat, text: "behind a stuck read")])
+        await #expect(throws: RelayDeskError.lostReply) { _ = try await stuck.value }
+    }
+
+    /// A read whose screen went away while it waited its turn is skipped; a tapped action still runs.
+    @Test func aCancelledReadIsSkippedButAnActionRuns() async throws {
+        let desk = ClientDesk()
+        desk.slowReads = true
+        let (relay, port) = try await serve(desk)
+        defer { relay.stop() }
+        let client = client(ports: [port])
+        _ = try await client.rigs()
+        let reads = desk.reads
+        let holding = Task { try await client.rigs() }
+        try await Task.sleep(for: .milliseconds(5))
+        let skipped = Task { try await client.rigs() }
+        let tapped = Task { try await client.message(session: Self.seat, text: "tapped") }
+        skipped.cancel()
+        tapped.cancel()
+        _ = try await holding.value
+        await #expect(throws: RelayDeskError.cancelled) { _ = try await skipped.value }
+        try await tapped.value
+        #expect(desk.reads == reads + 1, "only the held read reached the Mac")
+        #expect(desk.done == [.send(session: Self.seat, text: "tapped")])
+    }
+
     /// A channel the system has marked failed or cancelled while idle isn't sent on: the call goes out on a new one,
     /// and isn't a lost reply. (A peer that closes cleanly still reads as ready to Network until the next read; that
     /// case stays `lostReply`.)
@@ -273,6 +312,8 @@ final class ClientDesk: RelayDesk, @unchecked Sendable {
     var onRead: (@Sendable () -> Void)?
     /// Reads take a moment, so a call beside one would cross it if the channel weren't one call at a time.
     var slowReads = false
+    /// Reads never answer in time, like a Mac whose lid just shut.
+    var hangReads = false
     private(set) var done: [RigAction] = []
     private(set) var reads = 0
 
@@ -296,6 +337,7 @@ final class ClientDesk: RelayDesk, @unchecked Sendable {
         }
         hook?()
         if slowReads { try? await Task.sleep(for: .milliseconds(20)) }
+        if hangReads { try? await Task.sleep(for: .seconds(5)) }
         return rigList
     }
     func seats(rig: String) async -> [RelaySeat]? { rig == "openrig-app" ? seatList : nil }

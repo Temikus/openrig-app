@@ -82,6 +82,21 @@ import Testing
         #expect(channel.negotiatedSuite == UInt16(TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256))
     }
 
+    /// `call` has no timeout unless asked, so a long stream isn't cut; with one, a silent peer ends the call.
+    @Test func aCallTimesOutOnlyWhenAsked() async throws {
+        let server = try await EchoServer.start(secret: secret)
+        defer { server.stop() }
+        server.silent = true
+        let channel = RelayChannel(host: "127.0.0.1", port: server.port, secret: secret)
+        defer { channel.close() }
+        try await channel.open()
+        await #expect(throws: RelayLinkError.timedOut(afterSend: true)) {
+            _ = try await channel.call(RelayRequest(method: "GET", path: "/x"), timeout: .milliseconds(200))
+        }
+        for _ in 0..<20 where channel.isReady { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(!channel.isReady, "the channel closes, so the next call opens a new one")
+    }
+
     @Test func aFrameOverTheLimitIsRefused() async throws {
         let server = try await EchoServer.start(secret: secret)
         defer { server.stop() }
@@ -102,7 +117,14 @@ final class EchoServer: @unchecked Sendable {
     private let lock = NSLock()
     private var _received: [Data] = []
     private var bogusHeader: UInt32?
+    private var _silent = false
     private(set) var port: UInt16 = 0
+
+    /// Reads frames but never answers, like a stalled peer.
+    var silent: Bool {
+        get { lock.withLock { _silent } }
+        set { lock.withLock { _silent = newValue } }
+    }
 
     var received: [Data] { lock.withLock { _received } }
 
@@ -128,6 +150,7 @@ final class EchoServer: @unchecked Sendable {
         Task {
             while let message = try? await channel.receive() {
                 lock.withLock { _received.append(message) }
+                if silent { continue }
                 if let header = lock.withLock({ bogusHeader }) {
                     var raw = Data()
                     withUnsafeBytes(of: header.bigEndian) { raw.append(contentsOf: $0) }

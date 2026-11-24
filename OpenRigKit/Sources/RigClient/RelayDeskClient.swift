@@ -28,6 +28,8 @@ public enum RelayDeskError: Error, Equatable, Sendable {
     case probablyAnswered
     /// As above, but a new prompt is up now: show it.
     case answeredThenNewPrompt
+    /// A read whose task was cancelled while it waited its turn; it never went out.
+    case cancelled
     case decoding(String)
 }
 
@@ -42,16 +44,22 @@ public enum RelayDeskError: Error, Equatable, Sendable {
 /// - Allow once and decline are the exception and are resent once, because the Mac checks the stop's `observedAt`:
 ///   if the first went through, the resend finds the stop gone or changed and types nothing. The phone hears
 ///   `probablyAnswered`, or `answeredThenNewPrompt` when another prompt is up.
+///
+/// Each call has `timeout` (15 s, longer than the Mac's ~5 s wait for a declined prompt to clear). A call that runs
+/// out closes its channel, so one silent Mac doesn't hold every call behind it. A read cancelled while it waits its
+/// turn is skipped (`cancelled`); an acting call still runs, since the person tapped it.
 public actor RelayDeskClient {
     public typealias Open = @Sendable () async throws -> RelayChannel
 
     private let open: Open
+    private let timeout: Duration
     private var channel: RelayChannel?
     /// One call at a time through the whole open-and-call: the actor alone would let a second call in at every await.
     private let serial = AsyncSerial()
 
     /// `open` makes and opens a new channel, e.g. to the next reach in the pairing code.
-    public init(open: @escaping Open) {
+    public init(timeout: Duration = .seconds(15), open: @escaping Open) {
+        self.timeout = timeout
         self.open = open
     }
 
@@ -111,10 +119,10 @@ public actor RelayDeskClient {
 
     private func get(_ path: String) async throws(RelayDeskError) -> RelayResponse {
         let request = RelayRequest(method: "GET", path: path)
-        switch await send(request) {
+        switch await send(request, skipIfCancelled: true) {
         case .success(let response): return response
         // A read changes nothing: ask again on a new channel, whatever was lost.
-        case .failure(.lostReply), .failure(.unreachable): return try await send(request).get()
+        case .failure(.lostReply), .failure(.unreachable): return try await send(request, skipIfCancelled: true).get()
         case .failure(let error): throw error
         }
     }
@@ -143,10 +151,15 @@ public actor RelayDeskClient {
         }
     }
 
-    /// One call, one at a time. `unreachable` when nothing was sent (no channel, or the send itself failed);
-    /// `lostReply` when the reply was lost after the send went out.
-    private func send(_ request: RelayRequest) async -> Result<RelayResponse, RelayDeskError> {
-        await serial.run { await attempt(request) }
+    /// One call, one at a time. `unreachable` when nothing was sent (no channel, the send failed, or time ran out
+    /// before it went); `lostReply` when the reply was lost or late after the send went out.
+    private func send(_ request: RelayRequest, skipIfCancelled: Bool = false) async -> Result<
+        RelayResponse, RelayDeskError
+    > {
+        await serial.run {
+            if skipIfCancelled, Task.isCancelled { return .failure(.cancelled) }
+            return await attempt(request)
+        }
     }
 
     private func attempt(_ request: RelayRequest) async -> Result<RelayResponse, RelayDeskError> {
@@ -166,13 +179,18 @@ public actor RelayDeskClient {
             self.channel = channel
         }
         do {
-            guard let response = try await channel.call(request).last else { throw RelayLinkError.closed }
+            guard let response = try await channel.call(request, timeout: timeout).last else {
+                throw RelayLinkError.closed
+            }
             return .success(response)
         } catch {
             channel.close()
             self.channel = nil
-            if case RelayLinkError.notSent(let why) = error { return .failure(.unreachable(why)) }
-            return .failure(.lostReply)
+            switch error {
+            case RelayLinkError.notSent(let why): return .failure(.unreachable(why))
+            case RelayLinkError.timedOut(afterSend: false): return .failure(.unreachable("timed out before sending"))
+            default: return .failure(.lostReply)
+            }
         }
     }
 

@@ -77,16 +77,35 @@ public enum RelayPolicy {
 extension RelayChannel {
     /// Sends one call and reads its answer, every frame of it. Calls on one channel run one at a time, so two callers
     /// never read each other's frames. A send that fails throws `RelayLinkError.notSent`: nothing went out.
-    public func call(_ request: RelayRequest, isolation: isolated (any Actor)? = #isolation) async throws
-        -> [RelayResponse]
-    {
+    ///
+    /// With a `timeout`, a call that isn't answered in time closes the channel and throws `timedOut`, so the calls
+    /// queued behind it aren't held until TCP gives up. No timeout by default: a stream may stay open for good.
+    public func call(
+        _ request: RelayRequest, timeout: Duration? = nil, isolation: isolated (any Actor)? = #isolation
+    ) async throws -> [RelayResponse] {
         try await calls.run {
-            try await send(JSONEncoder().encode(request))
-            var frames: [RelayResponse] = []
-            repeat {
-                frames.append(try JSONDecoder().decode(RelayResponse.self, from: try await receive()))
-            } while frames.last?.more == true
-            return frames
+            let watch = CallWatch()
+            let timer = timeout.map { limit in
+                Task { [self] in
+                    try? await Task.sleep(for: limit)
+                    if !Task.isCancelled, watch.expire() { close() }
+                }
+            }
+            defer { timer?.cancel() }
+            do {
+                try await send(JSONEncoder().encode(request))
+                watch.markSent()
+                var frames: [RelayResponse] = []
+                repeat {
+                    frames.append(try JSONDecoder().decode(RelayResponse.self, from: try await receive()))
+                } while frames.last?.more == true
+                watch.finish()
+                return frames
+            } catch {
+                watch.finish()
+                if watch.expired { throw RelayLinkError.timedOut(afterSend: watch.sent) }
+                throw error
+            }
         }
     }
 }

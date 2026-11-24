@@ -56,6 +56,8 @@ public enum RelayLinkError: Error, Equatable, Sendable {
     case tooLarge(Int)
     /// The frame didn't go out: nothing reached the other end.
     case notSent(String)
+    /// A call with a timeout ran out of time; its channel is closed. `afterSend` says whether the request went out.
+    case timedOut(afterSend: Bool)
 }
 
 /// One connection, as whole messages: each is a 4-byte big-endian length, then that many bytes.
@@ -198,6 +200,26 @@ public final class AsyncSerial: @unchecked Sendable {
             let next = waiting.removeFirst()
             lock.unlock()
             next.resume()
+        }
+    }
+}
+
+/// One timed call's state, shared with its timer: whether the request went out, and whether time ran out first.
+final class CallWatch: @unchecked Sendable {
+    private let lock = NSLock()
+    private var finished = false
+    private(set) var sent = false
+    private(set) var expired = false
+
+    func markSent() { lock.withLock { sent = true } }
+    func finish() { lock.withLock { finished = true } }
+
+    /// True when time ran out before the call finished; a call that already finished keeps its channel.
+    func expire() -> Bool {
+        lock.withLock {
+            guard !finished else { return false }
+            expired = true
+            return true
         }
     }
 }
