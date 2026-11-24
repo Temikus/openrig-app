@@ -11,14 +11,17 @@ import Testing
         "openrig-remote://pair?v=1&reach=loopback:7433:127.0.0.1&actor=human-example@external&credential=c&token=orapp_t1"
 
     /// The needs-me fixture with its first ask fresh: nothing answered, read at revision "dr1-read".
-    func needsMe() throws -> Data {
+    func needsMe(answers: [String: Any] = [:], revision: String = "dr1-read") throws -> Data {
         var json = try JSONSerialization.jsonObject(with: appFixture("app-needs-me")) as! [String: Any]
         var requests = json["requests"] as! [[String: Any]]
-        requests[0]["humanAnswers"] = [String: Any]()
-        requests[0]["decisionRevision"] = "dr1-read"
+        requests[0]["humanAnswers"] = answers
+        requests[0]["decisionRevision"] = revision
         json["requests"] = requests
         return try JSONSerialization.data(withJSONObject: json)
     }
+
+    /// The same ask once its first answer is in, at a new revision.
+    func needsMeAfterReach() throws -> Data { try needsMe(answers: ["reach": "wifi"], revision: "dr1-after") }
 
     func emptyNeedsMe() throws -> Data { try appFixture("app-needs-me-empty") }
 
@@ -59,8 +62,78 @@ import Testing
         let record = try #require(remote.sent[ask.id])
         #expect(record.outcome == .returned)
         #expect(record.answers.map(\.answer) == ["Option B", "Option B"])
+        #expect(record.answers.map(\.state) == [.sent, .sent])
         #expect(remote.draft(for: ask) == AppAnswerDraft())
         #expect(remote.shownRequests?.isEmpty == true)
+    }
+
+    /// review-code's probe: the first of two answers is never confirmed. Only it is sent, the record says the second
+    /// wasn't, and the second pick waits.
+    @Test func probeUnfinishedChainKeepsTheRest() async throws {
+        let unsaved = try appFixture("app-error-503-unsaved")
+        let (remote, script) = try await session([
+            .status(503, unsaved), .status(503, unsaved), .status(503, unsaved), .status(200, try needsMe()),
+            .status(503, unsaved),
+        ])
+        let ask = try #require(remote.shownRequests?.first)
+        remote.setDraft(AppAnswerDraft(picks: ["reach": "wifi", "notify": "push"]), for: ask)
+        await remote.send(ask)
+
+        #expect(try bodies(script).map { $0["questionId"] as? String } == ["reach", "reach", "reach", "reach"])
+        let record = try #require(remote.sent[ask.id])
+        #expect(record.outcome == .notFinished)
+        #expect(record.answers.map(\.state) == [.unconfirmed, .notSent])
+        #expect(remote.draft(for: ask).picks == ["reach": "wifi", "notify": "push"])
+    }
+
+    /// Once the unconfirmed answer lands, the rest goes too, at the revision of a fresh read.
+    @Test func aResentFirstAnswerCarriesTheChainOn() async throws {
+        let unsaved = try appFixture("app-error-503-unsaved")
+        let (remote, script) = try await session([
+            .status(503, unsaved), .status(503, unsaved), .status(503, unsaved), .status(200, try needsMe()),
+            .status(200, try appFixture("app-receipt-recorded")), .status(200, try needsMeAfterReach()),
+            .status(200, try appFixture("app-receipt-returned")), .status(200, try emptyNeedsMe()),
+        ])
+        let ask = try #require(remote.shownRequests?.first)
+        remote.setDraft(AppAnswerDraft(picks: ["reach": "wifi", "notify": "push"]), for: ask)
+        await remote.send(ask)
+
+        let sent = try bodies(script)
+        #expect(sent.map { $0["questionId"] as? String } == ["reach", "reach", "reach", "reach", "notify"])
+        #expect(sent.last?["expectedRevision"] as? String == "dr1-after")
+        let record = try #require(remote.sent[ask.id])
+        #expect(record.outcome == .returned)
+        #expect(record.answers.map(\.question) == ["Question one?", "Question two?"])
+        #expect(record.answers.map(\.state) == [.sent, .sent])
+        #expect(remote.draft(for: ask) == AppAnswerDraft())
+    }
+
+    /// Unpairing stops the phone: nothing it held back goes to a Mac later, this one or another.
+    @Test func unpairEmptiesTheOutbox() async throws {
+        let outbox = MemoryAnswerOutbox()
+        let unsaved = try appFixture("app-error-503-unsaved")
+        let (remote, _) = try await session(
+            [
+                .status(503, unsaved), .status(503, unsaved), .status(503, unsaved), .status(200, try needsMe()),
+                .status(503, unsaved),
+            ], outbox: outbox)
+        let ask = try #require(remote.shownRequests?.first)
+        remote.setDraft(AppAnswerDraft(reply: "Private words."), for: ask)
+        await remote.send(ask)
+        #expect(try outbox.load().count == 1)
+        remote.unpair()
+        #expect(try outbox.load().isEmpty)
+    }
+
+    /// An entry saved under another pairing's credential is dropped, never sent to this Mac.
+    @Test func anotherPairingsAnswerIsDroppedUnsent() async throws {
+        let outbox = MemoryAnswerOutbox()
+        try outbox.add(
+            PendingAnswer(
+                id: "answerother1", credentialID: "another-credential", requestID: "qitem-x", body: Data("{}".utf8)))
+        let (_, script) = try await session([], outbox: outbox)
+        #expect(posts(script).isEmpty)
+        #expect(try outbox.load().isEmpty)
     }
 
     @Test func aReplyIsOneSubmissionUnderTheFirstOpenQuestion() async throws {
@@ -188,17 +261,43 @@ import Testing
 }
 
 @Suite struct AnswerOutboxTests {
-    let binding = AppAnswerBinding(
-        actor: "human-example@external", requestId: "qitem-1", questionId: "q", episodeKey: nil,
-        expectedRevision: "dr1", answer: .option("a"))
+    let entry = PendingAnswer(id: "answer1234", credentialID: "c", requestID: "qitem-1", body: Data(#"{"a":1}"#.utf8))
+
+    func temporaryURL() -> URL {
+        FileManager.default.temporaryDirectory.appending(path: "outbox-\(UUID().uuidString)/pending-answers.json")
+    }
 
     @Test func aFileOutboxSurvivesBeingOpenedAgain() throws {
-        let url = FileManager.default.temporaryDirectory.appending(path: "outbox-\(UUID().uuidString).json")
-        defer { try? FileManager.default.removeItem(at: url) }
-        try FileAnswerOutbox(url: url).add(PendingAnswer(id: "answer1234", binding: binding))
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        try FileAnswerOutbox(url: url).add(entry)
         let reopened = FileAnswerOutbox(url: url)
-        #expect(try reopened.load() == [PendingAnswer(id: "answer1234", binding: binding)])
+        #expect(try reopened.load() == [entry])
         try reopened.remove(id: "answer1234")
         #expect(try FileAnswerOutbox(url: url).load().isEmpty)
+    }
+
+    /// A file that won't decode would block every Send. It moves aside, and the outbox starts empty.
+    @Test func aDamagedFileMovesAside() throws {
+        let url = temporaryURL()
+        let folder = url.deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data("not json".utf8).write(to: url)
+        let outbox = FileAnswerOutbox(url: url)
+        #expect(try outbox.load().isEmpty)
+        try outbox.add(entry)
+        #expect(try outbox.load() == [entry])
+        let names = try FileManager.default.contentsOfDirectory(atPath: folder.path())
+        #expect(names.contains { $0.hasPrefix("pending-answers.damaged-") })
+    }
+
+    @Test func removingAllEmptiesIt() throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let outbox = FileAnswerOutbox(url: url)
+        try outbox.add(entry)
+        try outbox.removeAll()
+        #expect(try outbox.load().isEmpty)
     }
 }

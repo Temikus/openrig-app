@@ -84,7 +84,13 @@ public struct AppClient: Sendable {
     public func answer(
         id: String, _ binding: AppAnswerBinding, attempts: Int = 3, retryDelay: Duration = .seconds(1)
     ) async throws(AppError) -> AppAnswerReceipt {
-        let body = try Self.body(binding)
+        try await answer(id: id, body: Self.body(binding), attempts: attempts, retryDelay: retryDelay)
+    }
+
+    /// As `answer(id:_:)`, with the body already encoded, as an outbox saved it.
+    public func answer(
+        id: String, body: Data, attempts: Int = 3, retryDelay: Duration = .seconds(1)
+    ) async throws(AppError) -> AppAnswerReceipt {
         var attempt = 1
         while true {
             do {
@@ -138,7 +144,7 @@ public struct AppClient: Sendable {
     }
 
     /// Sorted keys, so the same binding always gives the same bytes.
-    static func body(_ binding: AppAnswerBinding) throws(AppError) -> Data {
+    public static func body(_ binding: AppAnswerBinding) throws(AppError) -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         do { return try encoder.encode(binding) } catch { throw .decoding(path: "answers", message: "\(error)") }

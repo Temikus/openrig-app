@@ -34,6 +34,8 @@ public final class RemoteSession {
     private var client: AppClient?
     /// Outbox entries being sent now, so a check doesn't resend them alongside.
     private var inFlight: Set<String> = []
+    /// Asks whose unconfirmed answer just landed with more of the draft still to send.
+    private var continuing: Set<String> = []
 
     public init(
         store: any PairingStore, outbox: any AnswerOutbox = MemoryAnswerOutbox(),
@@ -106,6 +108,8 @@ public final class RemoteSession {
             pairingError = "This phone couldn't keep the pairing in its Keychain. Try again."
             return
         }
+        // Answers held back for the old pairing never go to the new one.
+        if pairing?.code.credentialID != code.credentialID { try? outbox.removeAll() }
         pairing = new
         forgetReads()
         pairingError = nil
@@ -121,6 +125,8 @@ public final class RemoteSession {
                 "This phone couldn't remove the pairing from its Keychain, so it still holds the key. Try again, or delete the app."
             return
         }
+        // The person unpaired to stop: nothing held back goes later, to this Mac or another.
+        try? outbox.removeAll()
         pairing = nil
         forgetReads()
         pairingError = nil
@@ -142,8 +148,13 @@ public final class RemoteSession {
     public func refresh() async {
         guard !checking else { return }
         checking = true
-        defer { checking = false }
         while let current = pairing, await !check(current) {}
+        // An unconfirmed answer landed with more to send: read again, so the rest goes at the new revision.
+        if !continuing.isEmpty {
+            while let current = pairing, await !check(current) {}
+        }
+        checking = false
+        await continueChains()
     }
 
     /// Refreshes every `interval`, and at once on each event from the Mac, until cancelled. Run it while the app is
@@ -213,18 +224,24 @@ public final class RemoteSession {
 
     /// Sends the draft: one submission per open question, in order, each at the revision the last receipt gave. A
     /// typed reply is one submission. Each is saved before it's sent, so an uncertain end can be resent unchanged.
-    public func send(_ request: AppRequest) async {
-        guard !sending.contains(request.id), let client, let actor = pairing?.code.actor,
+    public func send(_ request: AppRequest) async { await send(request, after: []) }
+
+    /// `earlier`: lines already sent on this ask, when an unconfirmed answer has landed and the rest now follows.
+    private func send(_ request: AppRequest, after earlier: [SentAnswer.Line]) async {
+        guard !sending.contains(request.id), let client, let pairing,
             let submissions = draft(for: request).submissions(for: request), var revision = request.decisionRevision
         else { return }
         sending.insert(request.id)
-        defer { sending.remove(request.id) }
 
+        var lines = SentAnswer.lines(submissions, in: request)
         var outcome = SentAnswer.Outcome.stillOpen
         for (index, submission) in submissions.enumerated() {
-            let pending = PendingAnswer(
-                id: AppAnswerID.random(), binding: submission.binding(on: request, at: revision, as: actor))
+            let binding = submission.binding(on: request, at: revision, as: pairing.code.actor)
+            let pending: PendingAnswer
             do {
+                pending = PendingAnswer(
+                    id: AppAnswerID.random(), credentialID: pairing.code.credentialID, requestID: request.id,
+                    body: try AppClient.body(binding))
                 try outbox.add(pending)
             } catch {
                 outcome = .failed("This phone couldn't save the answer before sending it, so it didn't send it.")
@@ -232,6 +249,7 @@ public final class RemoteSession {
             }
             switch await deliver(pending, with: client, attempts: 3) {
             case .receipt(let receipt):
+                lines[index].state = receipt.fate == .incomplete ? .unconfirmed : .sent
                 if case .partial = receipt.fate, index < submissions.count - 1,
                     let after = receipt.submission.revisionAfter
                 {
@@ -241,16 +259,18 @@ public final class RemoteSession {
                 outcome = SentAnswer.Outcome(receipt.fate)
             case .refused(let error):
                 outcome = SentAnswer.Outcome(error)
+                if outcome == .notFinished { lines[index].state = .unconfirmed }
             }
             break
         }
 
-        sent[request.id] = SentAnswer(
-            outcome: outcome, answers: SentAnswer.lines(submissions, in: request), asker: request.asker, at: .now)
+        sent[request.id] = SentAnswer(outcome: outcome, answers: earlier + lines, asker: request.asker, at: .now)
         switch outcome {
-        case .failed, .changed: break  // the picks may still apply after a look
+        // The picks still matter: after a look, or for the answers that wait on an unconfirmed one.
+        case .failed, .changed, .stillOpen, .notFinished: break
         default: drafts.clear(request.id)
         }
+        sending.remove(request.id)
         await refresh()
     }
 
@@ -265,7 +285,7 @@ public final class RemoteSession {
         defer { inFlight.remove(pending.id) }
         do {
             let receipt = try await client.answer(
-                id: pending.id, pending.binding, attempts: attempts, retryDelay: answerRetryDelay)
+                id: pending.id, body: pending.body, attempts: attempts, retryDelay: answerRetryDelay)
             if receipt.fate != .incomplete { try? outbox.remove(id: pending.id) }
             return .receipt(receipt)
         } catch {
@@ -274,17 +294,49 @@ public final class RemoteSession {
         }
     }
 
-    /// Sends again, with the same id and body, what an earlier attempt couldn't confirm. An ask's record follows.
+    /// Sends again, with the same id and bytes, what an earlier attempt couldn't confirm. An entry from another
+    /// pairing is dropped unsent. An ask's record follows; if its answer landed with more to send, the rest goes
+    /// after a fresh read (`refresh`).
     private func resendPending(with client: AppClient) async {
-        guard let pending = try? outbox.load() else { return }
+        guard let pending = try? outbox.load(), let credential = pairing?.code.credentialID else { return }
         for answer in pending where !inFlight.contains(answer.id) {
-            let outcome: SentAnswer.Outcome =
-                switch await deliver(answer, with: client, attempts: 1) {
-                case .receipt(let receipt): SentAnswer.Outcome(receipt.fate)
-                case .refused(let error): SentAnswer.Outcome(error)
+            guard answer.credentialID == credential else {
+                try? outbox.remove(id: answer.id)
+                continue
+            }
+            let delivery = await deliver(answer, with: client, attempts: 1)
+            guard var record = sent[answer.requestID], record.outcome == .notFinished else { continue }
+            switch delivery {
+            case .receipt(let receipt) where receipt.fate != .incomplete:
+                if let i = record.answers.firstIndex(where: { $0.state == .unconfirmed }) {
+                    record.answers[i].state = .sent
                 }
-            if sent[answer.binding.requestId]?.outcome == .notFinished {
-                sent[answer.binding.requestId]?.outcome = outcome
+                if case .partial = receipt.fate, record.answers.contains(where: { $0.state == .notSent }) {
+                    // The rest is sent again from the draft, at a fresh revision.
+                    record.answers.removeAll { $0.state == .notSent }
+                    continuing.insert(answer.requestID)
+                } else {
+                    record.outcome = SentAnswer.Outcome(receipt.fate)
+                }
+            case .receipt: break
+            case .refused(let error): record.outcome = SentAnswer.Outcome(error)
+            }
+            sent[answer.requestID] = record
+        }
+    }
+
+    /// After a fresh read, sends the rest of each ask whose unconfirmed answer just landed.
+    private func continueChains() async {
+        let ids = continuing
+        continuing = []
+        for id in ids {
+            guard let earlier = sent[id]?.answers else { continue }
+            if let request = needs?.requests.first(where: { $0.id == id }),
+                draft(for: request).submissions(for: request) != nil
+            {
+                await send(request, after: earlier)
+            } else {
+                sent[id]?.outcome = .stillOpen
             }
         }
     }
@@ -351,6 +403,16 @@ public struct SentAnswer: Sendable, Equatable {
     public struct Line: Sendable, Equatable {
         public var question: String
         public var answer: String
+        /// Lines start as not sent and change as receipts come back.
+        public var state: State = .notSent
+
+        public enum State: Sendable, Equatable {
+            case sent
+            /// Sent, but the Mac's receipt didn't come back. The phone resends it.
+            case unconfirmed
+            /// Waits on an earlier answer; it goes once that one is confirmed.
+            case notSent
+        }
     }
 
     public var outcome: Outcome

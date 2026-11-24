@@ -80,12 +80,13 @@ struct AskForm: View {
     var draft: AppAnswerDraft { model.draft(for: request) }
     var submissions: [AppAnswerDraft.Submission]? { draft.submissions(for: request) }
     var sending: Bool { model.sending.contains(request.id) }
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 AskHeader(request: request)
-                if request.occupantAuthorityUnknown {
+                if request.isAnswerable, request.occupantAuthorityUnknown {
                     Label(
                         "OpenRig can't confirm the seat that asked is still current. Your answer is saved on the ask either way.",
                         systemImage: "questionmark.circle"
@@ -100,6 +101,10 @@ struct AskForm: View {
                 } else {
                     QuestionsForm(request: request)
                 }
+                // At accessibility sizes the count scrolls with the questions, so the pinned bar holds only Send.
+                if request.isAnswerable, typeSize.isAccessibilitySize {
+                    Text(progress).font(.footnote).foregroundStyle(.secondary)
+                }
             }
             .padding(20)
         }
@@ -111,7 +116,9 @@ struct AskForm: View {
 
     var sendBar: some View {
         VStack(spacing: 8) {
-            Text(progress).font(.footnote).foregroundStyle(.secondary)
+            if !typeSize.isAccessibilitySize {
+                Text(progress).font(.footnote).foregroundStyle(.secondary)
+            }
             Button {
                 Task { await model.send(request) }
             } label: {
@@ -120,6 +127,8 @@ struct AskForm: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .disabled(submissions == nil || sending || model.shownRequests == nil)
+            // Pinned, so it can't grow to cover the questions.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         }
         .padding(20)
         .background(.bar)
@@ -196,7 +205,6 @@ struct QuestionsForm: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(picked == option.id ? .isSelected : [])
-                .accessibilityHint(option.recommended == true ? "Suggested" : "")
             }
         }
         .background(.background.secondary, in: .rect(cornerRadius: 16))
@@ -288,7 +296,15 @@ struct SentRecordView: View {
                             if index > 0 { Divider().padding(.leading, 16) }
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(line.question).font(.footnote).foregroundStyle(.secondary)
-                                Text(line.answer)
+                                Text(line.answer).foregroundStyle(line.state == .notSent ? .secondary : .primary)
+                                switch line.state {
+                                case .sent: EmptyView()
+                                case .unconfirmed:
+                                    Text("Not confirmed yet").font(.footnote).foregroundStyle(Color.statusBad)
+                                case .notSent:
+                                    Text("Not sent yet. It goes once the answer above is confirmed.")
+                                        .font(.footnote).foregroundStyle(.secondary)
+                                }
                             }
                             .padding(16)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -349,7 +365,7 @@ struct SentRecordView: View {
         case .notFinished:
             (
                 "Not confirmed yet",
-                "The phone couldn't confirm your answers reached \(model.macName). It sends the same answers again each time it checks. You don't need to send again.",
+                "The phone couldn't confirm an answer reached \(model.macName). It sends it again each time it checks, then sends the rest. You don't need to send again.",
                 false
             )
         case .failed(let message):
