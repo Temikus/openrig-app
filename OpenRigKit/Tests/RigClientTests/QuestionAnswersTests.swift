@@ -57,6 +57,15 @@ struct QuestionAnswersTests {
         #expect(answers.calls(for: partly) == [.choice(question: "review", option: "sec")])
     }
 
+    /// The daemon counts a typed reply as an answer, so a retry neither asks for it again nor sends it again.
+    @Test func aTypedReplyCountsAsAnswered() {
+        var answered = item
+        answered.humanAnswers = ["builds": "both", "review": .typedReply("ask design first")]
+        let answers = QuestionAnswers(picks: ["builds": "b1", "review": "sec"])
+        #expect(answers.missing(in: answered).isEmpty)
+        #expect(answers.calls(for: answered).isEmpty)
+    }
+
     @Test func rowsAnsweredInTurnKeepTheirOwnPicks() {
         var other = item
         other.id = "qitem-2"

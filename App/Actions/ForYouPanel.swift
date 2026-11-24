@@ -211,8 +211,8 @@ struct ForYouPanel: View {
 /// One question as a radio list, plus "Other…" for the person's own words.
 private struct QuestionPicker: View {
     let question: HumanQuestion
-    /// The option already recorded on the row, from an earlier send.
-    let recorded: String?
+    /// The answer already recorded on the row, from an earlier send: an option or typed words.
+    let recorded: HumanAnswer?
     @Binding var answers: QuestionAnswers
 
     /// Can't clash with an option: the daemon allows only letters, digits, "-" and "_" in ids.
@@ -247,12 +247,9 @@ private struct QuestionPicker: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(question.question).font(.callout.weight(.medium)).fixedSize(horizontal: false, vertical: true)
             if let recorded {
-                Label(
-                    question.options.first { $0.id == recorded }?.label ?? recorded,
-                    systemImage: "checkmark.circle.fill"
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                Label(recorded.text(in: question), systemImage: "checkmark.circle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             } else {
                 Picker(question.question, selection: selection) {
                     ForEach(question.options) { option in

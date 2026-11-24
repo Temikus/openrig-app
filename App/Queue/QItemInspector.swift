@@ -94,16 +94,16 @@ struct QItemInspector: View {
                 }
                 .font(.callout)
 
-                // The picks recorded on the row, under each full question; long questions would stretch the grid above.
-                let answered = item.humanQuestions.filter { item.humanAnswers[$0.id] != nil }
+                // The answers recorded on the row, under each full question; long questions would stretch the grid
+                // above. A typed reply shows its words.
+                let answered = item.humanQuestions.compactMap { q in item.humanAnswers[q.id].map { (q, $0) } }
                 if !answered.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Answers").font(.headline)
-                        ForEach(answered) { question in
-                            let pick = item.humanAnswers[question.id] ?? ""
+                        ForEach(answered, id: \.0.id) { question, answer in
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(question.question).foregroundStyle(.secondary)
-                                Text(question.options.first { $0.id == pick }?.label ?? pick)
+                                Text(answer.text(in: question)).textSelection(.enabled)
                             }
                             .font(.callout)
                         }
