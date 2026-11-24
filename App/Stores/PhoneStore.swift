@@ -21,13 +21,45 @@ final class PhoneStore {
     private(set) var unpairErrors: [PairedPhone.ID: String] = [:]
     private(set) var unpairing: Set<PairedPhone.ID> = []
 
-    private let defaults: UserDefaults
+    /// Nil for a made-up state: nothing is saved.
+    private let defaults: UserDefaults?
     private static let key = "pairedPhones"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         phones = PairedPhones(data: defaults.data(forKey: Self.key))
     }
+
+    #if DEBUG
+        /// OPENRIG_DEBUG_PHONE=pairing|paired opens the tab in that state, for captures without a press. Made up and
+        /// in memory only: no credential is issued, nothing is saved, the code's token is fake, and Unpair never reaches
+        /// the daemon.
+        private init(debug state: String) {
+            defaults = nil
+            phones = PairedPhones()
+            let day: TimeInterval = 86400
+            if state == "paired" || state == "pairing" {
+                phones.add(PairedPhone(id: "debug-2", name: "Phone", actor: "you@external", paired: .now - 20 * day))
+                phones.add(PairedPhone(id: "debug-1", name: "Phone", actor: "you@external", paired: .now - day))
+            }
+            if state == "pairing" {
+                let json = #"""
+                    {"credentialId": "debug-1", "appId": "openrig-remote", "scope": {"actors": ["you@external"]},
+                     "token": "orapp_DEBUGnotARealTokenDEBUGnotARealTokenDEBUG"}
+                    """#
+                if let credential = try? JSONDecoder().decode(AppCredential.self, from: Data(json.utf8)),
+                    let code = try? PairingCode.forThisMac(
+                        credential: credential, actor: "you@external", daemon: URL(string: "http://127.0.0.1:7433")!)
+                {
+                    self.code = .showing(code)
+                }
+            }
+        }
+
+        static func launch() -> PhoneStore {
+            ProcessInfo.processInfo.environment["OPENRIG_DEBUG_PHONE"].map { PhoneStore(debug: $0) } ?? PhoneStore()
+        }
+    #endif
 
     /// Issues a credential that answers as `actor` and shows its code. The phone is recorded at once: the credential
     /// exists from here on, and the record is the only way to revoke it.
@@ -58,6 +90,11 @@ final class PhoneStore {
         unpairing.insert(phone.id)
         defer { unpairing.remove(phone.id) }
         unpairErrors[phone.id] = nil
+        // A made-up state's phones were never issued: forget them without asking the daemon.
+        guard defaults != nil else {
+            phones.remove(id: phone.id)
+            return
+        }
         do {
             try await DaemonHTTP(baseURL: daemon, timeout: 5, bearer: bearer).revokeAppCredential(id: phone.id)
             phones.remove(id: phone.id)
@@ -68,7 +105,7 @@ final class PhoneStore {
         }
     }
 
-    private func save() { defaults.set(phones.data, forKey: Self.key) }
+    private func save() { defaults?.set(phones.data, forKey: Self.key) }
 
     static func elsewhere(_ host: String) -> String {
         "The daemon runs at \(host), not on this Mac. A phone pairs with the Mac that runs the daemon."

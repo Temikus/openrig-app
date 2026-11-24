@@ -7,7 +7,11 @@ import SwiftUI
 /// Settings › Phone (Paper board "Mac app · where a phone is paired", A): the pairing code and the paired phones.
 struct PhoneSettings: View {
     @Environment(AppStore.self) private var store
-    @State private var phones = PhoneStore()
+    #if DEBUG
+        @State private var phones = PhoneStore.launch()
+    #else
+        @State private var phones = PhoneStore()
+    #endif
 
     private var daemon: URL { store.endpoint.baseURL }
     private var daemonHere: Bool { PairingCode.Reach.Kind.loopback.accepts(daemon.host() ?? "") }
