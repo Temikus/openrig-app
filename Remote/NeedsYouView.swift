@@ -31,11 +31,16 @@ struct NeedsYouView: View {
             case .unreachable(let detail):
                 unavailable(
                     "Can't reach \(model.macName)", systemImage: "wifi.exclamationmark",
-                    description:
-                        "Check that the Mac is awake with OpenRig open, and that this phone is on the same Wi-Fi."
-                        + (viaRelay ? " If you unpaired this phone on the Mac, pair it again." : ""),
+                    description: viaRelay
+                        ? "Check that the Mac is awake with OpenRig open, that “Let paired phones connect” is on in its Settings › Phone, and that this phone is on the same Wi-Fi. If you unpaired this phone on the Mac, pair it again."
+                        : "Check that the Mac is awake with OpenRig open, and that this phone is on the same Wi-Fi.",
                     detail: detail
-                ) { retry }
+                ) {
+                    retry
+                    if viaRelay {
+                        Button("Pair Again…") { model.unpair() }
+                    }
+                }
             case .localNetworkDenied:
                 unavailable(
                     "Local Network access is off", systemImage: "network.slash",

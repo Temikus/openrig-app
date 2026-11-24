@@ -92,6 +92,42 @@ import Testing
         #expect(RelayTransport.lastNegotiatedSuite == UInt16(TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256))
     }
 
+    /// review-code's probe, as a test. Cancelling the events stream (the app going to the background) closes the
+    /// phone's channel at once. The relay learns of it only by writing: the first write after the close is still
+    /// accepted, the second fails. Heartbeats every second and a cancel half-way between them: about 1.5 s now; before
+    /// this fix the phone first waited for a frame, about 2.5 s.
+    @Test func aCancelledEventsStreamClosesItsChannel() async throws {
+        let ended = Flag()
+        let headers = ["Content-Type": "text/event-stream"]
+        let server = RelayServer(keys: [credential: secret], host: "127.0.0.1", port: 0) { _ in
+            AsyncThrowingStream { continuation in
+                let beat = Task {
+                    while !Task.isCancelled {
+                        continuation.yield(
+                            RelayResponse(
+                                status: 200, headers: headers,
+                                body: Data("event: heartbeat\ndata: {\"kind\":\"heartbeat\"}\n\n".utf8), more: true))
+                        try? await Task.sleep(for: .seconds(1))
+                    }
+                }
+                continuation.onTermination = { _ in
+                    beat.cancel()
+                    ended.set()
+                }
+            }
+        }
+        let port = try await server.start()
+        defer { server.stop() }
+        let reading = Task { for try await _ in client(port: port).events() {} }
+        // Half-way between two heartbeats.
+        try await Task.sleep(for: .milliseconds(1500))
+        let cancelled = ContinuousClock.now
+        reading.cancel()
+        for _ in 0..<80 where ended.when == nil { try await Task.sleep(for: .milliseconds(50)) }
+        let seen = try #require(ended.when) - cancelled
+        #expect(seen < .seconds(2), "the relay saw the stream end \(seen) after the cancel")
+    }
+
     /// The daemon's own stream through the forwarder: blank lines arrive as their own frames.
     @Test func theForwarderKeepsBlankLines() async throws {
         let script = Script([.events(Data("event: reset\ndata: {}\n\n".utf8))])
@@ -101,6 +137,44 @@ import Testing
             body.append(frame.body)
         }
         #expect(String(decoding: body, as: UTF8.self) == "event: reset\ndata: {}\n\n")
+    }
+}
+
+/// When something first happened, from any thread.
+final class Flag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var at: ContinuousClock.Instant?
+    func set() { lock.withLock { if at == nil { at = .now } } }
+    var when: ContinuousClock.Instant? { lock.withLock { at } }
+}
+
+/// The secret for a pairing is held only while that pairing is current.
+@MainActor @Suite struct RelaySecretTests {
+    func link(credential: String) -> String {
+        "openrig-remote://pair?v=1&reach=loopback:7433:127.0.0.1&actor=human-example@external&credential=\(credential)&token=orapp_t1"
+    }
+
+    func session(credential: String) -> RemoteSession {
+        let remote = RemoteSession(
+            store: MemoryPairingStore(),
+            connect: { _ in RemoteConnector.Outcome(status: .unreachable(detail: nil), client: nil) })
+        remote.pair(link: link(credential: credential))
+        RelayTransport.secrets.withLock { $0[credential] = RelayLink.newSecret() }
+        return remote
+    }
+
+    @Test func unpairForgetsTheSecret() {
+        let credential = "cred-\(UUID().uuidString)"
+        let remote = session(credential: credential)
+        remote.unpair()
+        #expect(RelayTransport.secrets.withLock { $0[credential] } == nil)
+    }
+
+    @Test func pairingAnotherCodeForgetsTheOldSecret() {
+        let credential = "cred-\(UUID().uuidString)"
+        let remote = session(credential: credential)
+        remote.pair(link: link(credential: "cred-\(UUID().uuidString)"))
+        #expect(RelayTransport.secrets.withLock { $0[credential] } == nil)
     }
 }
 

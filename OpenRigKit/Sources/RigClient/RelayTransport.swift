@@ -19,6 +19,9 @@ public enum RelayTransport {
     public static var lastNegotiatedSuite: UInt16? { lastSuite.withLock { $0 } }
     static let lastSuite = Mutex<UInt16?>(nil)
 
+    /// Drops a pairing's secret: on Unpair, or when another code replaces it.
+    public static func forget(identity: String) { _ = secrets.withLock { $0.removeValue(forKey: identity) } }
+
     /// An `AppClient` that reaches the daemon through the relay at `host:port`.
     public static func client(
         host: String, port: UInt16, identity: String, secret: Data, token: String, actor: String,
@@ -39,7 +42,12 @@ public enum RelayTransport {
 }
 
 final class RelayURLProtocol: URLProtocol, @unchecked Sendable {
-    private let loading = Mutex<Task<Void, Never>?>(nil)
+    private struct State {
+        var task: Task<Void, Never>?
+        var channel: RelayChannel?
+        var stopped = false
+    }
+    private let state = Mutex(State())
 
     override class func canInit(with request: URLRequest) -> Bool { request.url?.scheme == RelayTransport.scheme }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -47,33 +55,54 @@ final class RelayURLProtocol: URLProtocol, @unchecked Sendable {
     override func startLoading() {
         let request = self.request
         let started = Task { await self.load(request) }
-        loading.withLock { $0 = started }
+        state.withLock { $0.task = started }
     }
 
+    /// Closes the channel at once: a pending `receive` doesn't wake for a cancel, and an events stream would
+    /// otherwise stay open until its next frame.
     override func stopLoading() {
-        loading.withLock { $0?.cancel() }
+        let (task, channel) = state.withLock { s in
+            s.stopped = true
+            return (s.task, s.channel)
+        }
+        task?.cancel()
+        channel?.close()
     }
+
+    /// A URL error with words for the person: the bare codes read "NSURLErrorDomain error -1004".
+    static func failure(_ code: URLError.Code, _ words: String) -> URLError {
+        URLError(code, userInfo: [NSLocalizedDescriptionKey: words])
+    }
+
+    /// The client, until `stopLoading`: after that, URL loading wants no more calls.
+    private var live: (any URLProtocolClient)? { state.withLock { $0.stopped } ? nil : client }
 
     private func load(_ request: URLRequest) async {
         guard let url = request.url, let host = url.host(), let port = url.port.flatMap(UInt16.init(exactly:)),
             let identity = url.user(), let secret = RelayTransport.secrets.withLock({ $0[identity] })
         else {
-            client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+            live?.urlProtocol(self, didFailWithError: URLError(.badURL))
             return
         }
         let channel = RelayChannel(host: host, port: port, identity: identity, secret: secret)
         defer { channel.close() }
+        let stopped = state.withLock { s in
+            s.channel = channel
+            return s.stopped
+        }
+        guard !stopped else { return }
         do {
             try await channel.open(timeout: .seconds(min(request.timeoutInterval, 10)))
         } catch RelayLinkError.refused(let reason) {
             // The relay is there but doesn't know this phone's key: after Unpair the Mac forgets it. Read as 401.
             RelayTransport.log.notice("relay refused the key: \(reason, privacy: .public)")
             respond(url, status: 401, headers: [:])
-            client?.urlProtocolDidFinishLoading(self)
+            live?.urlProtocolDidFinishLoading(self)
             return
         } catch {
             RelayTransport.log.notice("relay not reached: \(String(describing: error), privacy: .public)")
-            client?.urlProtocol(self, didFailWithError: URLError(.cannotConnectToHost))
+            live?.urlProtocol(
+                self, didFailWithError: Self.failure(.cannotConnectToHost, "Couldn't connect to the Mac's relay."))
             return
         }
         let suite = channel.negotiatedSuite
@@ -94,18 +123,20 @@ final class RelayURLProtocol: URLProtocol, @unchecked Sendable {
                     respond(url, status: frame.status, headers: frame.headers)
                     responded = true
                 }
-                if !frame.body.isEmpty { client?.urlProtocol(self, didLoad: frame.body) }
+                if !frame.body.isEmpty { live?.urlProtocol(self, didLoad: frame.body) }
                 if !frame.more { break }
             }
-            client?.urlProtocolDidFinishLoading(self)
+            live?.urlProtocolDidFinishLoading(self)
         } catch {
-            client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+            live?.urlProtocol(
+                self,
+                didFailWithError: Self.failure(.networkConnectionLost, "The connection to the Mac's relay was lost."))
         }
     }
 
     private func respond(_ url: URL, status: Int, headers: [String: String]) {
         let response = HTTPURLResponse(url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers)!
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        live?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
     }
 
     static func read(_ stream: InputStream) -> Data {

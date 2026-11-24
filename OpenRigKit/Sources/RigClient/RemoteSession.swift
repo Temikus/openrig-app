@@ -108,8 +108,13 @@ public final class RemoteSession {
             pairingError = "This phone couldn't keep the pairing in its Keychain. Try again."
             return
         }
-        // Answers held back for the old pairing never go to the new one.
-        if pairing?.code.credentialID != code.credentialID { try? outbox.removeAll() }
+        // Answers held back for the old pairing never go to the new one, and its relay secret goes.
+        if let old = pairing?.code.credentialID, old != code.credentialID {
+            try? outbox.removeAll()
+            RelayTransport.forget(identity: old)
+        } else if pairing == nil {
+            try? outbox.removeAll()
+        }
         pairing = new
         forgetReads()
         pairingError = nil
@@ -125,8 +130,10 @@ public final class RemoteSession {
                 "This phone couldn't remove the pairing from its Keychain, so it still holds the key. Try again, or delete the app."
             return
         }
-        // The person unpaired to stop: nothing held back goes later, to this Mac or another.
+        // The person unpaired to stop: nothing held back goes later, to this Mac or another, and the relay secret
+        // leaves memory.
         try? outbox.removeAll()
+        if let old = pairing?.code.credentialID { RelayTransport.forget(identity: old) }
         pairing = nil
         forgetReads()
         pairingError = nil
