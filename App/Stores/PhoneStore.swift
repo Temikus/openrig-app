@@ -17,12 +17,11 @@ final class PhoneStore {
 
     private(set) var phones: PairedPhones
     private(set) var code = Code.hidden
-    /// Unpair's error, by phone.
+    /// Unpair's or Cancel Code's error, by phone.
     private(set) var unpairErrors: [PairedPhone.ID: String] = [:]
     private(set) var unpairing: Set<PairedPhone.ID> = []
 
-    /// Nil for a made-up state: nothing is saved.
-    private let defaults: UserDefaults?
+    private let defaults: UserDefaults
     private static let key = "pairedPhones"
 
     init(defaults: UserDefaults = .standard) {
@@ -32,15 +31,20 @@ final class PhoneStore {
 
     #if DEBUG
         /// OPENRIG_DEBUG_PHONE=pairing|paired opens the tab in that state, for captures without a press. Made up and
-        /// in memory only: no credential is issued, nothing is saved, the code's token is fake, and Unpair never reaches
-        /// the daemon.
+        /// in memory only: `PairedPhones.isMadeUp` stops every issue and revoke, nothing is saved, and the code's token
+        /// is fake.
         private init(debug state: String) {
-            defaults = nil
+            defaults = .standard
             phones = PairedPhones()
+            phones.isMadeUp = true
+            let daemon = URL(string: "http://127.0.0.1:7433")!
             let day: TimeInterval = 86400
             if state == "paired" || state == "pairing" {
-                phones.add(PairedPhone(id: "debug-2", name: "Phone", actor: "you@external", paired: .now - 20 * day))
-                phones.add(PairedPhone(id: "debug-1", name: "Phone", actor: "you@external", paired: .now - day))
+                phones.add(
+                    PairedPhone(id: "debug-2", name: "", actor: "you@external", paired: .now - 20 * day, daemon: daemon)
+                )
+                phones.add(
+                    PairedPhone(id: "debug-1", name: "", actor: "you@external", paired: .now - day, daemon: daemon))
             }
             if state == "pairing" {
                 let json = #"""
@@ -49,7 +53,7 @@ final class PhoneStore {
                     """#
                 if let credential = try? JSONDecoder().decode(AppCredential.self, from: Data(json.utf8)),
                     let code = try? PairingCode.forThisMac(
-                        credential: credential, actor: "you@external", daemon: URL(string: "http://127.0.0.1:7433")!)
+                        credential: credential, actor: "you@external", daemon: daemon)
                 {
                     self.code = .showing(code)
                 }
@@ -61,19 +65,23 @@ final class PhoneStore {
         }
     #endif
 
-    /// Issues a credential that answers as `actor` and shows its code. The phone is recorded at once: the credential
+    /// Issues a credential that answers as `actor` and shows its code. The row is recorded at once: the credential
     /// exists from here on, and the record is the only way to revoke it.
     func pair(daemon: URL, bearer: String?, actor: String) async {
-        code = .issuing
+        if let refusal = phones.refusesIssue {
+            code = .failed(refusal.message)
+            return
+        }
         let host = daemon.host() ?? daemon.absoluteString
         guard PairingCode.Reach.Kind.loopback.accepts(host) else {
             code = .failed(Self.elsewhere(host))
             return
         }
+        code = .issuing
         do {
             let credential = try await DaemonHTTP(baseURL: daemon, timeout: 5, bearer: bearer)
                 .issueAppCredential(for: [actor])
-            phones.add(PairedPhone(id: credential.id, name: "Phone", actor: actor, paired: .now))
+            phones.add(PairedPhone(id: credential.id, name: "", actor: actor, paired: .now, daemon: daemon))
             save()
             code = .showing(try PairingCode.forThisMac(credential: credential, actor: actor, daemon: daemon))
         } catch let error as DaemonError {
@@ -83,29 +91,48 @@ final class PhoneStore {
         }
     }
 
-    func hideCode() { code = .hidden }
+    /// Leaves the credential live: the code may have been scanned.
+    func hideCode() { if case .showing = code { code = .hidden } }
+
+    /// The code shown was not used: revoke its credential and drop its row, as Unpair does.
+    func cancelCode(daemon: URL, bearer: String?) async {
+        guard case .showing(let shown) = code, let phone = phones.list.first(where: { $0.id == shown.credentialID })
+        else { return }
+        await unpair(phone, daemon: daemon, bearer: bearer)
+        if phones.list.contains(where: { $0.id == phone.id }) {
+            // The revoke failed: the row stays with its error, and the code closes so it isn't scanned meanwhile.
+            code = .hidden
+        }
+    }
 
     /// Revokes the phone's credential, then forgets it. A failed revoke keeps the phone listed, so it can be tried again.
     func unpair(_ phone: PairedPhone, daemon: URL, bearer: String?) async {
-        unpairing.insert(phone.id)
-        defer { unpairing.remove(phone.id) }
         unpairErrors[phone.id] = nil
-        // A made-up state's phones were never issued: forget them without asking the daemon.
-        guard defaults != nil else {
-            phones.remove(id: phone.id)
+        if let refusal = phones.refusesRevoke(phone, at: daemon) {
+            // A made-up row was never issued: forget it. Another daemon's row stays, with why.
+            if refusal == .madeUp { forget(phone) } else { unpairErrors[phone.id] = refusal.message }
             return
         }
+        unpairing.insert(phone.id)
+        defer { unpairing.remove(phone.id) }
         do {
             try await DaemonHTTP(baseURL: daemon, timeout: 5, bearer: bearer).revokeAppCredential(id: phone.id)
-            phones.remove(id: phone.id)
-            save()
-            if case .showing(let shown) = code, shown.credentialID == phone.id { code = .hidden }
+            forget(phone)
         } catch {
             unpairErrors[phone.id] = Self.message(error)
         }
     }
 
-    private func save() { defaults?.set(phones.data, forKey: Self.key) }
+    private func forget(_ phone: PairedPhone) {
+        phones.remove(id: phone.id)
+        save()
+        if case .showing(let shown) = code, shown.credentialID == phone.id { code = .hidden }
+    }
+
+    private func save() {
+        guard !phones.isMadeUp else { return }
+        defaults.set(phones.data, forKey: Self.key)
+    }
 
     static func elsewhere(_ host: String) -> String {
         "The daemon runs at \(host), not on this Mac. A phone pairs with the Mac that runs the daemon."

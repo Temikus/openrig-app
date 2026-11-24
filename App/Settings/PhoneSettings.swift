@@ -13,8 +13,12 @@ struct PhoneSettings: View {
         @State private var phones = PhoneStore()
     #endif
 
+    @State private var confirming: PairedPhone?
+
     private var daemon: URL { store.endpoint.baseURL }
     private var daemonHere: Bool { PairingCode.Reach.Kind.loopback.accepts(daemon.host() ?? "") }
+    /// Only this daemon's: another daemon's credentials can't be revoked from here.
+    private var list: [PairedPhone] { phones.phones.list(for: daemon) }
 
     var body: some View {
         Form {
@@ -28,10 +32,10 @@ struct PhoneSettings: View {
                 }
             }
             Section {
-                if phones.phones.list.isEmpty {
+                if list.isEmpty {
                     Text("No phones paired.").foregroundStyle(.secondary)
                 }
-                ForEach(phones.phones.list) { phone in row(phone) }
+                ForEach(list) { phone in row(phone) }
             } header: {
                 Text("Paired phones")
             } footer: {
@@ -40,15 +44,35 @@ struct PhoneSettings: View {
             }
         }
         .settingsForm()
-        // The code carries a live token: it closes when the person leaves the tab.
+        // The code carries a live token: it hides when the person leaves the tab.
         .onDisappear { phones.hideCode() }
+        .confirmationDialog(
+            "Unpair this phone?",
+            isPresented: Binding {
+                confirming != nil
+            } set: {
+                if !$0 { confirming = nil }
+            },
+            presenting: confirming
+        ) { phone in
+            Button("Unpair", role: .destructive) {
+                Task { await phones.unpair(phone, daemon: daemon, bearer: store.token) }
+            }
+        } message: { _ in
+            Text("It stops answering at once.")
+        }
     }
 
     /// Until the Mac relays for phones on the Wi-Fi, a code works only in the iOS simulator on this Mac.
     private var status: some View {
         LabeledContent {
             if case .showing = phones.code {
-                Button("Hide Code") { phones.hideCode() }
+                HStack {
+                    Button("Cancel Code") { Task { await phones.cancelCode(daemon: daemon, bearer: store.token) } }
+                        .help("Revokes this code. Use it if no phone has scanned it.")
+                    Button("Hide Code") { phones.hideCode() }
+                        .help("Hides the code. It still works until you unpair it.")
+                }
             } else {
                 Button("Pair a Phone…") {
                     Task { await phones.pair(daemon: daemon, bearer: store.token, actor: store.me) }
@@ -64,7 +88,7 @@ struct PhoneSettings: View {
                             + "the iOS simulator on this Mac."
                         : PhoneStore.elsewhere(daemon.host() ?? daemon.absoluteString)
                 )
-                .foregroundStyle(Color.attention)
+                .foregroundStyle(.secondary)
             } icon: {
                 Image(systemName: "circle.fill").foregroundStyle(Color.attention).imageScale(.small)
             }
@@ -73,21 +97,17 @@ struct PhoneSettings: View {
 
     private func row(_ phone: PairedPhone) -> some View {
         LabeledContent {
-            Button("Unpair") { Task { await phones.unpair(phone, daemon: daemon, bearer: store.token) } }
+            Button("Unpair") { confirming = phone }
                 .disabled(phones.unpairing.contains(phone.id))
-                .accessibilityLabel("Unpair \(phone.name), paired \(paired(phone))")
+                .accessibilityLabel("Unpair \(phone.title)")
         } label: {
-            Text(phone.name)
+            Text(phone.title)
             if let error = phones.unpairErrors[phone.id] {
                 Text(error).foregroundStyle(Color.attention)
             } else {
-                Text("Paired \(paired(phone)) · answers as \(phone.actor)")
+                Text("answers as \(phone.actor)")
             }
         }
-    }
-
-    private func paired(_ phone: PairedPhone) -> String {
-        phone.paired.formatted(date: .abbreviated, time: .shortened)
     }
 }
 
@@ -109,7 +129,8 @@ private struct CodePanel: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Scan this with OpenRig on your iPhone")
                 Text(
-                    "Anyone with this code can answer as you until you unpair it. It closes when you leave this tab."
+                    "Anyone with this code can answer as you. Leaving this tab hides the code. It still works until "
+                        + "you unpair it."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -124,8 +145,12 @@ private struct CodePanel: View {
                         .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 4))
                         .accessibilityLabel("Pairing link")
                     Button("Copy Link") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(code.url.absoluteString, forType: .string)
+                        // Concealed, so clipboard managers don't keep the token; Universal Clipboard still carries it.
+                        let pasteboard = NSPasteboard.general
+                        let concealed = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
+                        pasteboard.declareTypes([.string, concealed], owner: nil)
+                        pasteboard.setString(code.url.absoluteString, forType: .string)
+                        pasteboard.setString("", forType: concealed)
                     }
                 }
             }
