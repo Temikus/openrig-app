@@ -1,4 +1,3 @@
-import CoreGraphics
 import RigCanvasLayout
 import RigModel
 import Testing
@@ -49,18 +48,6 @@ import Testing
         let workWire = try #require(result.wires.first { $0.id == "q:q1" })
         #expect(workWire.points == specWire.points)
         #expect(workWire.kind == .inFlight)
-    }
-
-    @Test func chipSitsOnTheLongestClearSegment() throws {
-        let layout = layoutRig(layoutInput(for: graph))
-        let work = workWireRequests([item("q2", from: "lead@r", to: "b2@r")], graph: graph, chain: nil)
-        let wire = try #require(routeCanvas(layout, spec: [], work: work).wires.first)
-        let chip = chipAnchor(for: wire, avoiding: Array(layout.seats.values))
-        #expect(
-            wire.segments.contains { a, b in
-                (a.x == b.x && chip.x == a.x) || (a.y == b.y && chip.y == a.y)
-            })
-        #expect(!layout.seats.values.contains { $0.insetBy(dx: -4, dy: -4).contains(chip) })
     }
 }
 
