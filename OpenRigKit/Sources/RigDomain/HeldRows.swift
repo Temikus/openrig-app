@@ -10,25 +10,34 @@ public struct HeldRows: Sendable, Equatable {
     /// The start of the closed rows' window. Nil when closed rows are not held.
     public private(set) var closedSince: Date?
 
+    /// The states the open read asks for (`DaemonHTTP.openStates`). Every other state is closed, `denied` and
+    /// `failed` included, though `workStatus` reads those as `.unknown`.
+    public static let openStates: Set<QItemState> = [.pending, .inProgress, .blocked]
+
     public init() {}
 
     /// Replaces the open rows with a fresh read. A row kept by id goes when the read serves it, or when the
     /// kept copy is open and the read leaves it out: it closed or moved, and only a new read by id is current.
     public mutating func replaceOpen(_ rows: [QItem]) {
         open = Self.index(rows)
-        byID = byID.filter { id, row in open[id] == nil && !workStatus(row).isActive }
+        byID = byID.filter { id, row in open[id] == nil && !Self.openStates.contains(row.state) }
     }
 
     /// Replaces the closed rows with a read of rows closed at or after `since`.
     public mutating func replaceClosed(_ rows: [QItem], since: Date) {
-        closed = Self.index(rows)
+        closed = Self.index(Self.closed(rows, since: since))
         closedSince = since
     }
 
     /// Adds rows from a top-up read, replacing older copies.
     public mutating func topUpClosed(_ rows: [QItem]) {
-        guard closedSince != nil else { return }
-        for row in rows { closed[row.id] = row }
+        guard let closedSince else { return }
+        for row in Self.closed(rows, since: closedSince) { closed[row.id] = row }
+    }
+
+    /// An older daemon may ignore the read's `state` or `updatedSince` filter, so both are checked here too.
+    private static func closed(_ rows: [QItem], since: Date) -> [QItem] {
+        rows.filter { !openStates.contains($0.state) && ($0.updated.map { $0 >= since } ?? false) }
     }
 
     /// Stops holding closed rows, e.g. when no view shows them.

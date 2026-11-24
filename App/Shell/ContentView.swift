@@ -75,6 +75,8 @@ struct ContentView: View {
             if old != new { store.inspectorByMode[old] = wantsInspector }
             wantsInspector = store.inspectorByMode[new] ?? true
         }
+        // The rig store reads a selected row it doesn't hold (closed, or another rig's) by id.
+        .onChange(of: selectedRow, initial: true) { store.rig?.selectedQItemID = selectedRow.qitem }
         .onChange(of: store.inspectorRequests) { requestInspector() }
         .onChange(of: wantsInspector) { updateInspector() }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willStartLiveResizeNotification)) { _ in
@@ -170,6 +172,10 @@ struct ContentView: View {
         window.setFrame(frame, display: true, animate: true)
     }
 
+    private var selectedRow: SelectedRow {
+        SelectedRow(rig: store.rig.map(ObjectIdentifier.init), qitem: store.selection.qitemID)
+    }
+
     /// Grows while the inspector shows. Steady while the window resizes: the detail takes the change.
     private var minimumWidth: CGFloat {
         guard showsInspector, inspectorWidth > 0 else { return 820 }
@@ -199,6 +205,12 @@ struct ContentView: View {
         let shows = wantsInspector && (showsInspector || detailWidth.map(InspectorRoom.canOpen) == true)
         if showsInspector != shows { showsInspector = shows }
     }
+}
+
+/// The selected qitem in a given rig store: a new store (rig switched or rebuilt) is told again.
+private struct SelectedRow: Equatable {
+    var rig: ObjectIdentifier?
+    var qitem: QItem.ID?
 }
 
 /// Layout readings kept out of observed state.

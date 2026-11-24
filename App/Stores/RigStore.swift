@@ -19,8 +19,13 @@ final class RigStore {
     var op: RigOp?
 
     private(set) var graph: RigGraph?
+    /// This rig's rows: open ones, today's closed ones while a view holds them, and rows read by id.
     private(set) var items: [QItem] = []
+    /// Every held row by id, rows of other rigs read by id included (a selected row, an ancestor).
+    private(set) var rowsByID: [QItem.ID: QItem] = [:]
     private(set) var chains = ChainIndex([])
+    /// Today's closed rows, for the board's Today scope and ⌘K.
+    private(set) var closedRows: ClosedRows = .off
     private(set) var error: String?
     private(set) var lastUpdated: Date?
     private(set) var layout: CanvasLayout?
@@ -40,7 +45,14 @@ final class RigStore {
 
     /// Seat heights measured by the canvas. Layout depends on them, so changes re-run layout.
     private var seatSizes: [String: CGSize] = [:]
-    private var pending: Task<Void, Never>?
+    /// The rows as read. Views see them only through `publish()`, so a refresh shows no half-merged state.
+    @ObservationIgnored private var held = HeldRows()
+    @ObservationIgnored private var gate = RefreshGate()
+    @ObservationIgnored private var driver: Task<Void, Never>?
+    /// The driver's wait for the gate; cancelled when a new request may move the next start earlier.
+    @ObservationIgnored private var wait: Task<Void, Never>?
+    /// Callers of `refresh()` waiting for a refresh that starts after their request.
+    @ObservationIgnored private var waiters: [CheckedContinuation<Void, Never>] = []
     // Routing depends on the selected qitem's chain; cache one result per selection.
     @ObservationIgnored private var routeCache: [String: RouteResult] = [:]
 
@@ -61,8 +73,7 @@ final class RigStore {
     }
 
     func item(_ id: QItem.ID?) -> QItem? {
-        guard let id else { return nil }
-        return items.first { $0.id == id }
+        id.flatMap { rowsByID[$0] }
     }
 
     /// The seat's short name, or the session's name part for seats outside this rig. The app's own address reads "You".
@@ -160,21 +171,69 @@ final class RigStore {
         if shown != stops { stops = shown }
     }
 
+    // MARK: Refresh
+
+    /// Refreshes now, skipping the gap between event refreshes: the person's own actions and the safety poll.
+    /// Returns once a refresh that started after this call has finished. Never runs beside another refresh.
     func refresh() async {
+        await withCheckedContinuation { waiter in
+            waiters.append(waiter)
+            ask(.now)
+        }
+    }
+
+    /// A daemon event: a burst becomes one refresh, at most one every 2 s (`RefreshGate`).
+    func scheduleRefresh() {
+        ask(.event)
+    }
+
+    private func ask(_ request: RefreshGate.Request) {
+        gate.request(request, at: .now)
+        wait?.cancel()
+        if driver == nil { driver = Task { await drive() } }
+    }
+
+    /// Runs refreshes as the gate allows, one at a time, until nothing is waiting.
+    private func drive() async {
+        while let due = gate.nextStart {
+            if due > .now {
+                let sleep = Task { _ = try? await Task.sleep(until: due, clock: .continuous) }
+                wait = sleep
+                await sleep.value
+                wait = nil
+                continue
+            }
+            guard gate.start(at: .now) else { continue }
+            let served = waiters
+            waiters = []
+            await load()
+            gate.finish()
+            served.forEach { $0.resume() }
+        }
+        driver = nil
+    }
+
+    private static let rowLimit = 500
+
+    /// One refresh: the graph, the open rows, a top-up of today's closed rows while they are held, then the selected
+    /// row. The top-up lands in the same pass as the open rows, so a row closing in between doesn't drop out.
+    private func load() async {
+        let since = held.topUpSince
         do {
-            async let graphRequest = client.graph(rigID: rigID)
-            async let queueRequest = client.queue(rigName: rigName)
-            let (fresh, real) = try await (graphRequest, queueRequest)
-            let (rows, added) = MadeUpRows.launch.merge(into: real)
-            madeUpIDs = added
+            async let graphRead = client.graph(rigID: rigID)
+            async let openRead = client.openRows(rig: rigName, limit: Self.rowLimit)
+            async let closedRead = closedTopUp(since: since)
+            let (fresh, open, closed) = try await (graphRead, openRead, closedRead)
+            held.replaceOpen(open)
+            if let closed {
+                held.topUpClosed(closed)
+                if closed.count >= Self.rowLimit, case .loaded = closedRows { closedRows = .loaded(cut: true) }
+            }
+            // After the open rows, which drop a selected row read by id once it is no longer open.
+            await readSelected()
             error = nil
             lastUpdated = .now
-            if fresh != graph || rows != items {
-                graph = fresh
-                items = rows
-                chains = ChainIndex(rows)
-                recompute()
-            }
+            publish(graph: fresh)
             await refreshStops(fresh)
             await refreshWorkflows()
         } catch let error as DaemonError {
@@ -182,6 +241,122 @@ final class RigStore {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    /// Nil when closed rows aren't held or the read failed; the next refresh tries again.
+    private func closedTopUp(since: Date?) async -> [QItem]? {
+        guard let since else { return nil }
+        return try? await client.closedRows(rig: rigName, since: since, limit: Self.rowLimit)
+    }
+
+    /// Shows the held rows. Only this rig's rows are listed; rows of other rigs read by id are found by `item(_:)`.
+    private func publish(graph fresh: RigGraph? = nil) {
+        let all = held.all
+        let (rows, added) = MadeUpRows.launch.merge(
+            into: all.filter { [$0.source, $0.destination].contains { RigDomain.rigName(ofSession: $0) == rigName } })
+        madeUpIDs = added
+        let everything = all + rows.filter { added.contains($0.id) }
+        let byID = Dictionary(everything.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let next = fresh ?? graph
+        guard next != graph || rows != items || byID != rowsByID else { return }
+        graph = next
+        items = rows
+        rowsByID = byID
+        chains = ChainIndex(everything)
+        recompute()
+    }
+
+    // MARK: The selected row
+
+    /// The qitem the person selected, from the view. While it is not among the open or today's closed rows, each
+    /// refresh reads it by id. Its ancestors that aren't held are read once.
+    @ObservationIgnored var selectedQItemID: QItem.ID? {
+        didSet {
+            guard selectedQItemID != oldValue, selectedQItemID != nil else { return }
+            Task {
+                await readSelected()
+                publish()
+            }
+        }
+    }
+    @ObservationIgnored private var askedAncestors: Set<QItem.ID> = []
+
+    private func readSelected() async {
+        guard let id = selectedQItemID else { return }
+        let client = self.client
+        if held.open[id] == nil, held.closed[id] == nil, !madeUpIDs.contains(id),
+            let row = try? await client.qitem(id: id)
+        {
+            held.keep(row)
+        }
+        let missing = held.missingAncestors(of: id).filter { askedAncestors.insert($0).inserted }
+        guard !missing.isEmpty else { return }
+        let ancestors = await withTaskGroup(of: QItem?.self) { group in
+            for ancestor in missing { group.addTask { try? await client.qitem(id: ancestor) } }
+            var rows: [QItem] = []
+            for await row in group { if let row { rows.append(row) } }
+            return rows
+        }
+        ancestors.forEach { held.keep($0) }
+    }
+
+    // MARK: Today's closed rows
+
+    enum ClosedRows: Equatable {
+        case off, loading
+        /// `cut`: the daemon returned as many rows as asked for, so some closed earlier today are missing.
+        case loaded(cut: Bool)
+        case failed(String)
+    }
+
+    /// Views holding closed rows. A count, not a set: a view's old hold can end after its new one began.
+    @ObservationIgnored private var closedHolds = 0
+    /// Counts closed reads, so one that lands after a newer read or a drop is ignored.
+    @ObservationIgnored private var closedReads = 0
+
+    /// Holds today's closed rows until the calling task is cancelled: call it from `.task`.
+    func holdClosedRows() async {
+        closedHolds += 1
+        switch closedRows {
+        case .off, .failed: loadClosedRows()
+        case .loading, .loaded: break
+        }
+        while !Task.isCancelled { try? await Task.sleep(for: .seconds(3600)) }
+        closedHolds -= 1
+        if closedHolds == 0 { dropClosedRows() }
+    }
+
+    /// Reads the rows closed since local midnight; also the Retry after a failed read. The read runs in its own
+    /// task, so it outlives the view that asked when another view still holds the rows.
+    func loadClosedRows() {
+        closedReads += 1
+        let read = closedReads
+        closedRows = .loading
+        let since = Calendar.current.startOfDay(for: .now)
+        Task {
+            do {
+                let rows = try await client.closedRows(rig: rigName, since: since, limit: Self.rowLimit)
+                guard read == closedReads else { return }
+                held.replaceClosed(rows, since: since)
+                // The daemon sorts by `updated`, newest first, and has no upper bound to page back with.
+                closedRows = .loaded(cut: rows.count >= Self.rowLimit)
+                publish()
+            } catch {
+                guard read == closedReads else { return }
+                closedRows = .failed((error as? DaemonError)?.userMessage ?? error.localizedDescription)
+            }
+        }
+    }
+
+    private func dropClosedRows() {
+        closedReads += 1
+        // The selected row's chain stays held, so the inspector doesn't empty when the board leaves Today.
+        if let id = selectedQItemID {
+            for link in chains.chain(for: id).ids { if let row = held.closed[link] { held.keep(row) } }
+        }
+        held.dropClosed()
+        closedRows = .off
+        publish()
     }
 
     private func refreshWorkflows() async {
@@ -200,16 +375,6 @@ final class RigStore {
             (graph?.seats ?? []).compactMap { seat in seat.sessionName.map { ($0, seat.runtime ?? "") } },
             uniquingKeysWith: { a, _ in a })
         return RigDomain.nextHop(for: qitemID, in: workflows, runtimeOf: { runtimes[$0] })
-    }
-
-    /// Coalesces bursts of events into one fetch.
-    func scheduleRefresh() {
-        pending?.cancel()
-        pending = Task {
-            try? await Task.sleep(for: .milliseconds(150))
-            guard !Task.isCancelled else { return }
-            await refresh()
-        }
     }
 
     func reportHeight(_ height: CGFloat, for seat: Seat.ID) {

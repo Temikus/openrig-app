@@ -79,7 +79,8 @@ struct QueueBoardView: View {
                             secondTitle: "Handed off", secondItems: columns.handedOff,
                             emptyHint: noMatches ?? (filter.scope == .active ? "Closed work is under Today." : nil),
                             emptyAction: noMatches == nil && filter.scope == .active
-                                ? ("Show Today", { filter.scope = .today }) : nil)
+                                ? ("Show Today", { filter.scope = .today }) : nil,
+                            notice: filter.scope == .today ? closedNotice : nil)
                     }
                     .padding(16)
                 }
@@ -108,6 +109,11 @@ struct QueueBoardView: View {
                 .environment(\.boardColumnWidth, max(220, (visibleWidth - 32 - 3 * 14) / 4 - 20))
             }
         }
+        // Closed rows are read only while Today shows. A new rig store, or leaving Today, ends this task.
+        .task(id: ClosedRowsHold(rig: ObjectIdentifier(rig), today: filter.scope == .today)) {
+            guard filter.scope == .today else { return }
+            await rig.holdClosedRows()
+        }
         // In the filter row, beside the other filters: a toolbar search lands over the inspector, away from the board.
         // ⌘F is the View menu's Search Queue, which switches here first.
         .onChange(of: app.wantsSearch, initial: true) { _, wants in
@@ -116,6 +122,24 @@ struct QueueBoardView: View {
             // After this update, so a board that has only just appeared can take focus.
             Task { @MainActor in searching = true }
         }
+    }
+
+    /// The Done column's line while today's closed rows load, when the read failed, or when it was cut short.
+    private var closedNotice: BoardColumn.Notice? {
+        switch rig.closedRows {
+        case .loading: BoardColumn.Notice(text: "Loading closed work…")
+        case .failed(let reason):
+            BoardColumn.Notice(
+                text: "Couldn’t load closed work.", help: reason,
+                action: ("Retry", { rig.loadClosedRows() }))
+        case .loaded(cut: true): BoardColumn.Notice(text: "Some work closed earlier today isn’t shown.")
+        case .off, .loaded: nil
+        }
+    }
+
+    private struct ClosedRowsHold: Equatable {
+        var rig: ObjectIdentifier
+        var today: Bool
     }
 
     /// While a search is active, an empty column says so, rather than looking like an empty queue.
@@ -210,10 +234,29 @@ struct BoardColumn: View {
     var emptyHint: String?
     /// A next step under the hint, e.g. "Show Today" on an empty Done column.
     var emptyAction: (title: String, perform: () -> Void)?
+    /// A line about the column's rows themselves (loading, failed, cut short). It replaces the empty hint.
+    var notice: Notice?
+
+    struct Notice {
+        var text: String
+        var help: String?
+        var action: (title: String, perform: () -> Void)?
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             header(title, items.count)
+            if let notice {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(notice.text)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .help(notice.help ?? "")
+                    if let action = notice.action {
+                        Button(action.title, action: action.perform).buttonStyle(.link)
+                    }
+                }
+            }
             ScrollViewReader { proxy in
                 ScrollView(.vertical) {
                     LazyVStack(alignment: .leading, spacing: 8) {
@@ -222,7 +265,7 @@ struct BoardColumn: View {
                             header(secondTitle, secondItems.count).padding(.top, 8)
                             ForEach(secondItems) { QItemCard(item: $0, now: now) }
                         }
-                        if items.isEmpty && secondItems.isEmpty {
+                        if items.isEmpty && secondItems.isEmpty && notice == nil {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(emptyHint ?? "Nothing here.")
                                     .font(.callout)

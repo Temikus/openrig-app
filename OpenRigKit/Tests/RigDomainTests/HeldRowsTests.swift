@@ -76,6 +76,16 @@ private func at(_ seconds: TimeInterval) -> Date { Date(timeIntervalSince1970: s
         #expect(rows.row("a")?.state == .done)
     }
 
+    /// `denied` and `failed` read as `.unknown`, which `isActive` counts as live; the open read never serves them.
+    @Test func aDeniedOrFailedRowKeptByIDOutlivesOpenReads() {
+        var rows = HeldRows()
+        rows.keep(item("d", QItemState(rawValue: "denied"), updated: 10))
+        rows.keep(item("f", QItemState(rawValue: "failed"), updated: 10))
+        rows.replaceOpen([item("b")])
+        #expect(rows.holds("d"))
+        #expect(rows.holds("f"))
+    }
+
     @Test func closedRowsAreToppedUpAndDropped() {
         var rows = HeldRows()
         #expect(rows.topUpSince == nil)
@@ -91,6 +101,17 @@ private func at(_ seconds: TimeInterval) -> Date { Date(timeIntervalSince1970: s
         rows.dropClosed()
         #expect(rows.all.isEmpty)
         #expect(rows.topUpSince == nil)
+    }
+
+    /// A daemon that ignores `state` or `updatedSince` returns more than asked; only closed rows in the window count.
+    @Test func closedReadsKeepOnlyClosedRowsInTheWindow() {
+        var rows = HeldRows()
+        rows.replaceClosed(
+            [item("old", .done, updated: 50), item("open", .pending, updated: 150), item("a", .done, updated: 150)],
+            since: at(100))
+        #expect(rows.all.map(\.id) == ["a"])
+        rows.topUpClosed([item("older", .canceled, updated: 99), item("b", .handedOff, updated: 160)])
+        #expect(Set(rows.all.map(\.id)) == ["a", "b"])
     }
 
     @Test func topUpStartsAtTheWindowWhenNothingClosedYet() {

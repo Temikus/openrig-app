@@ -3,7 +3,7 @@ import RigModel
 import SwiftUI
 
 /// Rig › Go to… (⌘K): type part of a rig, seat or task name, then Return to go there. ↑↓ move through the matches;
-/// Esc closes. Seats and tasks are the selected rig's (other rigs' aren't loaded).
+/// Esc closes. Seats and tasks are the selected rig's (other rigs' aren't loaded); tasks closed before today aren't listed.
 struct GoToPalette: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -67,6 +67,8 @@ struct GoToPalette: View {
         }
         .frame(width: 520)
         .onAppear { fieldFocused = true }
+        // Tasks are the rig's open rows plus today's closed ones, read while the palette is open.
+        .task { await store.rig?.holdClosedRows() }
         .onChange(of: query) { highlighted = 0 }
     }
 
