@@ -12,7 +12,7 @@ let package = Package(
         .library(name: "RigTerminal", targets: ["RigTerminal"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-collections.git", exact: "1.7.5"),
+        .package(url: "https://github.com/apple/swift-collections.git", exact: "1.7.6"),
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.99.2"),
     ],
     targets: [
