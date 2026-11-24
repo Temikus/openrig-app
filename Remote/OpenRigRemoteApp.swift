@@ -30,9 +30,8 @@ struct OpenRigRemoteApp: App {
     }
 }
 
-/// A Rigs tab adds a case here and a `Tab` below.
 enum RemoteTab: Hashable {
-    case needs, settings
+    case needs, rigs, settings
 }
 
 struct RootView: View {
@@ -85,10 +84,17 @@ struct RootView: View {
             TabView(selection: $tab) {
                 Tab("Needs you", systemImage: "tray", value: .needs) { NeedsYouView() }
                     .badge(model.shownRequests?.count ?? 0)
+                Tab("Rigs", systemImage: "point.3.connected.trianglepath.dotted", value: .rigs) { RigsView() }
                 Tab("Settings", systemImage: "gear", value: .settings) { SettingsView() }
             }
             #if DEBUG
-                .onAppear { if DebugHooks.screen == "settings" { tab = .settings } }
+                .onAppear {
+                    switch DebugHooks.screen {
+                    case "settings": tab = .settings
+                    case "rigs": tab = .rigs
+                    default: break
+                    }
+                }
             #endif
         }
     }

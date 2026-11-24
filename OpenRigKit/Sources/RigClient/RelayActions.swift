@@ -197,11 +197,14 @@ public struct RelaySeat: Codable, Sendable, Equatable {
     public var runtime: String?
     /// Stopped at a permission prompt: a message is refused until it's answered.
     public var atPrompt: Bool
+    /// The daemon's activity: "running", "idle", "needs_input" or "unknown". Nil from a Mac that doesn't send it.
+    public var activity: String?
 
     public init(
         session: String, name: String, state: String, currentRow: String?, active: Int, blocked: Int,
-        contextUsed: Double?, runtime: String?, atPrompt: Bool
+        contextUsed: Double?, runtime: String?, atPrompt: Bool, activity: String? = nil
     ) {
+        self.activity = activity
         self.session = session
         self.name = name
         self.state = state

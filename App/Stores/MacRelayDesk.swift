@@ -193,7 +193,7 @@ final class MacRelayDesk: RelayDesk {
                 session: session, name: seat.displayName, state: seat.status.rawValue, currentRow: current?.summary,
                 active: mine.count, blocked: blocked.count,
                 contextUsed: seat.contextUsedPercent.map { Double($0) / 100 },
-                runtime: seat.runtime, atPrompt: atPrompt.contains(session))
+                runtime: seat.runtime, atPrompt: atPrompt.contains(session), activity: seat.activity?.state.rawValue)
         }
     }
 
