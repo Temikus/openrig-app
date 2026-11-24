@@ -121,6 +121,8 @@ final class AppStore {
     @ObservationIgnored private var banners: Banners?
     /// The main window is open and frontmost; set by ContentView. Banners can wait while it is.
     var windowInFront = false
+    /// Relays paired phones' calls to the daemon; it outlives the Settings window.
+    let relay = RelayStore()
 
     init(settings: AppSettings = AppSettings()) {
         self.settings = settings
@@ -143,6 +145,7 @@ final class AppStore {
         loops = [Task { await runPolling() }, Task { await runEvents() }]
         Task { await loadToken() }
         Task { await loadShellPath() }
+        Task { await relay.refresh(daemon: endpoint.baseURL) }
         // NSApp exists once the run loop has started.
         Task { NSApp.appearance = settings.appearance.nsAppearance }
         #if DEBUG

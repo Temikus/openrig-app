@@ -83,6 +83,8 @@ final class PhoneStore {
                 .issueAppCredential(for: [actor])
             phones.add(PairedPhone(id: credential.id, name: "", actor: actor, paired: .now, daemon: daemon))
             save()
+            // The phone's own key to the relay; the QR code carries it.
+            RelaySecrets.save(RelayLink.newSecret(), for: credential.id)
             code = .showing(try PairingCode.forThisMac(credential: credential, actor: actor, daemon: daemon))
         } catch let error as DaemonError {
             code = .failed(Self.message(error))
@@ -126,6 +128,7 @@ final class PhoneStore {
     private func forget(_ phone: PairedPhone) {
         phones.remove(id: phone.id)
         save()
+        if !phones.isMadeUp { RelaySecrets.forget(phone.id) }
         if case .showing(let shown) = code, shown.credentialID == phone.id { code = .hidden }
     }
 

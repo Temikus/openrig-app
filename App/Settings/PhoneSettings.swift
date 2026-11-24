@@ -35,6 +35,19 @@ struct PhoneSettings: View {
                 case .hidden, .issuing: EmptyView()
                 }
             }
+            Section("Phones on the Wi-Fi") {
+                Toggle(
+                    isOn: Binding {
+                        store.relay.enabled
+                    } set: {
+                        store.relay.enabled = $0
+                        Task { await store.relay.refresh(daemon: daemon) }
+                    }
+                ) {
+                    Text("Let paired phones connect")
+                    Text(relayCaption)
+                }
+            }
             Section {
                 if list.isEmpty {
                     Text("No phones paired.").foregroundStyle(.secondary)
@@ -50,6 +63,9 @@ struct PhoneSettings: View {
         .settingsForm()
         // The code carries a live token: it hides when the person leaves the tab.
         .onDisappear { phones.hideCode() }
+        // The relay listens only while a phone on this daemon is paired, so it follows the list.
+        .task { await store.relay.refresh(daemon: daemon) }
+        .onChange(of: phones.phones) { Task { await store.relay.refresh(daemon: daemon) } }
         .confirmationDialog(
             "Unpair this phone?",
             isPresented: Binding {
@@ -96,6 +112,14 @@ struct PhoneSettings: View {
             } icon: {
                 Image(systemName: "circle.fill").foregroundStyle(Color.attention).imageScale(.small)
             }
+        }
+    }
+
+    private var relayCaption: String {
+        switch store.relay.state {
+        case .listening: "Listening on \(store.relay.address ?? "this Mac")."
+        case .off(let reason): reason
+        case .failed(let message): message
         }
     }
 
