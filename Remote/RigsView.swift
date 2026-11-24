@@ -2,17 +2,13 @@ import RigClient
 import RigModel
 import SwiftUI
 
-/// The Rigs tab's data, read through the Mac's relay (`RelayDeskClient`). Board 6B: rigs first, then a rig's seats.
+/// The Rigs tab's data, read through the session's relay client (`RemoteSession.desk`). Board 6B: rigs first, then a
+/// rig's seats.
 @MainActor @Observable
 final class RigsStore {
     private(set) var client: RelayDeskClient?
-    private var attached = false
-    private var credential: String?
-    /// Whether the pairing can reach the relay at all: Mac-side calls only go through it.
-    private(set) var hasRelay = false
 
     var rigs: [RelayRig]?
-    var needs: RelayNeedsYou?
     var seats: [String: [RelaySeat]] = [:]
     /// The command a seat at a prompt asks to run, by session.
     var prompts: [String: String] = [:]
@@ -29,20 +25,11 @@ final class RigsStore {
         var words: String
     }
 
-    /// Builds the client for this pairing; a new pairing drops what the old one read.
-    func attach(_ code: PairingCode?) {
-        guard !attached || code?.credentialID != credential else { return }
-        attached = true
-        credential = code?.credentialID
-        #if DEBUG
-            let host = DebugHooks.relayHost
-        #else
-            let host: String? = nil
-        #endif
-        client = code.flatMap { RelayDeskClient.relay(for: $0, host: host) }
-        hasRelay = client != nil
+    /// Takes the session's client. Another client means another pairing or address: drop what the old one read.
+    func use(_ desk: RelayDeskClient?) {
+        guard desk !== client else { return }
+        client = desk
         rigs = nil
-        needs = nil
         seats = [:]
         prompts = [:]
         results = [:]
@@ -56,7 +43,6 @@ final class RigsStore {
         guard let client else { return }
         do {
             rigs = try await client.rigs()
-            needs = try? await client.needsYou()
             readError = nil
         } catch {
             note(error, macName: macName)
@@ -139,13 +125,14 @@ struct RigsView: View {
         }
         .environment(store)
         .onAppear {
-            store.attach(model.pairing?.code)
+            store.use(model.desk)
             #if DEBUG
                 if path.isEmpty { path = RigsLink.launchPath }
             #endif
         }
-        .onChange(of: model.pairing?.code.credentialID) { store.attach(model.pairing?.code) }
-        .task(id: model.pairing?.code.credentialID) {
+        .onChange(of: model.desk.map(ObjectIdentifier.init)) { store.use(model.desk) }
+        // Restarts with each new client, so the first read follows the session's first connection.
+        .task(id: model.desk.map(ObjectIdentifier.init)) {
             while !Task.isCancelled {
                 await store.loadRigs(macName: model.macName)
                 try? await Task.sleep(for: .seconds(5))
@@ -153,8 +140,11 @@ struct RigsView: View {
         }
     }
 
+    /// Mac-side calls only go through the relay, which a pairing without a Wi-Fi reach never uses.
+    var viaRelay: Bool { model.pairing?.code.reaches.contains { $0.kind == .lan } == true }
+
     @ViewBuilder var content: some View {
-        if !store.hasRelay {
+        if !viaRelay {
             ContentUnavailableView {
                 Label("Rigs need the Wi-Fi link", systemImage: "wifi.slash")
             } description: {
@@ -167,7 +157,8 @@ struct RigsView: View {
                 if let readError = store.readError { ReadErrorRow(words: readError) }
                 ForEach(rigs, id: \.id) { rig in
                     NavigationLink(value: RigsLink.rig(rig.name)) {
-                        RigRow(rig: rig, waiting: store.needs?.waiting(in: rig.name) ?? 0)
+                        // The session reads the relay's Needs-you list on each check.
+                        RigRow(rig: rig, waiting: model.relayNeeds?.waiting(in: rig.name) ?? 0)
                     }
                 }
             }
@@ -182,9 +173,20 @@ struct RigsView: View {
             } description: {
                 Text(readError)
             }
+        } else if store.client == nil, let status = model.status, !isConnected(status) {
+            // The session has no client until it reaches the Mac; Needs you says why in full.
+            ContentUnavailableView {
+                Label("Can't reach \(model.macName)", systemImage: "wifi.exclamationmark")
+            } description: {
+                Text("Rigs show once this phone reaches \(model.macName) on the Wi-Fi. Needs you says what's wrong.")
+            }
         } else {
             ProgressView("Asking \(model.macName)…")
         }
+    }
+
+    func isConnected(_ status: RemoteStatus) -> Bool {
+        if case .connected = status { true } else { false }
     }
 }
 

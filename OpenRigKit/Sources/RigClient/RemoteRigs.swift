@@ -133,30 +133,3 @@ public struct RemoteSend: Sendable, Equatable {
         }
     }
 }
-
-extension RelayDeskClient {
-    /// The desk client for a pairing: the relay at each of its Wi-Fi addresses in turn, under the credential id and
-    /// the pairing secret. Nil without either, since the relay is the only way to the Mac-side calls.
-    /// `host` replaces each address (Debug: the simulator reaches a loopback relay).
-    public static func relay(for code: PairingCode, host: String? = nil) -> RelayDeskClient? {
-        guard let secret = code.pairingSecret.flatMap(RelayLink.decode) else { return nil }
-        let endpoints = RemoteEndpoint.all(in: code).filter { $0.kind == .lan }
-            .compactMap { endpoint in UInt16(exactly: endpoint.port).map { (host ?? endpoint.host, $0) } }
-        guard !endpoints.isEmpty else { return nil }
-        let identity = code.credentialID
-        return RelayDeskClient {
-            var last: any Error = RelayLinkError.closed
-            for (address, port) in endpoints {
-                let channel = RelayChannel(host: address, port: port, identity: identity, secret: secret)
-                do {
-                    try await channel.open()
-                    return channel
-                } catch {
-                    channel.close()
-                    last = error
-                }
-            }
-            throw last
-        }
-    }
-}

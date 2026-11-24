@@ -95,40 +95,6 @@ import Testing
         #expect(message.words(for: .failed("tmux gone")).contains("tmux gone"))
     }
 
-    // MARK: The client from a pairing
-
-    static func code(reaches: [PairingCode.Reach], secret: Data?) throws -> PairingCode {
-        try PairingCode(
-            reaches: reaches, actor: "you@external", credentialID: "cred-a", token: "orapp_x",
-            pairingSecret: secret.map(RelayLink.encode))
-    }
-
-    @Test func noClientWithoutASecretOrAWiFiReach() throws {
-        let secret = RelayLink.newSecret()
-        let lan = try PairingCode.Reach(kind: .lan, addresses: ["192.168.1.5"], port: 7433)
-        let tailnet = try PairingCode.Reach(kind: .tailnet, addresses: ["mac.tail1234.ts.net"], port: 7433)
-        #expect(RelayDeskClient.relay(for: try Self.code(reaches: [lan], secret: nil)) == nil)
-        #expect(RelayDeskClient.relay(for: try Self.code(reaches: [tailnet], secret: secret)) == nil)
-        #expect(RelayDeskClient.relay(for: try Self.code(reaches: [tailnet, lan], secret: secret)) != nil)
-    }
-
-    /// The client tries the pairing's Wi-Fi addresses in order, under the credential id and secret, and `host`
-    /// replaces each address (the simulator reaches a loopback relay).
-    @Test func theClientReachesTheRelayInThePairing() async throws {
-        let secret = RelayLink.newSecret()
-        let desk = ClientDesk()
-        desk.rigList = [RelayRig(id: "r1", name: "openrig-app", state: "running", seats: 7)]
-        let relay = RelayServer(keys: ["cred-a": secret], host: "127.0.0.1", port: 0, desk: desk) { _ in
-            AsyncThrowingStream { $0.finish() }
-        }
-        let port = Int(try await relay.start())
-        defer { relay.stop() }
-        let lan = try PairingCode.Reach(kind: .lan, addresses: ["192.168.1.5", "192.168.1.6"], port: port)
-        let client = try #require(
-            RelayDeskClient.relay(for: try Self.code(reaches: [lan], secret: secret), host: "127.0.0.1"))
-        #expect(try await client.rigs() == desk.rigList)
-    }
-
     /// An older Mac's seat list has no `activity`; it still decodes.
     @Test func aSeatWithoutActivityDecodes() throws {
         let json = #"{"session":"a@r","name":"a","state":"running","active":0,"blocked":0,"atPrompt":false}"#
