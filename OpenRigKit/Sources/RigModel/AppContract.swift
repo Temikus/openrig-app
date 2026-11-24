@@ -212,6 +212,25 @@ public struct AppAnswerBinding: Codable, Sendable, Equatable {
     /// Typed replies the daemon accepts: at most 16 KiB of UTF-8 after trimming.
     public static let maxReplyBytes = 16 * 1024
 
+    public init(
+        actor: String, requestId: String, questionId: String, episodeKey: String?, expectedRevision: String,
+        answer: AppAnswerForm
+    ) {
+        self.actor = actor
+        self.requestId = requestId
+        self.questionId = questionId
+        self.episodeKey = episodeKey
+        self.expectedRevision = expectedRevision
+        self.answer = answer
+    }
+
+    /// The text as the daemon would store it: trimmed. Nil when it's blank, has a NUL or is too long.
+    public static func sendableReply(_ text: String) -> String? {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !text.contains("\0"), text.utf8.count <= maxReplyBytes else { return nil }
+        return text
+    }
+
     /// One option of one question. Nil when the request can't be answered or has no such option.
     public static func choosing(
         _ option: String, for question: String, in request: AppRequest, as actor: String
@@ -227,10 +246,8 @@ public struct AppAnswerBinding: Codable, Sendable, Equatable {
     /// The person's own words. They answer the whole ask, so the daemon files them under the first question still
     /// unanswered. Nil when there is none, or the text is blank, has a NUL or is too long.
     public static func replying(_ text: String, to request: AppRequest, as actor: String) -> AppAnswerBinding? {
-        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard request.isAnswerable, let revision = request.decisionRevision,
-            let question = request.unansweredQuestions.first,
-            !text.isEmpty, !text.contains("\0"), text.utf8.count <= maxReplyBytes
+            let question = request.unansweredQuestions.first, let text = sendableReply(text)
         else { return nil }
         return AppAnswerBinding(
             actor: actor, requestId: request.id, questionId: question.id, episodeKey: request.episodeKey,
@@ -284,10 +301,12 @@ public struct AppAnswerReceipt: Decodable, Sendable, Equatable {
         public var unansweredText: [String]
         public var message: String?
         public var replyQitemId: String?
+        /// The ask's revision after this write. The next submission on the same ask sends it.
+        public var revisionAfter: String?
         public var conflictCode: String?
 
         private enum CodingKeys: String, CodingKey {
-            case state, outcome, unanswered, message, replyQitemId, conflictCode
+            case state, outcome, unanswered, message, replyQitemId, conflictCode, decisionRevisionAfter
         }
 
         public init(from decoder: any Decoder) throws {
@@ -297,6 +316,7 @@ public struct AppAnswerReceipt: Decodable, Sendable, Equatable {
             unansweredText = c.lenient([String].self, .unanswered) ?? []
             message = c.lenient(String.self, .message)
             replyQitemId = c.lenient(String.self, .replyQitemId)
+            revisionAfter = c.lenient(String.self, .decisionRevisionAfter)
             conflictCode = c.lenient(String.self, .conflictCode)
         }
     }

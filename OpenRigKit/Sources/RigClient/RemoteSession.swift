@@ -2,7 +2,8 @@ import Foundation
 import Observation
 import RigModel
 
-/// The phone's side of a pairing: the stored code, where the phone stands with the Mac, and the last list it read.
+/// The phone's side of a pairing: the stored code, where the phone stands with the Mac, the last list it read, and
+/// the answers it is writing and has sent.
 @Observable @MainActor
 public final class RemoteSession {
     public private(set) var pairing: RemotePairing?
@@ -18,18 +19,36 @@ public final class RemoteSession {
     public var pendingCode: PairingCode?
     /// Replaces the status after each real check, keeping what was read. For headless captures.
     public var statusOverride: RemoteStatus?
+    /// Half-made answers by ask, kept while the person moves around. Memory only.
+    public private(set) var drafts = AppAnswerDrafts()
+    /// Asks being sent now.
+    public private(set) var sending: Set<String> = []
+    /// What was sent on each ask and what the daemon said, by ask id. The ask leaves the list; this stays.
+    public private(set) var sent: [String: SentAnswer] = [:]
 
     private let store: any PairingStore
+    private let outbox: any AnswerOutbox
+    private let answerRetryDelay: Duration
     private let connect: @Sendable (PairingCode) async -> RemoteConnector.Outcome
+    /// The client of the endpoint that last answered. Nil while not connected.
+    private var client: AppClient?
+    /// Outbox entries being sent now, so a check doesn't resend them alongside.
+    private var inFlight: Set<String> = []
 
-    public init(store: any PairingStore, connect: @escaping @Sendable (PairingCode) async -> RemoteConnector.Outcome) {
+    public init(
+        store: any PairingStore, outbox: any AnswerOutbox = MemoryAnswerOutbox(),
+        answerRetryDelay: Duration = .seconds(1),
+        connect: @escaping @Sendable (PairingCode) async -> RemoteConnector.Outcome
+    ) {
         self.store = store
+        self.outbox = outbox
+        self.answerRetryDelay = answerRetryDelay
         self.connect = connect
         pairing = try? store.load()
     }
 
-    public convenience init(store: any PairingStore, connector: RemoteConnector) {
-        self.init(store: store, connect: { await connector.connect($0) })
+    public convenience init(store: any PairingStore, outbox: any AnswerOutbox, connector: RemoteConnector) {
+        self.init(store: store, outbox: outbox, connect: { await connector.connect($0) })
     }
 
     public var macName: String { pairing?.code.name ?? "Your Mac" }
@@ -52,6 +71,8 @@ public final class RemoteSession {
 
     /// `artem@external` shows as `artem`.
     public var answeringAs: String? { pairing.map { String($0.code.actor.prefix { $0 != "@" }) } }
+
+    // MARK: Pairing
 
     /// A scan or paste inside the app: the person chose it, so it pairs at once.
     public func pair(link: String) {
@@ -86,9 +107,7 @@ public final class RemoteSession {
             return
         }
         pairing = new
-        status = nil
-        needs = nil
-        lastReached = nil
+        forgetReads()
         pairingError = nil
         Task { await refresh() }
     }
@@ -103,11 +122,20 @@ public final class RemoteSession {
             return
         }
         pairing = nil
+        forgetReads()
+        pairingError = nil
+    }
+
+    private func forgetReads() {
         status = nil
         needs = nil
         lastReached = nil
-        pairingError = nil
+        client = nil
+        drafts = AppAnswerDrafts()
+        sent = [:]
     }
+
+    // MARK: Checking
 
     /// Checks the current pairing. If the pairing changes while a check runs, that check's result is dropped and the
     /// new pairing is checked, so a new pairing never waits on an old one.
@@ -116,6 +144,36 @@ public final class RemoteSession {
         checking = true
         defer { checking = false }
         while let current = pairing, await !check(current) {}
+    }
+
+    /// Refreshes every `interval`, and at once on each event from the Mac, until cancelled. Run it while the app is
+    /// open.
+    public func keepFresh(every interval: Duration = .seconds(5)) async {
+        await withDiscardingTaskGroup { group in
+            group.addTask { await self.poll(every: interval) }
+            group.addTask { await self.listen() }
+        }
+    }
+
+    private func poll(every interval: Duration) async {
+        while !Task.isCancelled {
+            await refresh()
+            try? await Task.sleep(for: interval)
+        }
+    }
+
+    /// Events carry no data: each one means "read again". A dropped stream reconnects after a pause.
+    private func listen() async {
+        while !Task.isCancelled {
+            if let client {
+                do {
+                    for try await event in client.events() where event != .heartbeat {
+                        await refresh()
+                    }
+                } catch {}
+            }
+            try? await Task.sleep(for: .seconds(5))
+        }
     }
 
     /// False when the pairing changed underneath, so nothing was applied.
@@ -134,12 +192,101 @@ public final class RemoteSession {
             }
             guard pairing == checked else { return false }
         }
+        client = read == nil ? nil : outcome.client
         if let read {
             needs = read
             lastReached = .now
         }
         status = statusOverride ?? next
+        if let client { await resendPending(with: client) }
         return true
+    }
+
+    // MARK: Answering
+
+    public func draft(for request: AppRequest) -> AppAnswerDraft { drafts.draft(for: request) }
+
+    public func setDraft(_ draft: AppAnswerDraft, for request: AppRequest) { drafts.set(draft, for: request.id) }
+
+    /// Drops an ask's record, so its question screen shows the questions again.
+    public func forgetSent(_ id: String) { sent[id] = nil }
+
+    /// Sends the draft: one submission per open question, in order, each at the revision the last receipt gave. A
+    /// typed reply is one submission. Each is saved before it's sent, so an uncertain end can be resent unchanged.
+    public func send(_ request: AppRequest) async {
+        guard !sending.contains(request.id), let client, let actor = pairing?.code.actor,
+            let submissions = draft(for: request).submissions(for: request), var revision = request.decisionRevision
+        else { return }
+        sending.insert(request.id)
+        defer { sending.remove(request.id) }
+
+        var outcome = SentAnswer.Outcome.stillOpen
+        for (index, submission) in submissions.enumerated() {
+            let pending = PendingAnswer(
+                id: AppAnswerID.random(), binding: submission.binding(on: request, at: revision, as: actor))
+            do {
+                try outbox.add(pending)
+            } catch {
+                outcome = .failed("This phone couldn't save the answer before sending it, so it didn't send it.")
+                break
+            }
+            switch await deliver(pending, with: client, attempts: 3) {
+            case .receipt(let receipt):
+                if case .partial = receipt.fate, index < submissions.count - 1,
+                    let after = receipt.submission.revisionAfter
+                {
+                    revision = after
+                    continue
+                }
+                outcome = SentAnswer.Outcome(receipt.fate)
+            case .refused(let error):
+                outcome = SentAnswer.Outcome(error)
+            }
+            break
+        }
+
+        sent[request.id] = SentAnswer(
+            outcome: outcome, answers: SentAnswer.lines(submissions, in: request), asker: request.asker, at: .now)
+        switch outcome {
+        case .failed, .changed: break  // the picks may still apply after a look
+        default: drafts.clear(request.id)
+        }
+        await refresh()
+    }
+
+    private enum Delivery {
+        case receipt(AppAnswerReceipt)
+        case refused(AppError)
+    }
+
+    /// Leaves the entry in the outbox only when the same id may still finish it.
+    private func deliver(_ pending: PendingAnswer, with client: AppClient, attempts: Int) async -> Delivery {
+        inFlight.insert(pending.id)
+        defer { inFlight.remove(pending.id) }
+        do {
+            let receipt = try await client.answer(
+                id: pending.id, pending.binding, attempts: attempts, retryDelay: answerRetryDelay)
+            if receipt.fate != .incomplete { try? outbox.remove(id: pending.id) }
+            return .receipt(receipt)
+        } catch {
+            if !error.retrySameSubmission { try? outbox.remove(id: pending.id) }
+            return .refused(error)
+        }
+    }
+
+    /// Sends again, with the same id and body, what an earlier attempt couldn't confirm. An ask's record follows.
+    private func resendPending(with client: AppClient) async {
+        guard let pending = try? outbox.load() else { return }
+        for answer in pending where !inFlight.contains(answer.id) {
+            let outcome: SentAnswer.Outcome =
+                switch await deliver(answer, with: client, attempts: 1) {
+                case .receipt(let receipt): SentAnswer.Outcome(receipt.fate)
+                case .refused(let error): SentAnswer.Outcome(error)
+                }
+            if sent[answer.binding.requestId]?.outcome == .notFinished {
+                sent[answer.binding.requestId]?.outcome = outcome
+            }
+        }
     }
 
     public static func message(for error: PairingCodeError) -> String {
@@ -147,6 +294,82 @@ public final class RemoteSession {
         case .malformed: "That isn't an OpenRig pairing link. Copy the whole link under the code on your Mac."
         case .newerVersion, .noKnownReach: "This link comes from a newer OpenRig. Update this app, then pair again."
         case .unsupportedHost(let host): "This link points to \(host), which this app won't connect to."
+        }
+    }
+}
+
+/// A record of what the phone sent on one ask and what the daemon said.
+public struct SentAnswer: Sendable, Equatable {
+    public enum Outcome: Sendable, Equatable {
+        /// Returned to the asker as a new row.
+        case returned
+        /// Saved on the ask, which still waits: no agent could read it yet. Nothing needs sending again.
+        case kept(message: String?)
+        /// Someone answered first. Nothing new was sent.
+        case alreadyAnswered
+        /// Some answers went in, but the ask still has open questions.
+        case stillOpen
+        /// The ask changed before the answers went in. It needs a fresh look.
+        case changed
+        /// The ask's content was erased.
+        case erased
+        /// Not confirmed. The phone resends the same answer on each check until it is.
+        case notFinished
+        case failed(String)
+
+        init(_ fate: AppAnswerFate) {
+            switch fate {
+            case .returned: self = .returned
+            case .alreadyAnswered: self = .alreadyAnswered
+            case .answeredInPlace(let message): self = .kept(message: message)
+            case .partial: self = .stillOpen
+            case .incomplete: self = .notFinished
+            case .conflict: self = .changed
+            case .sourceUnavailable: self = .erased
+            case .unknown(let state): self = .failed("The Mac answered with \"\(state)\".")
+            }
+        }
+
+        init(_ error: AppError) {
+            if error.retrySameSubmission {
+                self = .notFinished
+                return
+            }
+            switch error {
+            case .refused(409, "answer_already_returned", _), .refused(409, "answer_already_finalized", _):
+                self = .alreadyAnswered
+            case .refused(409, _, _): self = .changed
+            case .refused(_, let code, _): self = .failed("The Mac refused it (\(code ?? "no reason given")).")
+            case .unpaired: self = .failed("The Mac no longer accepts this phone.")
+            case .unsupportedDaemon: self = .failed("The Mac can't take answers from this app.")
+            case .decoding: self = .failed("The Mac's reply couldn't be read.")
+            case .unreachable(let message): self = .failed(message)
+            }
+        }
+    }
+
+    public struct Line: Sendable, Equatable {
+        public var question: String
+        public var answer: String
+    }
+
+    public var outcome: Outcome
+    public var answers: [Line]
+    public var asker: String?
+    public var at: Date
+
+    /// The question and the chosen option's label, or the person's own words.
+    static func lines(_ submissions: [AppAnswerDraft.Submission], in request: AppRequest) -> [Line] {
+        submissions.map { submission in
+            let question = request.questions.first { $0.id == submission.questionID }
+            switch submission.form {
+            case .option(let id):
+                return Line(
+                    question: question?.question ?? submission.questionID,
+                    answer: question?.options.first { $0.id == id }?.label ?? id)
+            case .typedReply(let text):
+                return Line(question: "In your own words", answer: text)
+            }
         }
     }
 }

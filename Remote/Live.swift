@@ -1,11 +1,12 @@
 import Foundation
 import RigClient
+import RigModel
 
 extension RemoteSession {
     /// The Keychain and the real network. Debug builds apply `OPENRIG_DEBUG_STATE`.
     static func live() -> RemoteSession {
         let session = RemoteSession(
-            store: KeychainPairingStore(),
+            store: KeychainPairingStore(), outbox: FileAnswerOutbox.standard(),
             connector: RemoteConnector(localNetworkDenied: { await RigClient.localNetworkDenied($0) }))
         #if DEBUG
             session.statusOverride = DebugHooks.state
@@ -41,6 +42,24 @@ enum PairingStep: Hashable {
 
         /// Handles a link as `onOpenURL` does: it waits for the person's confirmation.
         static var openedLink: String? { environment["OPENRIG_DEBUG_OPEN_LINK"] }
+
+        /// Opens this ask's question screen once the list has it.
+        static var openAsk: String? { environment["OPENRIG_DEBUG_OPEN_ASK"] }
+
+        /// A draft for the opened ask: `reply:<text>`, or `picks:<question>=<option>,…`.
+        static var draft: AppAnswerDraft? {
+            guard let raw = environment["OPENRIG_DEBUG_DRAFT"] else { return nil }
+            if raw.hasPrefix("reply:") { return AppAnswerDraft(reply: String(raw.dropFirst("reply:".count))) }
+            guard raw.hasPrefix("picks:") else { return nil }
+            let pairs = raw.dropFirst("picks:".count).split(separator: ",").map { $0.split(separator: "=") }
+            return AppAnswerDraft(
+                picks: Dictionary(
+                    pairs.filter { $0.count == 2 }.map { (String($0[0]), String($0[1])) },
+                    uniquingKeysWith: { a, _ in a }))
+        }
+
+        /// `1` sends the opened ask's draft as soon as it can. Only against a fake daemon.
+        static var send: Bool { environment["OPENRIG_DEBUG_SEND"] == "1" }
 
         /// Replaces the status after each real check, keeping what was read: `unreachable`, `local-network-denied`,
         /// `unpaired`, `unsupported`.

@@ -2,12 +2,14 @@ import RigClient
 import RigModel
 import SwiftUI
 
-/// The asks waiting on the person, or why the phone can't show them. Task 6 makes each ask open and answerable.
+/// The asks waiting on the person, or why the phone can't show them. Each ask opens its question screen.
 struct NeedsYouView: View {
     @Environment(RemoteSession.self) private var model
+    /// Ask ids pushed on the stack.
+    @State private var path = AskLink.launchPath
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             content
                 .navigationTitle("Needs you")
                 .toolbar {
@@ -15,6 +17,7 @@ struct NeedsYouView: View {
                     ToolbarItem(placement: .largeSubtitle) { MacLine() }
                 }
                 .refreshable { await model.refresh() }
+                .navigationDestination(for: AskLink.self) { QuestionView(id: $0.id) }
         }
     }
 
@@ -77,7 +80,7 @@ struct NeedsYouView: View {
                 }
             }
             ForEach(requests) { request in
-                AskRow(request: request)
+                NavigationLink(value: AskLink(id: request.id)) { AskRow(request: request) }
             }
         }
         .overlay {
@@ -85,7 +88,7 @@ struct NeedsYouView: View {
                 ContentUnavailableView {
                     Text("Nothing needs you")
                 } description: {
-                    Text("Questions from your seats show up here. Pull down to check again.")
+                    Text("Questions from your seats show up here while the app is open.")
                 }
             }
         }
@@ -143,17 +146,54 @@ struct MacLine: View {
     }
 }
 
-/// Who asked and what. Task 6 replaces it with the designed row.
+/// An ask on the navigation stack, by id: the screen reads the live ask from the session.
+struct AskLink: Hashable {
+    var id: String
+
+    static var launchPath: [AskLink] {
+        #if DEBUG
+            if let id = DebugHooks.openAsk { return [AskLink(id: id)] }
+        #endif
+        return []
+    }
+}
+
+/// Who asked, what, and where (board 1).
 struct AskRow: View {
+    @Environment(RemoteSession.self) private var model
     var request: AppRequest
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(request.asker?.split(separator: "@").first.map(String.init) ?? "A seat").font(.headline)
-            Text(request.questions.first?.question ?? request.body ?? "").lineLimit(2)
-            Text(request.questions.count == 1 ? "1 question" : "\(request.questions.count) questions")
-                .font(.caption).foregroundStyle(.secondary)
+            Text(request.seat).font(.headline)
+            Text(request.headline).lineLimit(2)
+            Text(caption).font(.caption).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    var caption: String {
+        var parts = [request.rig].compactMap { $0 }
+        parts.append(request.questions.count == 1 ? "1 question" : "\(request.questions.count) questions")
+        if !model.draft(for: request).isEmpty { parts.append("draft") }
+        if !request.isAnswerable { parts.append("answer on the Mac") }
+        return parts.joined(separator: " · ")
+    }
+}
+
+extension AppRequest {
+    /// `orch-lead@openrig-app` → `orch-lead`.
+    var seat: String { asker.map { String($0.prefix { $0 != "@" }) } ?? "A seat" }
+
+    /// `orch-lead@openrig-app` → `openrig-app`.
+    var rig: String? {
+        guard let asker, let at = asker.firstIndex(of: "@") else { return nil }
+        return String(asker[asker.index(after: at)...])
+    }
+
+    /// The ask's first line, or its first question when it has no body.
+    var headline: String {
+        let first = body?.split(whereSeparator: \.isNewline).first.map(String.init)
+        return first ?? questions.first?.question ?? "A question"
     }
 }

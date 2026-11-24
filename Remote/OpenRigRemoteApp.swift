@@ -20,8 +20,10 @@ struct OpenRigRemoteApp: App {
                         if let link = DebugHooks.openedLink { model.receive(openedLink: link) }
                     }
                 #endif
-                .onChange(of: scenePhase, initial: true) { _, phase in
-                    if phase == .active { Task { await model.refresh() } }
+                // While the app is open: every five seconds, and on each event from the Mac. Cancelled in the
+                // background.
+                .task(id: scenePhase == .active) {
+                    if scenePhase == .active { await model.keepFresh() }
                 }
         }
     }
