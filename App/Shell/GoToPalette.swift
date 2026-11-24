@@ -8,7 +8,8 @@ struct GoToPalette: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
-    @State private var highlighted = 0
+    /// The highlighted row's id, so rows arriving while the palette is open don't move the highlight.
+    @State private var highlightedID: String?
     @FocusState private var fieldFocused: Bool
 
     private var items: [GoToItem] {
@@ -19,13 +20,14 @@ struct GoToPalette: View {
             items += (rig.graph?.seats ?? []).map {
                 GoToItem(kind: .seat, id: $0.id, title: $0.displayName, detail: rig.rigName)
             }
-            items += rig.items.map { GoToItem(kind: .task, id: $0.id, title: shortQItemID($0.id), detail: $0.summary) }
+            items += rig.items.map { GoToItem(task: $0) }
         }
         return items
     }
 
     var body: some View {
         let matches = goToMatches(query, in: items)
+        let highlighted = goToHighlight(highlightedID, in: matches)
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
@@ -35,11 +37,11 @@ struct GoToPalette: View {
                     .focused($fieldFocused)
                     .onSubmit { if matches.indices.contains(highlighted) { go(matches[highlighted]) } }
                     .onKeyPress(.downArrow) {
-                        highlighted = min(highlighted + 1, max(matches.count - 1, 0))
+                        if !matches.isEmpty { highlightedID = matches[min(highlighted + 1, matches.count - 1)].id }
                         return .handled
                     }
                     .onKeyPress(.upArrow) {
-                        highlighted = max(highlighted - 1, 0)
+                        if !matches.isEmpty { highlightedID = matches[max(highlighted - 1, 0)].id }
                         return .handled
                     }
             }
@@ -55,13 +57,13 @@ struct GoToPalette: View {
                     ScrollView {
                         VStack(spacing: 2) {
                             ForEach(Array(matches.enumerated()), id: \.element.id) { index, item in
-                                row(item, highlighted: index == highlighted).id(index)
+                                row(item, highlighted: index == highlighted)
                             }
                         }
                         .padding(6)
                     }
                     .frame(maxHeight: 340)
-                    .onChange(of: highlighted) { proxy.scrollTo(highlighted) }
+                    .onChange(of: highlighted) { proxy.scrollTo(matches[highlighted].id) }
                 }
             }
         }
@@ -69,7 +71,7 @@ struct GoToPalette: View {
         .onAppear { fieldFocused = true }
         // Tasks are the rig's open rows plus today's closed ones, read while the palette is open.
         .task { await store.rig?.holdClosedRows() }
-        .onChange(of: query) { highlighted = 0 }
+        .onChange(of: query) { highlightedID = nil }
     }
 
     private func row(_ item: GoToItem, highlighted: Bool) -> some View {
@@ -77,7 +79,7 @@ struct GoToPalette: View {
             go(item)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: symbol(item.kind))
+                Image(systemName: item.isClosed ? "checkmark.circle" : symbol(item.kind))
                     .frame(width: 18)
                     .foregroundStyle(highlighted ? Color.white : .secondary)
                     .accessibilityHidden(true)

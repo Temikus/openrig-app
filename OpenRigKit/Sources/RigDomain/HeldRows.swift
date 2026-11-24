@@ -10,8 +10,7 @@ public struct HeldRows: Sendable, Equatable {
     /// The start of the closed rows' window. Nil when closed rows are not held.
     public private(set) var closedSince: Date?
 
-    /// The states the open read asks for (`DaemonHTTP.openStates`). Every other state is closed, `denied` and
-    /// `failed` included, though `workStatus` reads those as `.unknown`.
+    /// The states the open read asks for (`DaemonHTTP.openStates`). Every other state is closed.
     public static let openStates: Set<QItemState> = [.pending, .inProgress, .blocked]
 
     public init() {}
@@ -49,6 +48,19 @@ public struct HeldRows: Sendable, Equatable {
     /// Keeps a row read by id. A closed row stays until the store is reset; an open one, until `replaceOpen`.
     public mutating func keep(_ row: QItem) {
         byID[row.id] = row
+    }
+
+    /// Whether a selected row must be read by id: no read serves it, and no closed copy is kept. A closed row
+    /// doesn't change, so its kept copy is read once.
+    public func needsRead(_ id: String) -> Bool {
+        guard open[id] == nil, closed[id] == nil else { return false }
+        guard let kept = byID[id] else { return true }
+        return Self.openStates.contains(kept.state)
+    }
+
+    /// The closed rows' window began before `startOfToday`: it is yesterday's, and the rows need reading again.
+    public func closedWindowIsStale(startOfToday: Date) -> Bool {
+        closedSince.map { $0 < startOfToday } ?? false
     }
 
     /// The time to ask for closed rows updated since. Nil when closed rows are not held.

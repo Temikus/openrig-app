@@ -1,3 +1,4 @@
+import RigModel
 import Testing
 
 @testable import RigDomain
@@ -31,5 +32,28 @@ import Testing
         #expect(goToMatches("d439", in: items).map(\.id) == ["t1"])
         #expect(goToMatches("issues", in: items).map(\.id) == ["t1"])
         #expect(goToMatches("zzz", in: items).isEmpty)
+    }
+
+    @Test func aClosedTaskLeadsWithItsOutcome() {
+        let open = GoToItem(task: item("qitem-1", .inProgress))
+        #expect(open.detail == "summary qitem-1")
+        #expect(!open.isClosed)
+        let done = GoToItem(task: item("qitem-2", .done, closureReason: "no-follow-on"))
+        #expect(done.detail == "Done · summary qitem-2")
+        #expect(done.isClosed)
+        #expect(GoToItem(task: item("qitem-3", .handedOff)).detail.hasPrefix("Handed off · "))
+    }
+
+    /// Today's closed rows arrive after the palette opens and land among the open ones.
+    @Test func theHighlightStaysOnItsRow() {
+        let before = goToMatches("", in: items)
+        let id = before[goToHighlight("s2", in: before)].id
+        #expect(id == "s2")
+        let closed = GoToItem(kind: .task, id: "t0", title: "q-0000", detail: "closed")
+        let arrived = [items[0], closed] + items.dropFirst()
+        let after = goToMatches("", in: arrived)
+        #expect(after[goToHighlight(id, in: after)].id == "s2")
+        #expect(goToHighlight("gone", in: after) == 0)
+        #expect(goToHighlight(nil, in: after) == 0)
     }
 }

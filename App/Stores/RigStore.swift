@@ -218,7 +218,12 @@ final class RigStore {
     /// One refresh: the graph, the open rows, a top-up of today's closed rows while they are held, then the selected
     /// row. The top-up lands in the same pass as the open rows, so a row closing in between doesn't drop out.
     private func load() async {
-        let since = held.topUpSince
+        // Past midnight the held window is yesterday's: read today's afresh rather than top it up.
+        var since = held.topUpSince
+        if held.closedWindowIsStale(startOfToday: Calendar.current.startOfDay(for: .now)) {
+            since = nil
+            if case .loaded = closedRows { loadClosedRows() }
+        }
         do {
             async let graphRead = client.graph(rigID: rigID)
             async let openRead = client.openRows(rig: rigName, limit: Self.rowLimit)
@@ -279,25 +284,44 @@ final class RigStore {
             }
         }
     }
-    @ObservationIgnored private var askedAncestors: Set<QItem.ID> = []
+    /// Ancestors the daemon doesn't have (404), so they aren't asked for again.
+    @ObservationIgnored private var goneAncestors: Set<QItem.ID> = []
+    /// Ancestor reads in flight, so a refresh and a new selection don't both ask.
+    @ObservationIgnored private var readingAncestors: Set<QItem.ID> = []
 
     private func readSelected() async {
         guard let id = selectedQItemID else { return }
         let client = self.client
-        if held.open[id] == nil, held.closed[id] == nil, !madeUpIDs.contains(id),
-            let row = try? await client.qitem(id: id)
-        {
+        if held.needsRead(id), !madeUpIDs.contains(id), let row = try? await client.qitem(id: id) {
             held.keep(row)
         }
-        let missing = held.missingAncestors(of: id).filter { askedAncestors.insert($0).inserted }
-        guard !missing.isEmpty else { return }
-        let ancestors = await withTaskGroup(of: QItem?.self) { group in
-            for ancestor in missing { group.addTask { try? await client.qitem(id: ancestor) } }
-            var rows: [QItem] = []
-            for await row in group { if let row { rows.append(row) } }
-            return rows
+        // A failed read leaves the ancestor missing, so the next refresh tries again.
+        let missing = held.missingAncestors(of: id).filter {
+            !goneAncestors.contains($0) && readingAncestors.insert($0).inserted
         }
-        ancestors.forEach { held.keep($0) }
+        guard !missing.isEmpty else { return }
+        let reads = await withTaskGroup(of: (QItem.ID, Result<QItem, DaemonError>).self) { group in
+            for ancestor in missing {
+                group.addTask {
+                    do throws(DaemonError) {
+                        return (ancestor, .success(try await client.qitem(id: ancestor)))
+                    } catch {
+                        return (ancestor, .failure(error))
+                    }
+                }
+            }
+            var reads: [(QItem.ID, Result<QItem, DaemonError>)] = []
+            for await read in group { reads.append(read) }
+            return reads
+        }
+        for (ancestor, read) in reads {
+            readingAncestors.remove(ancestor)
+            switch read {
+            case .success(let row): held.keep(row)
+            case .failure(.http(status: 404, _)): goneAncestors.insert(ancestor)
+            case .failure: break
+            }
+        }
     }
 
     // MARK: Today's closed rows

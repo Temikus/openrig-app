@@ -1,4 +1,5 @@
 import Foundation
+import RigModel
 
 /// One thing Go to… (⌘K) can jump to.
 public struct GoToItem: Equatable, Sendable, Identifiable {
@@ -11,12 +12,31 @@ public struct GoToItem: Equatable, Sendable, Identifiable {
     /// Shown beside it and matched too: a seat's rig, a task's summary.
     public var detail: String
 
-    public init(kind: Kind, id: String, title: String, detail: String) {
+    /// A task that has finished, e.g. one closed today.
+    public var isClosed: Bool
+
+    public init(kind: Kind, id: String, title: String, detail: String, isClosed: Bool = false) {
         self.kind = kind
         self.id = id
         self.title = title
         self.detail = detail
+        self.isClosed = isClosed
     }
+
+    /// A row as a task: a finished one's outcome leads its summary ("Done · Fix the build").
+    public init(task row: QItem) {
+        let ended = outcome(row)
+        self.init(
+            kind: .task, id: row.id, title: shortQItemID(row.id),
+            detail: ended.map { "\($0.label) · \(row.summary)" } ?? row.summary,
+            isClosed: !workStatus(row).isActive)
+    }
+}
+
+/// The row to highlight: the one with `id` while it still matches, so rows arriving later don't move the
+/// highlight; otherwise the first.
+public func goToHighlight(_ id: String?, in matches: [GoToItem]) -> Int {
+    id.flatMap { id in matches.firstIndex { $0.id == id } } ?? 0
 }
 
 /// The items `query` matches, best first: the title starts with it, then a word in the title does ("sec" in

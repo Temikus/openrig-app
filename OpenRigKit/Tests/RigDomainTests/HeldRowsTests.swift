@@ -76,7 +76,7 @@ private func at(_ seconds: TimeInterval) -> Date { Date(timeIntervalSince1970: s
         #expect(rows.row("a")?.state == .done)
     }
 
-    /// `denied` and `failed` read as `.unknown`, which `isActive` counts as live; the open read never serves them.
+    /// The open read never serves `denied` or `failed`.
     @Test func aDeniedOrFailedRowKeptByIDOutlivesOpenReads() {
         var rows = HeldRows()
         rows.keep(item("d", QItemState(rawValue: "denied"), updated: 10))
@@ -134,6 +134,31 @@ private func at(_ seconds: TimeInterval) -> Date { Date(timeIntervalSince1970: s
         var rows = HeldRows()
         rows.replaceOpen([item("c", after: "b")])
         #expect(rows.missingAncestors(of: "c") == ["b"])
+    }
+
+    /// A selected closed row is read once; an open one, on every refresh until a read serves it.
+    @Test func aSelectedRowIsReadUntilAClosedCopyIsKept() {
+        var rows = HeldRows()
+        #expect(rows.needsRead("a"))
+        rows.keep(item("a", .inProgress, from: "x@other"))
+        #expect(rows.needsRead("a"), "an open copy may have moved on")
+        rows.keep(item("a", .done, from: "x@other"))
+        #expect(!rows.needsRead("a"))
+        rows.keep(item("d", .denied))
+        #expect(!rows.needsRead("d"))
+
+        rows.replaceOpen([item("b")])
+        rows.replaceClosed([item("c", .done, updated: 150)], since: at(100))
+        #expect(!rows.needsRead("b"))
+        #expect(!rows.needsRead("c"))
+    }
+
+    @Test func aClosedWindowFromBeforeTodayIsStale() {
+        var rows = HeldRows()
+        #expect(!rows.closedWindowIsStale(startOfToday: at(100)), "no closed rows held")
+        rows.replaceClosed([], since: at(100))
+        #expect(!rows.closedWindowIsStale(startOfToday: at(100)))
+        #expect(rows.closedWindowIsStale(startOfToday: at(100 + 86400)))
     }
 
     @Test func recordedRowsSplitIntoOpenAndClosed() throws {

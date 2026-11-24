@@ -127,11 +127,11 @@ struct QueueBoardView: View {
     /// The Done column's line while today's closed rows load, when the read failed, or when it was cut short.
     private var closedNotice: BoardColumn.Notice? {
         switch rig.closedRows {
-        case .loading: BoardColumn.Notice(text: "Loading closed work…")
+        case .loading: BoardColumn.Notice(text: "Loading closed work…", hidesCount: true)
         case .failed(let reason):
             BoardColumn.Notice(
                 text: "Couldn’t load closed work.", help: reason,
-                action: ("Retry", { rig.loadClosedRows() }))
+                action: ("Retry", { rig.loadClosedRows() }), hidesCount: true)
         case .loaded(cut: true): BoardColumn.Notice(text: "Some work closed earlier today isn’t shown.")
         case .off, .loaded: nil
         }
@@ -241,11 +241,16 @@ struct BoardColumn: View {
         var text: String
         var help: String?
         var action: (title: String, perform: () -> Void)?
+        /// The rows are loading or failed to load, so a count would be wrong.
+        var hidesCount = false
     }
+
+    /// Nil while the notice says the rows aren't known.
+    private func count(_ rows: [QItem]) -> Int? { notice?.hidesCount == true ? nil : rows.count }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            header(title, items.count)
+            header(title, count(items))
             if let notice {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(notice.text)
@@ -262,7 +267,7 @@ struct BoardColumn: View {
                     LazyVStack(alignment: .leading, spacing: 8) {
                         ForEach(items) { QItemCard(item: $0, now: now) }
                         if let secondTitle, !secondItems.isEmpty {
-                            header(secondTitle, secondItems.count).padding(.top, 8)
+                            header(secondTitle, count(secondItems)).padding(.top, 8)
                             ForEach(secondItems) { QItemCard(item: $0, now: now) }
                         }
                         if items.isEmpty && secondItems.isEmpty && notice == nil {
@@ -293,13 +298,15 @@ struct BoardColumn: View {
         .background(.quaternary.opacity(0.35), in: .rect(cornerRadius: 12))
         // Column by column for VoiceOver, not across the board's rows.
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(title), \(items.count)")
+        .accessibilityLabel(count(items).map { "\(title), \($0)" } ?? title)
     }
 
-    private func header(_ title: String, _ count: Int) -> some View {
+    private func header(_ title: String, _ count: Int?) -> some View {
         HStack {
             Text(title).font(.headline)
-            Text("\(count)").foregroundStyle(.secondary).monospacedDigit()
+            if let count {
+                Text("\(count)").foregroundStyle(.secondary).monospacedDigit()
+            }
         }
     }
 }
@@ -446,7 +453,7 @@ struct StatusTag: View {
     private func endedColor(_ o: Outcome) -> Color {
         switch o {
         case .approved: .approved
-        case .denied: .attention
+        case .denied, .failed: .attention
         default: .secondary
         }
     }

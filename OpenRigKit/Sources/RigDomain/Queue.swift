@@ -49,6 +49,10 @@ public func workStatus(_ item: QItem) -> WorkStatus {
         return .closed(reason: item.closureReason)
     case .canceled:
         return .closed(reason: item.closureReason ?? "canceled")
+    case .denied:
+        return .closed(reason: item.closureReason ?? "denied")
+    case .failed:
+        return .closed(reason: item.closureReason ?? "failed")
     default:
         return .unknown(item.state.rawValue)
     }
@@ -92,7 +96,7 @@ public func needsYou(_ items: [QItem], me: String = Human.session) -> [QItem] {
 
 /// How a finished row ended, as one plain word, instead of the daemon's closure reason (`no-follow-on`).
 public enum Outcome: Equatable, Sendable {
-    case approved, denied, answered, done, canceled
+    case approved, denied, answered, done, canceled, failed
     case replaced(by: String?)
     case escalated(to: String?)
     case handedOff(to: String?)
@@ -104,6 +108,7 @@ public enum Outcome: Equatable, Sendable {
         case .answered: "Answered"
         case .done: "Done"
         case .canceled: "Canceled"
+        case .failed: "Failed"
         case .replaced: "Replaced"
         case .escalated: "Escalated"
         case .handedOff: "Handed off"
@@ -117,6 +122,9 @@ public func outcome(_ item: QItem) -> Outcome? {
     switch workStatus(item) {
     case .handedOff(let to): return .handedOff(to: to)
     case .closed(let reason):
+        // The state says it before any closure reason does.
+        if item.state == .denied { return .denied }
+        if item.state == .failed { return .failed }
         switch reason {
         case "denied": return .denied
         case "canceled": return .canceled
