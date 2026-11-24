@@ -4,6 +4,7 @@ import Foundation
 /// except graph-edge-cases.json, which is hand-written, and graph-lost.json, recorded from a test rig
 /// after its seat's tmux session was killed. events.json is copied from rig 0.7.22's event log (`events` table), with
 /// `seq` and `createdAt` added as the stream adds them and summaries replaced. It has no `queue.unclaimed`: none was logged.
+/// transitions-canceled.json is one row's `/api/queue/<id>/transitions` from rig 0.7.22, with notes replaced.
 public enum RigFixtures {
     public static func data(_ name: String) throws -> Data {
         guard let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures") else {

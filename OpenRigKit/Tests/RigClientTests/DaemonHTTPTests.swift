@@ -1,4 +1,5 @@
 import Foundation
+import RigFixtures
 import Synchronization
 import Testing
 
@@ -42,18 +43,26 @@ import Testing
             ])
     }
 
+    /// A recorded cancel, with watchdog transitions before it. No denied or failed row was on record, so the last
+    /// transition's state is swapped for each finished state.
     @Test(arguments: ["done", "canceled", "handed-off", "denied", "failed"])
     func closedByIsTheActorWhoMovedTheRowIntoAFinishedState(state: String) async throws {
+        let recorded = try String(decoding: RigFixtures.data("transitions-canceled"), as: UTF8.self)
         let host = "closer-\(state)"
         QueryProtocol.bodies.withLock {
             $0["\(host).query.test"] = Data(
-                """
-                [{"state": "pending", "actorSession": "lead@r"},
-                 {"state": "\(state)", "actorSession": "artem@external"},
-                 {"state": null, "actorSession": "queue@system"}]
-                """.utf8)
+                recorded.replacingOccurrences(of: #""state": "canceled""#, with: #""state": "\#(state)""#).utf8)
         }
-        #expect(try await client(host).closedBy(qitem: "q-1") == "artem@external")
+        #expect(try await client(host).closedBy(qitem: "q-1") == "operator-human@kernel")
+    }
+
+    @Test func closedByIsNilWhileNoTransitionFinishedTheRow() async throws {
+        let recorded = try String(decoding: RigFixtures.data("transitions-canceled"), as: UTF8.self)
+        QueryProtocol.bodies.withLock {
+            $0["open-closer.query.test"] = Data(
+                recorded.replacingOccurrences(of: #""state": "canceled""#, with: #""state": "pending""#).utf8)
+        }
+        #expect(try await client("open-closer").closedBy(qitem: "q-1") == nil)
     }
 }
 

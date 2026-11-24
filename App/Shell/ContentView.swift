@@ -96,6 +96,14 @@ struct ContentView: View {
                     ? { showsStopConfirmation = true } : nil)
         )
         .sheet(isPresented: $showsGoTo) { GoToPalette().environment(store) }
+        #if DEBUG
+            // OPENRIG_DEBUG_GOTO=1 opens Go To once launch has settled, for screenshots without ⌘K.
+            .task {
+                guard ProcessInfo.processInfo.environment["OPENRIG_DEBUG_GOTO"] == "1" else { return }
+                try? await Task.sleep(for: .seconds(6))
+                if !Task.isCancelled { showsGoTo = true }
+            }
+        #endif
         .onChange(of: appearsActive, initial: true) { store.windowInFront = appearsActive }
         .onDisappear { store.windowInFront = false }
     }
