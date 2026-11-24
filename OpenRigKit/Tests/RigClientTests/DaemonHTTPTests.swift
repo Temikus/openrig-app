@@ -41,6 +41,20 @@ import Testing
                 "destinationSession": "artem@external", "state": "pending,in-progress,blocked", "limit": "200",
             ])
     }
+
+    @Test(arguments: ["done", "canceled", "handed-off", "denied", "failed"])
+    func closedByIsTheActorWhoMovedTheRowIntoAFinishedState(state: String) async throws {
+        let host = "closer-\(state)"
+        QueryProtocol.bodies.withLock {
+            $0["\(host).query.test"] = Data(
+                """
+                [{"state": "pending", "actorSession": "lead@r"},
+                 {"state": "\(state)", "actorSession": "artem@external"},
+                 {"state": null, "actorSession": "queue@system"}]
+                """.utf8)
+        }
+        #expect(try await client(host).closedBy(qitem: "q-1") == "artem@external")
+    }
 }
 
 /// Global sink: these tests install it, so they run one at a time and keep only their own host's records.
@@ -101,10 +115,11 @@ import Testing
     }
 }
 
-/// Records the URL of the last request to each *.query.test host and answers `[]`. A host starting with `fail.`
-/// fails with no response.
+/// Records the URL of the last request to each *.query.test host and answers the host's body in `bodies`, or `[]`.
+/// A host starting with `fail.` fails with no response.
 final class QueryProtocol: URLProtocol, @unchecked Sendable {
     static let lastURL = Mutex<[String: URL]>([:])
+    static let bodies = Mutex<[String: Data]>([:])
     static let session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [QueryProtocol.self]
@@ -124,7 +139,8 @@ final class QueryProtocol: URLProtocol, @unchecked Sendable {
         }
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Data("[]".utf8))
+        let body = Self.bodies.withLock { $0[url.host ?? ""] } ?? Data("[]".utf8)
+        client?.urlProtocol(self, didLoad: body)
         client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}

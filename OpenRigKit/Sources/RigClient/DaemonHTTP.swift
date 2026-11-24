@@ -102,7 +102,7 @@ public struct DaemonHTTP: Sendable {
             var state: String?
         }
         let transitions: [Transition] = try await get("/api/queue/\(id)/transitions")
-        let finished: Set<String?> = ["done", "canceled", "handed-off"]
+        let finished: Set<String?> = ["done", "canceled", "handed-off", "denied", "failed"]
         return transitions.last { finished.contains($0.state) }?.actorSession
     }
 

@@ -14,13 +14,18 @@ public struct GoToItem: Equatable, Sendable, Identifiable {
 
     /// A task that has finished, e.g. one closed today.
     public var isClosed: Bool
+    /// A closed task that wasn't done: denied, failed or canceled.
+    public var endedBadly: Bool
 
-    public init(kind: Kind, id: String, title: String, detail: String, isClosed: Bool = false) {
+    public init(
+        kind: Kind, id: String, title: String, detail: String, isClosed: Bool = false, endedBadly: Bool = false
+    ) {
         self.kind = kind
         self.id = id
         self.title = title
         self.detail = detail
         self.isClosed = isClosed
+        self.endedBadly = endedBadly
     }
 
     /// A row as a task: a finished one's outcome leads its summary ("Done · Fix the build").
@@ -29,7 +34,8 @@ public struct GoToItem: Equatable, Sendable, Identifiable {
         self.init(
             kind: .task, id: row.id, title: shortQItemID(row.id),
             detail: ended.map { "\($0.label) · \(row.summary)" } ?? row.summary,
-            isClosed: !workStatus(row).isActive)
+            isClosed: !workStatus(row).isActive,
+            endedBadly: [.denied, .failed, .canceled].contains(ended))
     }
 }
 

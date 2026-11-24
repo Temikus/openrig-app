@@ -79,7 +79,7 @@ struct GoToPalette: View {
             go(item)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: item.isClosed ? "checkmark.circle" : symbol(item.kind))
+                Image(systemName: symbol(item))
                     .frame(width: 18)
                     .foregroundStyle(highlighted ? Color.white : .secondary)
                     .accessibilityHidden(true)
@@ -100,8 +100,10 @@ struct GoToPalette: View {
         .accessibilityAddTraits(highlighted ? .isSelected : [])
     }
 
-    private func symbol(_ kind: GoToItem.Kind) -> String {
-        switch kind {
+    private func symbol(_ item: GoToItem) -> String {
+        if item.endedBadly { return "xmark.circle" }
+        if item.isClosed { return "checkmark.circle" }
+        return switch item.kind {
         case .rig: "circle.hexagongrid"
         case .seat: "person.crop.square"
         case .task: "tray"

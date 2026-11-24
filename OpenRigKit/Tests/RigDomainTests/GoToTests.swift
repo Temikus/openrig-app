@@ -44,6 +44,20 @@ import Testing
         #expect(GoToItem(task: item("qitem-3", .handedOff)).detail.hasPrefix("Handed off · "))
     }
 
+    /// A task that didn't get done doesn't wear a check in the palette.
+    @Test func onlyDeniedFailedAndCanceledTasksEndedBadly() {
+        let bad = [
+            item("d", .denied), item("f", .failed), item("c", .canceled),
+            item("dr", .done, closureReason: "denied"),
+        ]
+        #expect(bad.map { GoToItem(task: $0).endedBadly } == [true, true, true, true])
+        let fine = [
+            item("o", .inProgress), item("n", .done, closureReason: "no-follow-on"), item("h", .handedOff),
+            item("s", .done, closureReason: "superseded"),
+        ]
+        #expect(fine.map { GoToItem(task: $0).endedBadly } == [false, false, false, false])
+    }
+
     /// Today's closed rows arrive after the palette opens and land among the open ones.
     @Test func theHighlightStaysOnItsRow() {
         let before = goToMatches("", in: items)
