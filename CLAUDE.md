@@ -27,6 +27,7 @@ done
 
 - `-g` keeps the app behind the person's windows. `-n` starts a new copy.
 - `OPENRIG_ID_SUFFIX=.agent` gives your copy its own bundle id and settings (`dev.openrig.OpenRig.agent`). The person's copy uses `dev.openrig.OpenRig`: never write to it.
+- The `.agent` Debug build keeps relay secrets and the operator token in memory, never in the Keychain: its ad-hoc signature changes each build, so a Keychain read would ask the person on their screen. It starts with no token, and paired phones have no key until paired again in that copy.
 - `OPENRIG_BUILD_ROOT` is your own build folder, so you never launch or overwrite the person's build. The justfile and `APP` both read it. `just --set build_root` does not set it.
 - `-menuBarItem NO` keeps your copy out of the person's menu bar. `-bannerKinds '()'` stops it posting banners. A new bundle id would otherwise ask for notification permission on the person's screen.
 - `-bannerKinds '()'` also silences `OPENRIG_DEBUG_BANNERS` and `OPENRIG_DEBUG_PROMPT_AFTER`. Leave it out only to test banners. That copy then asks for notification permission on the person's screen, so ask the lead first.

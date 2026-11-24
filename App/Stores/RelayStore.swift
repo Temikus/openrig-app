@@ -17,6 +17,7 @@ enum RelaySecrets {
     }
 
     static func read(_ id: String) -> Data? {
+        if Secrets.storage == .memory { return Secrets.memory.read(key(id)) }
         var item: CFTypeRef?
         var q = query(id)
         q[kSecReturnData as String] = true
@@ -27,6 +28,10 @@ enum RelaySecrets {
 
     @discardableResult
     static func save(_ secret: Data, for id: String) -> Bool {
+        if Secrets.storage == .memory {
+            Secrets.memory.save(secret, for: key(id))
+            return true
+        }
         SecItemDelete(query(id) as CFDictionary)
         var q = query(id)
         q[kSecValueData as String] = secret
@@ -35,7 +40,13 @@ enum RelaySecrets {
     }
 
     /// Unpair forgets the secret, so a revoked phone can't even finish the handshake.
-    static func forget(_ id: String) { SecItemDelete(query(id) as CFDictionary) }
+    static func forget(_ id: String) {
+        if Secrets.storage == .memory { return Secrets.memory.forget(key(id)) }
+        SecItemDelete(query(id) as CFDictionary)
+    }
+
+    /// The memory store's account: apart from the operator token's.
+    private static func key(_ id: String) -> String { "relay:\(id)" }
 }
 
 /// The relay for paired phones. It listens only while the switch is on, the daemon runs on this Mac, and a phone on

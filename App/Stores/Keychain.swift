@@ -1,5 +1,20 @@
 import Foundation
+import RigClient
 import Security
+
+/// This build's secret store. An agent's `.agent` copy never touches the Keychain: see `SecretStorage.memory`.
+enum Secrets {
+    static let storage: SecretStorage = {
+        #if DEBUG
+            SecretStorage.choose(bundleID: Bundle.main.bundleIdentifier, debug: true)
+        #else
+            .keychain
+        #endif
+    }()
+
+    /// Used only when `storage` is `.memory`.
+    static let memory = MemorySecrets()
+}
 
 /// The daemon's operator bearer, kept in the login Keychain. Never logged and never written to UserDefaults.
 enum OperatorToken {
@@ -14,6 +29,9 @@ enum OperatorToken {
     }
 
     static func read() -> String? {
+        if Secrets.storage == .memory {
+            return Secrets.memory.read(account).flatMap { String(data: $0, encoding: .utf8) }
+        }
         var item: CFTypeRef?
         var q = query
         q[kSecReturnData as String] = true
@@ -28,6 +46,14 @@ enum OperatorToken {
     @discardableResult
     static func save(_ token: String) -> Bool {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        if Secrets.storage == .memory {
+            if trimmed.isEmpty {
+                Secrets.memory.forget(account)
+            } else {
+                Secrets.memory.save(Data(trimmed.utf8), for: account)
+            }
+            return true
+        }
         SecItemDelete(query as CFDictionary)
         guard !trimmed.isEmpty else { return true }
         var q = query
