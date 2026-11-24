@@ -56,7 +56,11 @@ public enum ShellPath {
             try? await Task.sleep(for: .milliseconds(10))
         }
         guard !process.isRunning else {
-            kill(process.processIdentifier, SIGKILL)
+            // Interactive zsh leads its own process group, so a startup command it waits on (a curl with no
+            // timeout, say) dies with it. When the shell leads no group, kill gives ESRCH, which is fine to ignore.
+            let pid = process.processIdentifier
+            kill(pid, SIGKILL)
+            _ = kill(-pid, SIGKILL)
             return nil
         }
         guard process.terminationStatus == 0 else { return nil }

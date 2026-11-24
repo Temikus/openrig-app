@@ -133,6 +133,37 @@ import Testing
         #expect(took < .seconds(2), "took \(took)")
     }
 
+    /// Like interactive zsh, this shell leads its own process group and is stuck waiting on a startup command. At
+    /// the deadline the command dies with it, rather than living on under launchd.
+    @Test func aStuckStartupCommandDiesWithTheShell() async throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "openrig-shell-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let pidFile = dir.appending(path: "child.pid")
+        let sh = dir.appending(path: "sh")
+        let script = """
+            #!/usr/bin/perl
+            setpgrp(0, 0);
+            $SIG{TERM} = 'IGNORE';
+            my $child = fork();
+            if ($child == 0) { exec('/bin/sleep', '30'); }
+            open(my $f, '>', '\(pidFile.path)'); print $f $child; close($f);
+            waitpid($child, 0);
+
+            """
+        try Data(script.utf8).write(to: sh)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: sh.path)
+
+        #expect(await ShellPath.read(shell: sh.path, timeout: .milliseconds(500)) == nil)
+        let text = try String(contentsOf: pidFile, encoding: .utf8)
+        let child = try #require(pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines)))
+        // The killed command is reaped by launchd; until then kill(_, 0) still finds it.
+        let deadline = ContinuousClock.now + .seconds(3)
+        while kill(child, 0) == 0, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        let alive = kill(child, 0) == 0
+        if alive { kill(child, SIGKILL) }
+        #expect(!alive, "the shell's startup command outlived it")
+    }
+
     /// A startup file that leaves a background job holding stdout: the PATH counts once the shell has exited.
     @Test func aBackgroundChildHoldingStdoutDoesNotHoldTheRead() async throws {
         let sh = try fake("sleep 6 &\nprintf '\\n__OPENRIG_PATH__=/usr/bin\\n'")
