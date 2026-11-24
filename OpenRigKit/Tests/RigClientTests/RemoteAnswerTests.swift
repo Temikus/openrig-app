@@ -266,8 +266,25 @@ import Testing
 @Suite struct AnswerOutboxTests {
     let entry = PendingAnswer(id: "answer1234", credentialID: "c", requestID: "qitem-1", body: Data(#"{"a":1}"#.utf8))
 
+    /// With a space, as in the phone's "Application Support".
     func temporaryURL() -> URL {
-        FileManager.default.temporaryDirectory.appending(path: "outbox-\(UUID().uuidString)/pending-answers.json")
+        FileManager.default.temporaryDirectory.appending(
+            path: "outbox support \(UUID().uuidString)/pending-answers.json")
+    }
+
+    /// Two entries in a folder whose name has a space both stay, and Unpair's `removeAll` empties them.
+    @Test func aFolderWithASpaceKeepsEveryEntry() throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let outbox = FileAnswerOutbox(url: url)
+        try outbox.add(entry)
+        var second = entry
+        second.id = "answer5678"
+        try outbox.add(second)
+        #expect(try outbox.load().map(\.id) == ["answer1234", "answer5678"])
+        try outbox.removeAll()
+        #expect(try outbox.load().isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: url.path(percentEncoded: false)))
     }
 
     @Test func aFileOutboxSurvivesBeingOpenedAgain() throws {
@@ -291,7 +308,7 @@ import Testing
         #expect(try outbox.load().isEmpty)
         try outbox.add(entry)
         #expect(try outbox.load() == [entry])
-        let names = try FileManager.default.contentsOfDirectory(atPath: folder.path())
+        let names = try FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))
         #expect(names.contains { $0.hasPrefix("pending-answers.damaged-") })
     }
 

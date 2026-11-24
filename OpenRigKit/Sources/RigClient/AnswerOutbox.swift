@@ -40,7 +40,7 @@ public struct FileAnswerOutbox: AnswerOutbox {
 
     /// A file that won't decode is moved aside, not read again, so it can't block every later Send.
     public func load() throws -> [PendingAnswer] {
-        guard FileManager.default.fileExists(atPath: url.path()) else { return [] }
+        guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else { return [] }
         let data = try Data(contentsOf: url)
         do {
             return try JSONDecoder().decode([PendingAnswer].self, from: data)
@@ -57,7 +57,9 @@ public struct FileAnswerOutbox: AnswerOutbox {
     public func remove(id: String) throws { try write(load().filter { $0.id != id }) }
 
     public func removeAll() throws {
-        if FileManager.default.fileExists(atPath: url.path()) { try FileManager.default.removeItem(at: url) }
+        if FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
+            try FileManager.default.removeItem(at: url)
+        }
     }
 
     private func write(_ answers: [PendingAnswer]) throws {
