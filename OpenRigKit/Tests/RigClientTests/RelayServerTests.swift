@@ -118,6 +118,38 @@ import Testing
         }
     }
 
+    /// The Mac-side calls go to the desk, never to the daemon; one off the list is refused, and so is every call when
+    /// no desk is given.
+    @Test func macSideCallsGoToTheDesk() async throws {
+        let seen = Seen()
+        let forward: RelayServer.Forward = { request in
+            seen.add(request)
+            return AsyncThrowingStream { $0.finish() }
+        }
+        let desk = FakeDesk(prompt: nil)
+        let relay = RelayServer(keys: ["cred-a": secret], host: "127.0.0.1", port: 0, desk: desk, forward: forward)
+        let port = try await relay.start()
+        defer { relay.stop() }
+        let phone = RelayChannel(host: "127.0.0.1", port: port, identity: "cred-a", secret: secret)
+        defer { phone.close() }
+        try await phone.open()
+        let list = try await phone.call(RelayRequest(method: "GET", path: "/relay/v1/needs-you"))
+        #expect(list.map(\.status) == [200])
+        #expect(list.first?.body == Data("[]".utf8))
+        let always = try await phone.call(
+            RelayRequest(method: "POST", path: "/relay/v1/prompts/dev-b1@openrig-app/always-allow", body: Data("{}".utf8)))
+        #expect(always.map(\.status) == [403])
+        #expect(seen.paths.isEmpty, "nothing reached the daemon")
+
+        let bare = RelayServer(keys: ["cred-a": secret], host: "127.0.0.1", port: 0, forward: forward)
+        let barePort = try await bare.start()
+        defer { bare.stop() }
+        let other = RelayChannel(host: "127.0.0.1", port: barePort, identity: "cred-a", secret: secret)
+        defer { other.close() }
+        try await other.open()
+        #expect(try await other.call(RelayRequest(method: "GET", path: "/relay/v1/needs-you")).map(\.status) == [403])
+    }
+
     /// A second copy of the app holds the port: the relay takes a free one, and the QR carries it.
     @Test func aTakenPortFallsBackToAFreeOne() async throws {
         let first = RelayServer(keys: ["cred-a": secret], host: "127.0.0.1", port: 0) { _ in

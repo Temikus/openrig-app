@@ -94,6 +94,8 @@ public final class RelayServer: @unchecked Sendable {
     private let host: String
     private let port: UInt16
     private let forward: Forward
+    /// Runs the Mac-side calls (`RelayCall`); with none, those are refused like any call off the list.
+    private let desk: (any RelayDesk)?
     private let lock = NSLock()
     private var listener: NWListener?
     private var connections: [ObjectIdentifier: NWConnection] = [:]
@@ -103,10 +105,13 @@ public final class RelayServer: @unchecked Sendable {
     ///   - keys: each paired phone's secret, by its credential id.
     ///   - host: the address to listen on. Seats' runs and tests use 127.0.0.1 only.
     ///   - port: the port to try first; 0 takes any.
-    public init(keys: [String: Data], host: String, port: UInt16, forward: @escaping Forward) {
+    public init(
+        keys: [String: Data], host: String, port: UInt16, desk: (any RelayDesk)? = nil, forward: @escaping Forward
+    ) {
         self.keys = keys
         self.host = host
         self.port = port
+        self.desk = desk
         self.forward = forward
     }
 
@@ -171,6 +176,7 @@ public final class RelayServer: @unchecked Sendable {
         let channel = RelayChannel(connection)
         connection.start(queue: .global())
         let forward = self.forward
+        let desk = self.desk
         Task { [weak self] in
             defer {
                 channel.close()
@@ -179,6 +185,11 @@ public final class RelayServer: @unchecked Sendable {
             do {
                 while let frame = try? await channel.receive() {
                     guard let request = try? JSONDecoder().decode(RelayRequest.self, from: frame) else { return }
+                    // A Mac-side call goes to the desk and never to the daemon.
+                    if let call = RelayCall(request), let desk {
+                        try await channel.reply(await RelayActions.handle(call, desk: desk))
+                        continue
+                    }
                     guard RelayPolicy.allows(request) else {
                         try await channel.reply(RelayResponse(status: 403, body: Data("Not available to a phone".utf8)))
                         continue
