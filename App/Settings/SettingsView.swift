@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The Settings window (⌘,): one grouped form per tab, as drawn on the Paper page "Settings window".
 struct SettingsView: View {
-    enum Pane: String { case general, connection, notifications, terminals }
+    enum Pane: String { case general, connection, notifications, terminals, phone }
 
     /// Reopens on the last tab, as Mac Settings windows do.
     @AppStorage("settingsPane") private var pane = Pane.general
@@ -15,6 +15,7 @@ struct SettingsView: View {
             }
             Tab("Notifications", systemImage: "bell", value: .notifications) { NotificationSettings() }
             Tab("Terminals", systemImage: "apple.terminal", value: .terminals) { TerminalSettings() }
+            Tab("Phone", systemImage: "iphone", value: .phone) { PhoneSettings() }
         }
         .frame(width: 640)
         #if DEBUG
