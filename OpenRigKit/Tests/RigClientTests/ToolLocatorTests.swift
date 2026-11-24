@@ -59,6 +59,100 @@ import Testing
     }
 }
 
+@Suite struct ShellPathTests {
+    @Test func readsOnlyTheMarkedLine() {
+        // Startup files can print anything, including text that looks like a PATH.
+        let output = """
+            Welcome back!
+            PATH=/decoy/bin
+            __OPENRIG_PATH__=/Users/x/.nvm/versions/node/v22/bin:/opt/homebrew/bin:/usr/bin
+            """
+        #expect(ShellPath.parse(output) == ["/Users/x/.nvm/versions/node/v22/bin", "/opt/homebrew/bin", "/usr/bin"])
+    }
+
+    @Test func theLastMarkedLineWins() {
+        let output = "__OPENRIG_PATH__=/early\n__OPENRIG_PATH__=/late/bin\n"
+        #expect(ShellPath.parse(output) == ["/late/bin"])
+    }
+
+    @Test func dropsBlanksRepeatsAndRelativeFolders() {
+        let output = "__OPENRIG_PATH__=/a::/b:/a:.:bin:/c\n"
+        #expect(ShellPath.parse(output) == ["/a", "/b", "/c"], "a relative folder would depend on the app's cwd")
+    }
+
+    @Test func noMarkerIsNil() {
+        #expect(ShellPath.parse("zsh: command not found: nvm\n") == nil)
+    }
+
+    @Test func readsAShell() async throws {
+        // A stand-in shell that prints noise, then runs the command it is given with a known PATH.
+        let dir = FileManager.default.temporaryDirectory.appending(path: "openrig-shell-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let shell = dir.appending(path: "sh")
+        try Data("#!/bin/sh\necho 'rc noise'\nPATH=/from/shell:/usr/bin:/bin exec /bin/sh -c \"$2\"\n".utf8)
+            .write(to: shell)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: shell.path)
+        #expect(await ShellPath.read(shell: shell.path) == ["/from/shell", "/usr/bin", "/bin"])
+    }
+
+    @Test func aFailingOrSlowShellIsNil() async throws {
+        #expect(await ShellPath.read(shell: "/nonexistent/sh") == nil)
+        #expect(await ShellPath.read(shell: "/usr/bin/false") == nil)
+        let dir = FileManager.default.temporaryDirectory.appending(path: "openrig-shell-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let slow = dir.appending(path: "sh")
+        try Data("#!/bin/sh\nexec sleep 10\n".utf8).write(to: slow)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: slow.path)
+        #expect(await ShellPath.read(shell: slow.path, timeout: .milliseconds(200)) == nil)
+    }
+
+    @Test func loginShellPrefersSHELL() {
+        #expect(ShellPath.loginShell(environment: ["SHELL": "/opt/homebrew/bin/fish"]) == "/opt/homebrew/bin/fish")
+        #expect(ShellPath.loginShell(environment: [:]).hasPrefix("/"), "from the user database when unset")
+    }
+}
+
+@Suite struct ToolSearchOrderTests {
+    let dir: URL
+
+    init() throws {
+        dir = FileManager.default.temporaryDirectory.appending(path: "openrig-order-\(UUID().uuidString)")
+        for sub in ["nvm", "brew"] {
+            let folder = dir.appending(path: sub)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let rig = folder.appending(path: "rig")
+            try Data("#!/bin/sh\n".utf8).write(to: rig)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: rig.path)
+        }
+    }
+
+    var brew: String { dir.appending(path: "brew/rig").path }
+
+    @Test func shellFoldersComeBeforeTheUsualPlaces() {
+        let paths = ToolLocator.searchPaths(
+            for: "rig", shellPath: ["/a/bin", "/opt/homebrew/bin"],
+            fallback: ["/opt/homebrew/bin/rig", "/usr/local/bin/rig"])
+        #expect(paths == ["/a/bin/rig", "/opt/homebrew/bin/rig", "/usr/local/bin/rig"], "in order, once each")
+    }
+
+    @Test func theShellsRigBeatsHomebrew() {
+        let paths = ToolLocator.searchPaths(for: "rig", shellPath: [dir.appending(path: "nvm").path], fallback: [brew])
+        #expect(ToolLocator.resolve(override: nil, searchPaths: paths)?.url.path == dir.appending(path: "nvm/rig").path)
+    }
+
+    @Test func withoutAShellPathItIsTodaysLookup() {
+        let paths = ToolLocator.searchPaths(for: "rig", shellPath: [], fallback: [brew])
+        #expect(paths == [brew])
+    }
+
+    @Test func aPickStillBeatsTheShell() {
+        let pick = dir.appending(path: "brew/rig")
+        let paths = ToolLocator.searchPaths(for: "rig", shellPath: [dir.appending(path: "nvm").path], fallback: [])
+        #expect(ToolLocator.resolve(override: pick, searchPaths: paths) == ToolLocation(url: pick, chosen: true))
+        #expect(ToolLocator.resolve(override: dir.appending(path: "gone"), searchPaths: paths) == nil)
+    }
+}
+
 @Suite struct DaemonHTTPBearerTests {
     @Test func bearerIsSentWithEveryRequest() async throws {
         let config = URLSessionConfiguration.ephemeral

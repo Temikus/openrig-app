@@ -155,6 +155,15 @@ import Testing
         #expect(env["PATH"]?.hasPrefix("/Users/x/.nvm/versions/node/v22/bin:/opt/homebrew/bin:") == true)
     }
 
+    @Test func environmentPutsThePickedNodeThenTheShellsPath() {
+        let env = RigCLI.environment(
+            base: ["PATH": "/usr/bin"], actor: "human@host", extraPath: "/picked/bin",
+            shellPath: ["/Users/x/.nvm/versions/node/v22/bin", "/opt/homebrew/bin"])
+        #expect(
+            env["PATH"]?.hasPrefix("/picked/bin:/Users/x/.nvm/versions/node/v22/bin:/opt/homebrew/bin:") == true,
+            "the node the person picked wins, then the one their terminal uses")
+    }
+
     @Test func environmentLeavesUnsetSettingsAlone() {
         let env = RigCLI.environment(base: ["PATH": "/usr/bin"], actor: "human@host")
         #expect(env["OPENRIG_URL"] == nil)
@@ -175,12 +184,12 @@ import Testing
 /// Read-only: the CLI accepts the app's identity. Writes are in LiveWriteTests (`just test-live`).
 @Suite(
     .enabled("needs rig and a running daemon") {
-        guard RigCLI.locate() != nil else { return false }
+        guard await RigCLI.find() != nil else { return false }
         return (try? await DaemonHTTP(baseURL: DaemonLocator().locate().baseURL, timeout: 2).health()) != nil
     })
 struct LiveCLITests {
     @Test func whoamiAsTheHumanSeat() async throws {
-        let cli = try #require(RigCLI.locate())
+        let cli = try #require(await RigCLI.find())
         let result = try await cli.run(arguments: ["queue", "whoami", "--json"])
         #expect(result.succeeded, "\(result.stderr)")
         #expect(result.stdout.contains("\"session\":\"human@host\""))

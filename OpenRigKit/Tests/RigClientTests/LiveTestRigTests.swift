@@ -9,7 +9,8 @@ import Testing
 @Suite(
     .serialized,
     .enabled("set OPENRIG_TEST_SEAT=<seat>@<throwaway rig> (just test-rig)") {
-        ProcessInfo.processInfo.environment["OPENRIG_TEST_SEAT"] != nil && RigCLI.locate() != nil
+        guard ProcessInfo.processInfo.environment["OPENRIG_TEST_SEAT"] != nil else { return false }
+        return await RigCLI.find() != nil
     })
 struct LiveTestRigTests {
     let seat = ProcessInfo.processInfo.environment["OPENRIG_TEST_SEAT"] ?? ""
@@ -18,7 +19,7 @@ struct LiveTestRigTests {
         let base = DaemonLocator().locate().baseURL
         let http = DaemonHTTP(baseURL: base)
         let me = Human.address(in: try? await http.participants())
-        let cli = try #require(RigCLI.locate(actor: me))
+        let cli = try #require(await RigCLI.find(actor: me))
 
         let created = try await cli.run(
             .create(
@@ -55,8 +56,8 @@ struct LiveTestRigTests {
     @Test(.timeLimit(.minutes(1))) func approvingTellsTheSeatThenCloses() async throws {
         let http = DaemonHTTP(baseURL: DaemonLocator().locate().baseURL)
         let me = Human.address(in: try? await http.participants())
-        let asSeat = try #require(RigCLI.locate(actor: seat))
-        let asMe = try #require(RigCLI.locate(actor: me))
+        let asSeat = try #require(await RigCLI.find(actor: seat))
+        let asMe = try #require(await RigCLI.find(actor: me))
 
         // A row to a person must name evidence they can judge.
         let evidence = FileManager.default.temporaryDirectory.appending(path: "openrig-app-answer-test.md")
@@ -91,7 +92,7 @@ struct LiveTestRigTests {
     @Test(.timeLimit(.minutes(1))) func answeringQuestionsReturnsThemAndCloses() async throws {
         let http = DaemonHTTP(baseURL: DaemonLocator().locate().baseURL)
         let me = Human.address(in: try? await http.participants())
-        let asSeat = try #require(RigCLI.locate(actor: seat))
+        let asSeat = try #require(await RigCLI.find(actor: seat))
         let dir = FileManager.default.temporaryDirectory
         let evidence = dir.appending(path: "openrig-app-questions-test.md")
         try "openrig-app questions test".write(to: evidence, atomically: true, encoding: .utf8)

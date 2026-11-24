@@ -33,6 +33,27 @@ enum RigOp: Equatable {
 
 /// Daemon status, the rig list, and the store for the selected rig.
 /// Event-stream messages are refresh signals: the stores refetch state over HTTP.
+/// A command-line tool the app runs, and where to look for it when the shell's PATH doesn't have it.
+enum Tool: String {
+    case rig, tmux, node
+
+    var fallback: [String] {
+        switch self {
+        case .rig: RigCLI.searchPaths
+        case .tmux: Tmux.searchPaths
+        case .node: ["/opt/homebrew/bin/node", "/usr/local/bin/node"]
+        }
+    }
+
+    @MainActor func override(in settings: AppSettings) -> URL? {
+        switch self {
+        case .rig: settings.rigPath
+        case .tmux: settings.tmuxPath
+        case .node: settings.nodePath
+        }
+    }
+}
+
 @MainActor @Observable
 final class AppStore {
     enum DaemonState: Equatable {
@@ -121,6 +142,7 @@ final class AppStore {
         banners = Banners(store: self)
         loops = [Task { await runPolling() }, Task { await runEvents() }]
         Task { await loadToken() }
+        Task { await loadShellPath() }
         // NSApp exists once the run loop has started.
         Task { NSApp.appearance = settings.appearance.nsAppearance }
         #if DEBUG
@@ -250,19 +272,46 @@ final class AppStore {
         actions.use(cli())
     }
 
+    /// The folders on the person's shell PATH, read once after launch (`ShellPath`). Empty until then, or when the
+    /// shell can't tell; tools are then found only in the usual install places, as before.
+    private(set) var shellPath: [String] = []
+
+    /// Reads the shell's PATH off the main thread (a login shell takes a second or so), then finds the tools again.
+    func loadShellPath() async {
+        let found = await ShellPath.load()
+        guard found != shellPath else { return }
+        shellPath = found
+        actions.use(cli())
+        // A RigStore keeps the tmux it was made with; replace it only if the shell found a different one.
+        if let id = selectedRigID, let rig, rig.terminals.tmux?.executable != tmux()?.executable {
+            self.rig = RigStore(rigID: id, rigName: rig.rigName, client: client, tmux: tmux())
+            self.rig?.me = me
+            self.rig?.op = rigOps[id]
+            Task { await self.rig?.refresh() }
+        }
+    }
+
+    /// Where `tool` is: the person's pick in Settings, else the first on their shell's PATH, else the usual install
+    /// places. A pick that has gone gives nil.
+    func locate(_ tool: Tool) -> ToolLocation? {
+        ToolLocator.resolve(
+            override: tool.override(in: settings),
+            searchPaths: ToolLocator.searchPaths(for: tool.rawValue, shellPath: shellPath, fallback: tool.fallback))
+    }
+
     /// The rig CLI as Settings describes it: the picked or found executable, aimed at the same daemon as the app.
     private func cli() -> RigCLI? {
-        guard let rig = ToolLocator.resolve(override: settings.rigPath, searchPaths: RigCLI.searchPaths) else {
-            return nil
-        }
+        guard let rig = locate(.rig) else { return nil }
         return RigCLI(
             executable: rig.url, actor: me,
             daemonURL: settings.customAddress.flatMap { DaemonLocator.normalized($0.absoluteString) },
-            bearer: token, extraPath: settings.nodePath?.deletingLastPathComponent().path)
+            bearer: token, extraPath: settings.nodePath?.deletingLastPathComponent().path, shellPath: shellPath)
     }
 
     private func tmux() -> Tmux? {
-        Tmux.locate(openRigHome: locator.openRigHome, executable: settings.tmuxPath)
+        Tmux.locate(
+            openRigHome: locator.openRigHome, executable: settings.tmuxPath,
+            searchPaths: ToolLocator.searchPaths(for: "tmux", shellPath: shellPath, fallback: Tmux.searchPaths))
     }
 
     var selectedRig: RigSummary? { rigs.first { $0.id == selectedRigID } }
