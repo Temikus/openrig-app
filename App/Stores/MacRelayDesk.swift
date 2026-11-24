@@ -129,7 +129,7 @@ final class MacRelayDesk: RelayDesk {
         if let open = store?.rig, open.seat(session: session) != nil {
             rows = open.items
         } else {
-            rows = (try? await client?.queue(rigName: Self.rig(of: session))) ?? []
+            rows = (try? await client?.openRows(rig: Self.rig(of: session))) ?? []
         }
         guard let linked = instance.linkedQItem(in: rows), case .blocked(on: .outside) = workStatus(linked) else {
             return nil
@@ -172,7 +172,8 @@ final class MacRelayDesk: RelayDesk {
         guard let summary = store?.rigs.first(where: { $0.name == name }), let client,
             let graph = try? await client.graph(rigID: summary.id)
         else { return nil }
-        let rows = (try? await client.queue(rigName: name)) ?? []
+        // Open rows only: the phone asks every 5 s while it shows a rig, and only active rows count here.
+        let rows = (try? await client.openRows(rig: name)) ?? []
         // Each Claude seat's own daemon stop, for whichever rig is asked: not only the one open on the Mac.
         let sessions = graph.seats.filter { $0.runtime == "claude-code" }.compactMap(\.sessionName)
         // Each seat at a prompt, with when the daemon saw it, so the phone reads a new prompt's command again.
