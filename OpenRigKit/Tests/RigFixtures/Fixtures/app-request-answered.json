@@ -1,0 +1,116 @@
+{
+  "requestId": "qitem-20261123113142-c22e377fcc7b1303",
+  "asker": "orch-lead@openrig-app",
+  "askedPerson": "human-example@external",
+  "actor": {
+    "address": "human-example@external",
+    "assurance": "app-attributed",
+    "appId": "openrig-remote"
+  },
+  "state": "done",
+  "decisionRevision": "dr1-b34cfeec238044876ae8062e",
+  "episodeKey": null,
+  "body": "Body text.",
+  "humanDetail": null,
+  "questions": [
+    {
+      "id": "ios-reach",
+      "question": "Question 1?",
+      "options": [
+        {
+          "id": "tailscale",
+          "label": "Option A",
+          "recommended": true
+        },
+        {
+          "id": "wifi",
+          "label": "Option B"
+        },
+        {
+          "id": "relay",
+          "label": "Option C"
+        }
+      ]
+    },
+    {
+      "id": "ios-first-version",
+      "question": "Question 2?",
+      "options": [
+        {
+          "id": "answer",
+          "label": "Option A",
+          "recommended": true
+        },
+        {
+          "id": "answer-prompts",
+          "label": "Option B"
+        },
+        {
+          "id": "answer-prompts-steer",
+          "label": "Option C"
+        }
+      ]
+    },
+    {
+      "id": "ios-notifications",
+      "question": "Question 3?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Option A",
+          "recommended": true
+        },
+        {
+          "id": "background",
+          "label": "Option B"
+        },
+        {
+          "id": "push",
+          "label": "Option C"
+        }
+      ]
+    },
+    {
+      "id": "ios-approvals",
+      "question": "Question 4?",
+      "options": [
+        {
+          "id": "both",
+          "label": "Option A",
+          "recommended": true
+        },
+        {
+          "id": "simulator-only",
+          "label": "Option B"
+        },
+        {
+          "id": "credential-only",
+          "label": "Option C"
+        },
+        {
+          "id": "neither",
+          "label": "Option D"
+        }
+      ]
+    }
+  ],
+  "humanAnswers": {
+    "ios-first-version": "answer-prompts-steer",
+    "ios-notifications": "none",
+    "ios-approvals": "both",
+    "ios-reach": {
+      "kind": "typed-reply",
+      "text": "Reply text.",
+      "placement": "first-unanswered",
+      "unansweredCount": 0
+    }
+  },
+  "answer": null,
+  "unsupportedReason": "request_not_pending",
+  "links": {
+    "self": "/api/apps/v1/requests/qitem-20261123113142-c22e377fcc7b1303?actor=human-example%40external",
+    "result": "/api/apps/v1/requests/qitem-20261123113142-c22e377fcc7b1303/result?actor=human-example%40external"
+  },
+  "readAt": "2026-11-24T01:23:49.510Z",
+  "cursor": "Njg0MmYxMmMtMDliMi00NzNhLTljZGYtY2I0YzY3MzkwZWYzOjUwODM4"
+}

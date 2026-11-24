@@ -49,17 +49,37 @@ import Testing
         #expect(request.questions.isEmpty)
     }
 
+    @Test func emptyNeedsMeFromAnAvailableSourceIsComplete() throws {
+        let needs: AppNeedsMe = try fixture("app-needs-me-empty")
+        #expect(needs.requests.isEmpty)
+        #expect(needs.isComplete)
+    }
+
+    /// An ask the person already answered: options and a typed reply side by side, nothing left to answer.
+    @Test func answeredRequestKeepsEveryAnswer() throws {
+        let request: AppRequest = try fixture("app-request-answered")
+        #expect(!request.isAnswerable)
+        #expect(request.unsupportedReason == "request_not_pending")
+        #expect(request.questions.count == 4)
+        #expect(request.humanAnswers.count == 4)
+        #expect(request.humanAnswers["ios-reach"] == .typedReply("Reply text."))
+        #expect(request.humanAnswers["ios-approvals"] == .option("both"))
+        #expect(request.unansweredQuestions.isEmpty)
+    }
+
     @Test func resultReadsTheActualReturn() throws {
         let result: AppResult = try fixture("app-result")
         #expect(result.answerReturn?.status == "returned")
-        #expect(result.answerReturn?.replyQitemId == "qitem-20261123103104-e41b")
-        #expect(result.request?.id == "qitem-20261123101500-6a1f")
+        #expect(result.answerReturn?.replyQitemId == "qitem-human-answer-c573b0e2236c08eb2d77")
+        #expect(result.request?.id == "qitem-20261123113142-c22e377fcc7b1303")
+        #expect(result.request?.humanAnswers.count == 4)
+        #expect(result.permissionStatus == "not-applicable")
         #expect(result.isComplete)
     }
 
     @Test func credentialHidesItsToken() throws {
         let credential: AppCredential = try fixture("app-credential")
-        #expect(credential.id == "5f0c2a9e-7b1d-4e63-9a8f-2c4b6d8e0f13")
+        #expect(credential.id == "70cfe276-ec37-44e5-ae7c-6515ef5ff2ee")
         #expect(credential.actors == ["human-example@external"])
         #expect(credential.token.hasPrefix("orapp_"))
         #expect(!String(describing: credential).contains(credential.token))

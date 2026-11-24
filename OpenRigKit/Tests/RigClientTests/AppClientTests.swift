@@ -115,6 +115,13 @@ final class ScriptedProtocol: URLProtocol, @unchecked Sendable {
             script.requests.map(\.path) == ["/api/apps/v1/requests/qitem-1", "/api/apps/v1/requests/qitem-1/result"])
     }
 
+    @Test func unknownRequestIsRefusedWithItsCode() async throws {
+        let script = Script([.status(404, try appFixture("app-error-404-request-not-found"))])
+        await #expect(throws: AppError.refused(status: 404, code: "request_not_found", retrySameSubmission: nil)) {
+            try await script.client().request(id: "qitem-00000000000000-0000")
+        }
+    }
+
     @Test func capabilitiesOfASupportingDaemon() async throws {
         let script = Script([.status(200, try appFixture("app-capabilities"))])
         #expect(try await script.client().capabilities().supportsAnswering)
@@ -250,7 +257,7 @@ final class ScriptedProtocol: URLProtocol, @unchecked Sendable {
         let script = Script([.status(201, try appFixture("app-credential"))])
         let owner = DaemonHTTP(baseURL: script.baseURL, session: script.session, bearer: "owner-token")
         let credential = try await owner.issueAppCredential(for: ["human-example@external"])
-        #expect(credential.id == "5f0c2a9e-7b1d-4e63-9a8f-2c4b6d8e0f13")
+        #expect(credential.id == "70cfe276-ec37-44e5-ae7c-6515ef5ff2ee")
 
         let seen = try #require(script.requests.first)
         #expect(seen.method == "POST")

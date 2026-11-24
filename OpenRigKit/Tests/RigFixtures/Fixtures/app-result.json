@@ -1,56 +1,171 @@
 {
   "request": {
-    "requestId": "qitem-20261123101500-6a1f",
-    "asker": "orch-lead@example",
+    "requestId": "qitem-20261123113142-c22e377fcc7b1303",
+    "asker": "orch-lead@openrig-app",
     "askedPerson": "human-example@external",
-    "actor": { "address": "human-example@external", "assurance": "app-attributed", "appId": "openrig-remote" },
+    "actor": {
+      "address": "human-example@external",
+      "assurance": "app-attributed",
+      "appId": "openrig-remote"
+    },
     "state": "done",
-    "decisionRevision": "dr1-2c3d4e5f60718293a4b5c6d7",
+    "decisionRevision": "dr1-b34cfeec238044876ae8062e",
     "episodeKey": null,
     "body": "Body text.",
     "humanDetail": null,
     "questions": [
       {
-        "id": "reach",
-        "question": "Question one?",
+        "id": "ios-reach",
+        "question": "Question 1?",
         "options": [
-          { "id": "tailscale", "label": "Option A", "recommended": true },
-          { "id": "wifi", "label": "Option B" }
+          {
+            "id": "tailscale",
+            "label": "Option A",
+            "recommended": true
+          },
+          {
+            "id": "wifi",
+            "label": "Option B"
+          },
+          {
+            "id": "relay",
+            "label": "Option C"
+          }
         ]
       },
       {
-        "id": "notify",
-        "question": "Question two?",
+        "id": "ios-first-version",
+        "question": "Question 2?",
         "options": [
-          { "id": "later", "label": "Option A" },
-          { "id": "push", "label": "Option B" }
+          {
+            "id": "answer",
+            "label": "Option A",
+            "recommended": true
+          },
+          {
+            "id": "answer-prompts",
+            "label": "Option B"
+          },
+          {
+            "id": "answer-prompts-steer",
+            "label": "Option C"
+          }
+        ]
+      },
+      {
+        "id": "ios-notifications",
+        "question": "Question 3?",
+        "options": [
+          {
+            "id": "none",
+            "label": "Option A",
+            "recommended": true
+          },
+          {
+            "id": "background",
+            "label": "Option B"
+          },
+          {
+            "id": "push",
+            "label": "Option C"
+          }
+        ]
+      },
+      {
+        "id": "ios-approvals",
+        "question": "Question 4?",
+        "options": [
+          {
+            "id": "both",
+            "label": "Option A",
+            "recommended": true
+          },
+          {
+            "id": "simulator-only",
+            "label": "Option B"
+          },
+          {
+            "id": "credential-only",
+            "label": "Option C"
+          },
+          {
+            "id": "neither",
+            "label": "Option D"
+          }
         ]
       }
     ],
-    "humanAnswers": { "reach": "tailscale", "notify": "later" },
-    "answer": { "job": "human-answer", "forms": ["option", "typed-reply"] },
+    "humanAnswers": {
+      "ios-first-version": "answer-prompts-steer",
+      "ios-notifications": "none",
+      "ios-approvals": "both",
+      "ios-reach": {
+        "kind": "typed-reply",
+        "text": "Reply text.",
+        "placement": "first-unanswered",
+        "unansweredCount": 0
+      }
+    },
+    "answer": null,
+    "unsupportedReason": "request_not_pending",
     "links": {
-      "self": "/api/apps/v1/requests/qitem-20261123101500-6a1f?actor=human-example%40external",
-      "result": "/api/apps/v1/requests/qitem-20261123101500-6a1f/result?actor=human-example%40external"
+      "self": "/api/apps/v1/requests/qitem-20261123113142-c22e377fcc7b1303?actor=human-example%40external",
+      "result": "/api/apps/v1/requests/qitem-20261123113142-c22e377fcc7b1303/result?actor=human-example%40external"
     }
   },
   "submissions": [],
   "answerReturn": {
     "status": "returned",
-    "replyQitemId": "qitem-20261123103104-e41b",
+    "replyQitemId": "qitem-human-answer-c573b0e2236c08eb2d77",
     "source": "human-example@external",
-    "target": "orch-lead@example",
+    "target": "orch-lead@openrig-app",
     "body": "Body text.",
-    "replyTo": "qitem-20261123101500-6a1f",
+    "replyTo": "qitem-20261123113142-c22e377fcc7b1303",
     "links": {
-      "self": "/api/apps/v1/work/qitem-20261123103104-e41b?requestId=qitem-20261123101500-6a1f&actor=human-example%40external"
+      "self": "/api/apps/v1/work/qitem-human-answer-c573b0e2236c08eb2d77?requestId=qitem-20261123113142-c22e377fcc7b1303&actor=human-example%40external"
     }
   },
-  "permissionDecision": { "status": "not-applicable", "nativeEffect": "unknown" },
+  "permissionDecision": {
+    "status": "not-applicable",
+    "nativeEffect": "unknown"
+  },
   "work": {
     "status": "available",
-    "records": [],
-    "edges": [],
+    "records": [
+      {
+        "qitemId": "qitem-human-answer-c573b0e2236c08eb2d77",
+        "state": "done",
+        "body": "Body text.",
+        "summary": "Summary text.",
+        "source": "human-example@external",
+        "actor": "orch-lead@openrig-app",
+        "replyTo": "qitem-20261123113142-c22e377fcc7b1303",
+        "handedOffFrom": null,
+        "handedOffTo": null,
+        "blockedOn": null,
+        "closureReason": "no-follow-on",
+        "evidenceRef": null,
+        "completion": {
+          "status": "closed-as-recorded",
+          "sourceQitemId": "qitem-human-answer-c573b0e2236c08eb2d77",
+          "closureReason": "no-follow-on",
+          "evidenceRef": null
+        },
+        "links": {
+          "self": "/api/apps/v1/work/qitem-human-answer-c573b0e2236c08eb2d77?requestId=qitem-20261123113142-c22e377fcc7b1303&actor=human-example%40external",
+          "request": "/api/apps/v1/requests/qitem-20261123113142-c22e377fcc7b1303?actor=human-example%40external",
+          "result": "/api/apps/v1/requests/qitem-20261123113142-c22e377fcc7b1303/result?actor=human-example%40external"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "qitem-20261123113142-c22e377fcc7b1303",
+        "to": "qitem-human-answer-c573b0e2236c08eb2d77",
+        "relation": "reply-to",
+        "sourceQitemId": "qitem-human-answer-c573b0e2236c08eb2d77"
+      }
+    ],
     "completion": {
       "status": "unknown",
       "sourceQitemId": null,
@@ -58,10 +173,15 @@
     }
   },
   "links": {
-    "self": "/api/apps/v1/requests/qitem-20261123101500-6a1f?actor=human-example%40external",
-    "result": "/api/apps/v1/requests/qitem-20261123101500-6a1f/result?actor=human-example%40external"
+    "self": "/api/apps/v1/requests/qitem-20261123113142-c22e377fcc7b1303?actor=human-example%40external",
+    "result": "/api/apps/v1/requests/qitem-20261123113142-c22e377fcc7b1303/result?actor=human-example%40external"
   },
-  "sources": [{ "source": "queue", "state": "available" }],
-  "readAt": "2026-11-23T10:31:05.000Z",
-  "cursor": "ZXBvY2g6MTI1"
+  "sources": [
+    {
+      "source": "queue",
+      "state": "available"
+    }
+  ],
+  "readAt": "2026-11-24T01:23:49.529Z",
+  "cursor": "Njg0MmYxMmMtMDliMi00NzNhLTljZGYtY2I0YzY3MzkwZWYzOjUwODM4"
 }
