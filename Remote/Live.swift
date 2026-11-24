@@ -9,16 +9,18 @@ extension RemoteSession {
         #if DEBUG
             let relayHost = DebugHooks.relayHost
         #endif
-        let client: @Sendable (RemoteEndpoint, PairingCode) -> AppClient? = { endpoint, code in
+        let reach: @Sendable (RemoteEndpoint) -> RemoteEndpoint = { endpoint in
             var endpoint = endpoint
             #if DEBUG
                 if endpoint.kind == .lan, let relayHost { endpoint.host = relayHost }
             #endif
-            return standard(endpoint, code)
+            return endpoint
         }
         let session = RemoteSession(
             store: KeychainPairingStore(), outbox: FileAnswerOutbox.standard(),
-            connector: RemoteConnector(client: client, localNetworkDenied: { await RigClient.localNetworkDenied($0) }))
+            connector: RemoteConnector(
+                client: { standard(reach($0), $1) }, localNetworkDenied: { await RigClient.localNetworkDenied($0) }),
+            desk: { RelayTransport.deskClient(reach($0), $1) })
         #if DEBUG
             session.statusOverride = DebugHooks.state
         #endif

@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import OSLog
+import RigModel
 import Synchronization
 
 /// Carries `AppClient`'s HTTP calls over the Mac's relay, so the app contract works unchanged on the Wi-Fi.
@@ -21,6 +22,20 @@ public enum RelayTransport {
 
     /// Drops a pairing's secret: on Unpair, or when another code replaces it.
     public static func forget(identity: String) { _ = secrets.withLock { $0.removeValue(forKey: identity) } }
+
+    /// The Mac-side calls' client (prompts, rows) for a `lan` endpoint with a usable secret, or nil. It opens a new
+    /// channel to the same relay whenever its channel drops.
+    public static let deskClient: @Sendable (RemoteEndpoint, PairingCode) -> RelayDeskClient? = { endpoint, code in
+        guard endpoint.kind == .lan, let secret = code.pairingSecret.flatMap(RelayLink.decode),
+            let port = UInt16(exactly: endpoint.port)
+        else { return nil }
+        let (host, identity) = (endpoint.host, code.credentialID)
+        return RelayDeskClient {
+            let channel = RelayChannel(host: host, port: port, identity: identity, secret: secret)
+            try await channel.open()
+            return channel
+        }
+    }
 
     /// An `AppClient` that reaches the daemon through the relay at `host:port`.
     public static func client(

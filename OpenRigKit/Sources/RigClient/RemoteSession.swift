@@ -36,22 +36,39 @@ public final class RemoteSession {
     private var inFlight: Set<String> = []
     /// Asks whose unconfirmed answer just landed with more of the draft still to send.
     private var continuing: Set<String> = []
+    private let deskFor: @Sendable (RemoteEndpoint, PairingCode) -> RelayDeskClient?
+    /// The endpoint `desk` was made for, so a check keeps the same client (and its open channel).
+    private var deskEndpoint: RemoteEndpoint?
+
+    /// The Mac's relay for its own calls (prompts, rows), when the phone reaches it through the relay. Nil otherwise:
+    /// the daemon alone has no prompts or row actions for the phone.
+    public private(set) var desk: RelayDeskClient?
+    /// The relay's Needs-you list, read on each check beside the contract's.
+    public private(set) var relayNeeds: RelayNeedsYou?
 
     public init(
         store: any PairingStore, outbox: any AnswerOutbox = MemoryAnswerOutbox(),
         answerRetryDelay: Duration = .seconds(1),
+        desk: @escaping @Sendable (RemoteEndpoint, PairingCode) -> RelayDeskClient? = { _, _ in nil },
         connect: @escaping @Sendable (PairingCode) async -> RemoteConnector.Outcome
     ) {
         self.store = store
         self.outbox = outbox
         self.answerRetryDelay = answerRetryDelay
+        self.deskFor = desk
         self.connect = connect
         pairing = try? store.load()
     }
 
-    public convenience init(store: any PairingStore, outbox: any AnswerOutbox, connector: RemoteConnector) {
-        self.init(store: store, outbox: outbox, connect: { await connector.connect($0) })
+    public convenience init(
+        store: any PairingStore, outbox: any AnswerOutbox, connector: RemoteConnector,
+        desk: @escaping @Sendable (RemoteEndpoint, PairingCode) -> RelayDeskClient? = RelayTransport.deskClient
+    ) {
+        self.init(store: store, outbox: outbox, desk: desk, connect: { await connector.connect($0) })
     }
+
+    /// Everything Needs you lists, or nil when a state screen takes its place.
+    public var needsYouList: NeedsYouList? { shownRequests.map { NeedsYouList(asks: $0, relay: relayNeeds) } }
 
     public var macName: String { pairing?.code.name ?? "Your Mac" }
 
@@ -147,6 +164,9 @@ public final class RemoteSession {
         needs = nil
         lastReached = nil
         client = nil
+        desk = nil
+        deskEndpoint = nil
+        relayNeeds = nil
         drafts = AppAnswerDrafts()
         sent = [:]
     }
@@ -217,6 +237,17 @@ public final class RemoteSession {
         if let read {
             needs = read
             lastReached = .now
+        }
+        // The Mac's own list, through its relay. A failed read keeps the last one, like the contract's list.
+        if read != nil, case .connected(let endpoint) = outcome.status {
+            if endpoint != deskEndpoint {
+                desk = deskFor(endpoint, checked.code)
+                deskEndpoint = endpoint
+            }
+            if let desk, let list = try? await desk.needsYou() {
+                guard pairing == checked else { return false }
+                relayNeeds = list
+            }
         }
         status = statusOverride ?? next
         if let client { await resendPending(with: client) }
