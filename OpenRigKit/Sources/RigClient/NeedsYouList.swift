@@ -26,6 +26,17 @@ public struct NeedsYouList: Equatable, Sendable {
     }
 
     static let rowKinds: Set<String> = ["ask", "held", "fyi"]
+}
+
+extension AppRequest {
+    /// `orch-lead@openrig-app` → `openrig-app`.
+    public var askerRig: String? {
+        guard let asker, let at = asker.firstIndex(of: "@") else { return nil }
+        return String(asker[asker.index(after: at)...])
+    }
+}
+
+extension NeedsYouList {
 
     /// For the tab's badge: everything listed, and other rigs' counts, so it never reads as nothing waiting.
     public var count: Int {
@@ -33,6 +44,13 @@ public struct NeedsYouList: Equatable, Sendable {
     }
 
     public var isEmpty: Bool { count == 0 }
+
+    /// One rig's share of `count`, for the Rigs tab: the rigs' counts add up to Needs you's badge.
+    public func count(inRig rig: String) -> Int {
+        let listed = (prompts + rows + seatsDown).filter { $0.rig == rig }.count
+        return listed + asks.filter { $0.askerRig == rig }.count
+            + elsewhere.filter { $0.rig == rig }.reduce(0) { $0 + $1.count }
+    }
 
     public enum RowAction: Sendable, Equatable { case reply, gotIt, done }
 

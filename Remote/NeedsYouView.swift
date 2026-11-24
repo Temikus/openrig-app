@@ -5,8 +5,7 @@ import SwiftUI
 /// The asks waiting on the person, or why the phone can't show them. Each ask opens its question screen.
 struct NeedsYouView: View {
     @Environment(RemoteSession.self) private var model
-    /// Ask ids pushed on the stack.
-    @State private var path = AskLink.launchPath
+    @State private var path = NeedsLink.launchPath
     @State private var confirmingPairAgain = Self.launchConfirmingPairAgain
 
     static var launchConfirmingPairAgain: Bool {
@@ -26,13 +25,19 @@ struct NeedsYouView: View {
                     ToolbarItem(placement: .largeSubtitle) { MacLine() }
                 }
                 .refreshable { await model.refresh() }
-                .navigationDestination(for: AskLink.self) { QuestionView(id: $0.id) }
+                .navigationDestination(for: NeedsLink.self) { link in
+                    switch link {
+                    case .ask(let id): QuestionView(id: id)
+                    case .prompt(let session): PromptView(session: session)
+                    case .row(let id): RowView(id: id)
+                    }
+                }
         }
     }
 
     @ViewBuilder var content: some View {
-        if let requests = model.shownRequests {
-            list(requests)
+        if let needs = model.needsYouList {
+            list(needs)
         } else {
             switch model.status {
             case nil:
@@ -82,7 +87,7 @@ struct NeedsYouView: View {
         }
     }
 
-    func list(_ requests: [AppRequest]) -> some View {
+    func list(_ needs: NeedsYouList) -> some View {
         List {
             if case .unreachable = model.status, let lastReached = model.lastReached {
                 Section {
@@ -96,12 +101,58 @@ struct NeedsYouView: View {
                     .font(.subheadline)
                 }
             }
-            ForEach(requests) { request in
-                NavigationLink(value: AskLink(id: request.id)) { AskRow(request: request) }
+            // As board 5A: prompts first, since a seat is stopped until they're answered. A row only opens.
+            if !needs.prompts.isEmpty {
+                Section("Prompts · a seat is stopped until you answer") {
+                    ForEach(needs.prompts, id: \.id) { item in
+                        NavigationLink(value: NeedsLink.prompt(item.session ?? "")) { PromptRow(item: item) }
+                    }
+                }
+            }
+            if !needs.asks.isEmpty {
+                section(needs.prompts.isEmpty ? nil : "Asks") {
+                    ForEach(needs.asks) { request in
+                        NavigationLink(value: NeedsLink.ask(request.id)) { AskRow(request: request) }
+                    }
+                }
+            }
+            if !needs.rows.isEmpty {
+                section(needs.prompts.isEmpty && needs.asks.isEmpty ? nil : "For you") {
+                    ForEach(needs.rows, id: \.id) { item in
+                        NavigationLink(value: NeedsLink.row(item.row ?? "")) { ItemRow(item: item) }
+                    }
+                }
+            }
+            if !needs.seatsDown.isEmpty {
+                Section("Seats down") {
+                    ForEach(needs.seatsDown, id: \.id) { item in
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.title)
+                                Text("\(item.rig) · start it on the Mac").font(.caption).foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "exclamationmark.circle").foregroundStyle(Color.attention)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+            }
+            // Other rigs' prompts and seats down aren't listed one by one: the Mac shows them on that rig's seats.
+            if !needs.elsewhere.isEmpty {
+                Section {
+                    ForEach(needs.elsewhere, id: \.rig) { other in
+                        Text(
+                            "\(other.count) more in \(other.rig): \(other.count == 1 ? "a prompt or a seat down" : "prompts or seats down"). See that rig's seats on the Mac."
+                        )
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
         .overlay {
-            if requests.isEmpty {
+            if needs.isEmpty {
                 ContentUnavailableView {
                     Text("Nothing needs you")
                 } description: {
@@ -109,6 +160,11 @@ struct NeedsYouView: View {
                 }
             }
         }
+    }
+
+    /// A header only when another section comes first, so a list of only asks looks as before.
+    @ViewBuilder func section(_ header: String?, @ViewBuilder _ content: () -> some View) -> some View {
+        if let header { Section(header) { content() } } else { Section { content() } }
     }
 
     /// Paired through the Mac's relay. After Unpair the relay refuses the phone's key, and iOS doesn't always report
@@ -167,13 +223,19 @@ struct MacLine: View {
     }
 }
 
-/// An ask on the navigation stack, by id: the screen reads the live ask from the session.
-struct AskLink: Hashable {
-    var id: String
+/// A screen on Needs you's stack, by id: each screen reads the live ask, prompt or row from the session.
+enum NeedsLink: Hashable {
+    case ask(String)
+    /// A seat stopped at a prompt, by session.
+    case prompt(String)
+    /// A row answered with Reply, Got it or Done, by row id.
+    case row(String)
 
-    static var launchPath: [AskLink] {
+    static var launchPath: [NeedsLink] {
         #if DEBUG
-            if let id = DebugHooks.openAsk { return [AskLink(id: id)] }
+            if let id = DebugHooks.openAsk { return [.ask(id)] }
+            if let session = DebugHooks.openPrompt { return [.prompt(session)] }
+            if let id = DebugHooks.openRow { return [.row(id)] }
         #endif
         return []
     }
@@ -202,15 +264,60 @@ struct AskRow: View {
     }
 }
 
+/// A seat stopped at a prompt: who, the start of the command, and where (board 5A, A1). It only opens the prompt.
+struct PromptRow: View {
+    var item: RelayNeedsYouItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(item.title).font(.headline)
+            if let command = item.detail {
+                Text(command).font(.footnote.monospaced()).lineLimit(3)
+            }
+            Text(caption).font(.caption).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    var caption: String {
+        let lines = item.detail?.split(whereSeparator: \.isNewline).count ?? 0
+        return lines > 3 ? "\(item.rig) · \(lines) lines" : item.rig
+    }
+}
+
+/// An FYI, an ask without options, or a row held on the person.
+struct ItemRow: View {
+    var item: RelayNeedsYouItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(item.sender).font(.headline)
+            Text(item.title).lineLimit(2)
+            Text("\(item.rig) · \(item.kindWords)").font(.caption).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+extension RelayNeedsYouItem {
+    /// `orch-lead@openrig-app` → `orch-lead`.
+    var sender: String { session.map { String($0.prefix { $0 != "@" }) } ?? "A seat" }
+
+    var kindWords: String {
+        switch kind {
+        case "fyi": "for your information"
+        case "held": "waiting on you"
+        default: "asks you"
+        }
+    }
+}
+
 extension AppRequest {
     /// `orch-lead@openrig-app` → `orch-lead`.
     var seat: String { asker.map { String($0.prefix { $0 != "@" }) } ?? "A seat" }
 
     /// `orch-lead@openrig-app` → `openrig-app`.
-    var rig: String? {
-        guard let asker, let at = asker.firstIndex(of: "@") else { return nil }
-        return String(asker[asker.index(after: at)...])
-    }
+    var rig: String? { askerRig }
 
     /// The ask's first line, or its first question when it has no body.
     var headline: String {

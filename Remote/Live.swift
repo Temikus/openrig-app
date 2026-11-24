@@ -79,6 +79,32 @@ enum PairingStep: Hashable {
             }
         }
 
+        /// Opens this seat's prompt screen, by session.
+        static var openPrompt: String? { environment["OPENRIG_DEBUG_OPEN_PROMPT"] }
+
+        /// Opens this row's screen (an FYI, an ask without options, a held row), by row id.
+        static var openRow: String? { environment["OPENRIG_DEBUG_OPEN_ROW"] }
+
+        /// On the opened prompt: `decline` opens the Decline sheet; `allow` presses Allow once, and `decline:<text>`
+        /// declines with that text, once the prompt is read. Only against a scripted desk.
+        static var promptAction: String? { environment["OPENRIG_DEBUG_PROMPT_ACTION"] }
+
+        /// Shows this outcome on the opened prompt without sending anything, for outcomes only a broken link
+        /// produces: `lostReply`, `probablyAnswered`, `answeredThenNewPrompt`, `unreachable`, `cannotAllowOnce`.
+        static var promptOutcome: PromptOutcome? {
+            switch environment["OPENRIG_DEBUG_PROMPT_OUTCOME"] {
+            case "lostReply": .lostReply
+            case "probablyAnswered": .probablyAnswered
+            case "answeredThenNewPrompt": .answeredThenNewPrompt
+            case "unreachable": .unreachable
+            case "cannotAllowOnce": .cannotAllowOnce
+            default: nil
+            }
+        }
+
+        /// On the opened row: `reply` opens the Reply sheet.
+        static var rowAction: String? { environment["OPENRIG_DEBUG_ROW_ACTION"] }
+
         /// A draft for the opened ask: `reply:<text>`, or `picks:<question>=<option>,…`.
         static var draft: AppAnswerDraft? {
             guard let raw = environment["OPENRIG_DEBUG_DRAFT"] else { return nil }

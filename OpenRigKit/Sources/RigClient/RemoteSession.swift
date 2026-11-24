@@ -164,6 +164,8 @@ public final class RemoteSession {
         needs = nil
         lastReached = nil
         client = nil
+        // Closed, so a screen still holding it can't send to the Mac for the old pairing.
+        if let old = desk { Task { await old.close() } }
         desk = nil
         deskEndpoint = nil
         relayNeeds = nil
@@ -241,6 +243,7 @@ public final class RemoteSession {
         // The Mac's own list, through its relay. A failed read keeps the last one, like the contract's list.
         if read != nil, case .connected(let endpoint) = outcome.status {
             if endpoint != deskEndpoint {
+                await desk?.close()
                 desk = deskFor(endpoint, checked.code)
                 deskEndpoint = endpoint
             }

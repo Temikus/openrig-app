@@ -26,6 +26,22 @@ import Testing
         #expect(list.rows.map(\.row) == ["qitem-plain"])
     }
 
+    /// The Rigs tab's per-rig badges add up to Needs you's badge, so the two never disagree.
+    @Test func perRigCountsAddUpToTheBadge() throws {
+        let contract = try asks()
+        let relay = RelayNeedsYou(
+            items: [
+                item("prompt", "p1", session: "dev-b1@openrig-app"), item("fyi", "f1", row: "qitem-f"),
+                item("seat", "s1", session: "dev-b2@openrig-app"),
+            ],
+            attentionElsewhere: [.init(rig: "kernel", count: 2)])
+        let list = NeedsYouList(asks: contract, relay: relay)
+        let rigs = Set(contract.compactMap(\.askerRig) + ["openrig-app", "kernel"])
+        #expect(rigs.reduce(0) { $0 + list.count(inRig: $1) } == list.count)
+        #expect(list.count(inRig: "kernel") >= 2)
+        #expect(list.count(inRig: "no-such-rig") == 0)
+    }
+
     @Test func eachKindGoesInItsPlace() throws {
         let relay = RelayNeedsYou(
             items: [
@@ -107,7 +123,18 @@ import Testing
         #expect(list.prompts.map(\.session) == ["dev-b1@openrig-app"])
         #expect(list.rows.map(\.row) == ["qitem-f"])
         #expect(list.elsewhere == [.init(rig: "kernel", count: 2)])
-        #expect(remote.desk != nil)
+        let made = try #require(remote.desk)
+
+        // Unpair closes the old desk, so a screen still holding it can't reach the Mac. Unpair is synchronous and the
+        // close runs just after it: retry briefly. A call before the close only reaches this test's relay.
+        remote.unpair()
+        #expect(remote.desk == nil)
+        var refused: RelayDeskError?
+        for _ in 0..<20 where refused == nil {
+            await Task.yield()
+            do throws(RelayDeskError) { _ = try await made.needsYou() } catch { refused = error }
+        }
+        #expect(refused == .unreachable("closed"))
     }
 }
 

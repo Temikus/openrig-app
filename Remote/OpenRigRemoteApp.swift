@@ -83,7 +83,7 @@ struct RootView: View {
         } else {
             TabView(selection: $tab) {
                 Tab("Needs you", systemImage: "tray", value: .needs) { NeedsYouView() }
-                    .badge(model.shownRequests?.count ?? 0)
+                    .badge(model.needsYouList?.count ?? 0)
                 Tab("Rigs", systemImage: "point.3.connected.trianglepath.dotted", value: .rigs) { RigsView() }
                 Tab("Settings", systemImage: "gear", value: .settings) { SettingsView() }
             }
@@ -138,6 +138,12 @@ extension Color {
     /// Deeper in light appearance so the dot keeps its contrast on white (mock-designer's measurements).
     static let statusGood = Color(UIColor { $0.userInterfaceStyle == .dark ? .systemGreen : UIColor(rgb: 0x18914E) })
     static let statusBad = Color(UIColor { $0.userInterfaceStyle == .dark ? .systemRed : UIColor(rgb: 0xC24236) })
+    /// "Needs you", as the Mac's `attention`: a soft coral in dark appearance, a deeper red in light for contrast on
+    /// white. The prompt's command block is this at 8%, as on the Mac.
+    static let attention = Color(
+        UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0xED8775) : UIColor(rgb: 0xC74033) })
+    /// Behind white text: deep enough for 4.5:1 in both appearances, as the Mac's `attentionFill`.
+    static let attentionFill = Color(UIColor(rgb: 0xC24236))
 }
 
 extension UIColor {
