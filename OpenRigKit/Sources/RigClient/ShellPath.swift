@@ -7,18 +7,30 @@ public enum ShellPath {
     static let marker = "__OPENRIG_PATH__="
 
     /// The folders on the PATH line printed after `marker`, in order, without blanks or repeats. Startup files can
-    /// print their own text before it, so only the last marked line counts. Nil when no line is marked.
+    /// print their own text before it, so only the last marked line counts, and only once its newline has arrived.
+    /// Nil when no complete line is marked.
     static func parse(_ output: String) -> [String]? {
-        guard let line = output.split(whereSeparator: \.isNewline).last(where: { $0.hasPrefix(marker) }) else {
-            return nil
-        }
+        guard let end = output.lastIndex(where: \.isNewline),
+            let line = output[..<end].split(whereSeparator: \.isNewline).last(where: { $0.hasPrefix(marker) })
+        else { return nil }
         var seen = Set<String>()
         return line.dropFirst(marker.count).split(separator: ":").map(String.init)
             .filter { $0.hasPrefix("/") && seen.insert($0).inserted }
     }
 
+    /// Output gathered as it arrives, so nothing blocks on the pipe closing.
+    private final class Output: Sendable {
+        let state = Mutex<(data: Data, closed: Bool)>((Data(), false))
+        var text: String { String(decoding: state.withLock { $0.data }, as: UTF8.self) }
+        var closed: Bool { state.withLock { $0.closed } }
+    }
+
     /// Runs `shell -ilc` and reads its PATH. Interactive as well as login: nvm usually loads from `.zshrc`, which a
-    /// login-only zsh skips. Nil when the shell fails, prints no PATH or takes longer than `timeout`.
+    /// login-only zsh skips. Nil when the shell fails, prints no PATH or hasn't finished within `timeout`.
+    ///
+    /// The deadline ends the wait itself. Interactive zsh ignores SIGTERM, so a late shell is killed; and a
+    /// background job started by a startup file can hold stdout open long after the shell exits, so the PATH counts
+    /// once the shell has exited and printed it, without waiting for the pipe to close.
     static func read(shell: String, timeout: Duration = .seconds(5)) async -> [String]? {
         let process = Process()
         process.executableURL = URL(filePath: shell)
@@ -27,17 +39,28 @@ public enum ShellPath {
         process.standardOutput = out
         process.standardError = FileHandle.nullDevice
         process.standardInput = FileHandle.nullDevice
+        let output = Output()
+        out.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            output.state.withLock { state in
+                if chunk.isEmpty { state.closed = true } else { state.data.append(chunk) }
+            }
+            if chunk.isEmpty { handle.readabilityHandler = nil }
+        }
+        defer { out.fileHandleForReading.readabilityHandler = nil }
         do { try process.run() } catch { return nil }
 
-        let watchdog = Task {
-            try await Task.sleep(for: timeout)
-            if process.isRunning { process.terminate() }
+        let deadline = ContinuousClock.now + timeout
+        while ContinuousClock.now < deadline {
+            if !process.isRunning, output.closed || parse(output.text) != nil { break }
+            try? await Task.sleep(for: .milliseconds(10))
         }
-        let data = await Task.detached { out.fileHandleForReading.readDataToEndOfFile() }.value
-        watchdog.cancel()
-        while process.isRunning { try? await Task.sleep(for: .milliseconds(10)) }
+        guard !process.isRunning else {
+            kill(process.processIdentifier, SIGKILL)
+            return nil
+        }
         guard process.terminationStatus == 0 else { return nil }
-        return parse(String(decoding: data, as: UTF8.self))
+        return parse(output.text)
     }
 
     /// `$SHELL`, else the account's shell from the user database, else zsh (the macOS default).

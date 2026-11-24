@@ -31,8 +31,6 @@ enum RigOp: Equatable {
     case starting, stopping
 }
 
-/// Daemon status, the rig list, and the store for the selected rig.
-/// Event-stream messages are refresh signals: the stores refetch state over HTTP.
 /// A command-line tool the app runs, and where to look for it when the shell's PATH doesn't have it.
 enum Tool: String {
     case rig, tmux, node
@@ -54,6 +52,8 @@ enum Tool: String {
     }
 }
 
+/// Daemon status, the rig list, and the store for the selected rig.
+/// Event-stream messages are refresh signals: the stores refetch state over HTTP.
 @MainActor @Observable
 final class AppStore {
     enum DaemonState: Equatable {

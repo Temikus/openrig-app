@@ -66,6 +66,7 @@ import Testing
             Welcome back!
             PATH=/decoy/bin
             __OPENRIG_PATH__=/Users/x/.nvm/versions/node/v22/bin:/opt/homebrew/bin:/usr/bin
+
             """
         #expect(ShellPath.parse(output) == ["/Users/x/.nvm/versions/node/v22/bin", "/opt/homebrew/bin", "/usr/bin"])
     }
@@ -78,6 +79,11 @@ import Testing
     @Test func dropsBlanksRepeatsAndRelativeFolders() {
         let output = "__OPENRIG_PATH__=/a::/b:/a:.:bin:/c\n"
         #expect(ShellPath.parse(output) == ["/a", "/b", "/c"], "a relative folder would depend on the app's cwd")
+    }
+
+    @Test func aMarkedLineCountsOnlyOnceItsNewlineArrives() {
+        #expect(ShellPath.parse("__OPENRIG_PATH__=/usr/bin:/opt/home") == nil, "the rest of the PATH may follow")
+        #expect(ShellPath.parse("__OPENRIG_PATH__=/usr/bin:/opt/homebrew/bin\n") == ["/usr/bin", "/opt/homebrew/bin"])
     }
 
     @Test func noMarkerIsNil() {
@@ -104,6 +110,47 @@ import Testing
         try Data("#!/bin/sh\nexec sleep 10\n".utf8).write(to: slow)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: slow.path)
         #expect(await ShellPath.read(shell: slow.path, timeout: .milliseconds(200)) == nil)
+    }
+
+    /// A stand-in shell with `body` as its script.
+    func fake(_ body: String) throws -> String {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "openrig-shell-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let sh = dir.appending(path: "sh")
+        try Data("#!/bin/sh\n\(body)\n".utf8).write(to: sh)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: sh.path)
+        return sh.path
+    }
+
+    /// Interactive zsh ignores SIGTERM, so a shell still in its startup files at the deadline is killed, and its
+    /// PATH, if it prints one later, is never used.
+    @Test func aShellThatIgnoresTERMStillTimesOut() async throws {
+        let sh = try fake("trap '' TERM\nsleep 6\nprintf '\\n__OPENRIG_PATH__=/late\\n'")
+        let start = ContinuousClock.now
+        let got = await ShellPath.read(shell: sh, timeout: .milliseconds(300))
+        let took = ContinuousClock.now - start
+        #expect(got == nil)
+        #expect(took < .seconds(2), "took \(took)")
+    }
+
+    /// A startup file that leaves a background job holding stdout: the PATH counts once the shell has exited.
+    @Test func aBackgroundChildHoldingStdoutDoesNotHoldTheRead() async throws {
+        let sh = try fake("sleep 6 &\nprintf '\\n__OPENRIG_PATH__=/usr/bin\\n'")
+        let start = ContinuousClock.now
+        let got = await ShellPath.read(shell: sh, timeout: .seconds(3))
+        let took = ContinuousClock.now - start
+        #expect(got == ["/usr/bin"])
+        #expect(took < .seconds(2), "took \(took)")
+    }
+
+    /// The same with no PATH printed: nil at the deadline, not when the background job lets go.
+    @Test func aBackgroundChildWithNoPathEndsAtTheDeadline() async throws {
+        let sh = try fake("sleep 6 &\necho 'rc noise'\nexit 0")
+        let start = ContinuousClock.now
+        let got = await ShellPath.read(shell: sh, timeout: .milliseconds(300))
+        let took = ContinuousClock.now - start
+        #expect(got == nil)
+        #expect(took < .seconds(2), "took \(took)")
     }
 
     @Test func loginShellPrefersSHELL() {
