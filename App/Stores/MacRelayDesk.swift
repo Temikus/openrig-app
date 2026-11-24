@@ -95,8 +95,12 @@ final class MacRelayDesk: RelayDesk {
         let screen = await screen(seat)
         return RelayPromptReading(
             session: session, seatName: seat.displayName, command: screen?.command ?? prompt.command,
-            allowOnceKey: screen?.allowOnceKey, declineKey: screen?.declineKey)
+            observedAt: prompt.observedAt.map { Self.time.format($0) } ?? "", allowOnceKey: screen?.allowOnceKey,
+            declineKey: screen?.declineKey)
     }
+
+    /// The same moment always formats to the same text, so the phone's echo compares equal only for the same stop.
+    private static let time = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
 
     func waitForNoPrompt(session: String) async -> (paneClear: Bool, daemonHolds: Bool) {
         guard let seat = await seat(session) else { return (false, false) }
@@ -112,12 +116,39 @@ final class MacRelayDesk: RelayDesk {
         return (clear, stop?.state == .requestObserved)
     }
 
+    /// The row the Mac's prompt control resolves: the seat's linked row (`PromptInstance.linkedQItem`, in-progress
+    /// first), and only if it's parked on a person. Called after the answer, when the daemon's stop may be gone, so
+    /// the instance is built from a stand-in stop; `linkedQItem` reads only the session and the rows.
     func heldRow(session: String) async -> String? {
-        let rows = store?.rig?.items ?? []
-        return rows.first { row in
-            guard row.destination == session, case .blocked(on: .outside) = workStatus(row) else { return false }
-            return true
-        }?.id
+        guard let seat = await seat(session),
+            let instance = PromptInstance(seat: seat, stop: PermissionStop(state: .requestObserved, command: "-"))
+        else { return nil }
+        let rows: [QItem]
+        if let open = store?.rig, open.seat(session: session) != nil {
+            rows = open.items
+        } else {
+            rows = (try? await client?.queue(rigName: Self.rig(of: session))) ?? []
+        }
+        guard let linked = instance.linkedQItem(in: rows), case .blocked(on: .outside) = workStatus(linked) else {
+            return nil
+        }
+        return linked.id
+    }
+
+    func isForPerson(_ row: QItem) async -> Bool {
+        guard let me = store?.me else { return false }
+        return forYou(row, me: me) != nil
+    }
+
+    /// The Mac acts as its own person. A phone paired on this daemon to answer as someone else must not act through
+    /// it, so every action is refused until that phone is paired again. The relay can't tell which phone is
+    /// calling (Network doesn't expose the negotiated PSK identity), hence the whole set.
+    func refusesActing() async -> String? {
+        guard let store else { return "The Mac app isn't ready." }
+        let phones = PairedPhones(data: UserDefaults.standard.data(forKey: "pairedPhones"))
+            .list(for: store.endpoint.baseURL)
+        guard let other = phones.first(where: { $0.actor != store.me }) else { return nil }
+        return "This Mac now acts as \(store.me), but a phone was paired to answer as \(other.actor). Pair it again."
     }
 
     // MARK: Rows, rigs, seats

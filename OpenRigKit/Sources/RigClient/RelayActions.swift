@@ -6,8 +6,9 @@ import RigModel
 public enum RelayCall: Equatable, Sendable {
     case needsYou
     case prompt(session: String)
-    case allowOnce(session: String, command: String)
-    case decline(session: String, command: String, reason: String)
+    /// `observedAt` is the stop's time as `RelayPrompt` gave it, so the same command asked again is a new prompt.
+    case allowOnce(session: String, command: String, observedAt: String)
+    case decline(session: String, command: String, observedAt: String, reason: String)
     case reply(row: String, text: String)
     case gotIt(row: String)
     case done(row: String, replied: Bool)
@@ -37,10 +38,14 @@ public enum RelayCall: Equatable, Sendable {
         case ("GET", 3, "rigs") where s[2] == "seats": self = .seats(rig: s[1])
         case ("GET", 2, "prompts"): self = .prompt(session: s[1])
         case ("POST", 3, "prompts"):
-            guard let command = body["command"] as? String, !command.isEmpty else { return nil }
+            // Both required; `observedAt` may be "" when the daemon gave no time, but not missing.
+            guard let command = body["command"] as? String, !command.isEmpty,
+                let observedAt = body["observedAt"] as? String
+            else { return nil }
             switch s[2] {
-            case "allow-once": self = .allowOnce(session: s[1], command: command)
-            case "decline": self = .decline(session: s[1], command: command, reason: text("reason") ?? "")
+            case "allow-once": self = .allowOnce(session: s[1], command: command, observedAt: observedAt)
+            case "decline":
+                self = .decline(session: s[1], command: command, observedAt: observedAt, reason: text("reason") ?? "")
             default: return nil
             }
         case ("POST", 3, "rows"):
@@ -66,6 +71,14 @@ public enum RelayCall: Equatable, Sendable {
         }
     }
 
+    /// Changes something: an answer, a message, a task. Reads don't.
+    var acts: Bool {
+        switch self {
+        case .needsYou, .prompt, .rigs, .seats: false
+        default: true
+        }
+    }
+
     /// A name, row id or session: letters, digits, "-", "_", ".", ":" and "@"; never "." or "..".
     static func isSegment(_ segment: String) -> Bool {
         !segment.isEmpty && segment != "." && segment != ".."
@@ -78,25 +91,33 @@ public struct RelayPromptReading: Sendable, Equatable {
     public var session: String
     public var seatName: String
     public var command: String
+    /// When the daemon saw the stop, as text; "" when it gave none. With the command, it tells one prompt from the
+    /// same command asked again, as `PromptInstance.check(against:)` does on the Mac.
+    public var observedAt: String
     /// The menu's own plain Yes, found by its label; nil when the pane can't be read.
     public var allowOnceKey: String?
     public var declineKey: String?
 
-    public init(session: String, seatName: String, command: String, allowOnceKey: String?, declineKey: String?) {
+    public init(
+        session: String, seatName: String, command: String, observedAt: String, allowOnceKey: String?,
+        declineKey: String?
+    ) {
         self.session = session
         self.seatName = seatName
         self.command = command
+        self.observedAt = observedAt
         self.allowOnceKey = allowOnceKey
         self.declineKey = declineKey
     }
 }
 
-/// What the phone gets for one prompt.
+/// What the phone gets for one prompt. Allow once and decline send `command` and `observedAt` back.
 public struct RelayPrompt: Codable, Sendable, Equatable {
     public var session: String
     public var seat: String
     /// In full: a shortened command could hide the risky part.
     public var command: String
+    public var observedAt: String
     public var canAllowOnce: Bool
     public var canDecline: Bool
 }
@@ -185,6 +206,10 @@ public protocol RelayDesk: Sendable {
     func waitForNoPrompt(session: String) async -> (paneClear: Bool, daemonHolds: Bool)
     /// The seat's row parked on a person, which answering the prompt resolves.
     func heldRow(session: String) async -> String?
+    /// Open and waiting on the Mac's person, as the Mac's Needs you lists it (`forYou`): only these may be answered.
+    func isForPerson(_ row: QItem) async -> Bool
+    /// Why the Mac won't act for the phone now (its person differs from the pairing's), or nil.
+    func refusesActing() async -> String?
     func row(_ id: String) async -> QItem?
     func rigs() async -> [RelayRig]
     func seats(rig: String) async -> [RelaySeat]?
@@ -194,6 +219,7 @@ public protocol RelayDesk: Sendable {
 /// Turns a phone's call into the Mac app's own actions, with the same checks the Mac's controls make.
 public enum RelayActions {
     public static func handle(_ call: RelayCall, desk: some RelayDesk) async -> RelayResponse {
+        if call.acts, let why = await desk.refusesActing() { return error(403, "actor_mismatch", why) }
         switch call {
         case .needsYou: return json(await desk.needsYou())
         case .rigs: return json(await desk.rigs())
@@ -207,9 +233,10 @@ public enum RelayActions {
             return json(
                 RelayPrompt(
                     session: session, seat: reading.seatName, command: reading.command,
-                    canAllowOnce: reading.allowOnceKey != nil, canDecline: reading.declineKey != nil))
-        case .allowOnce(let session, let command):
-            switch await same(session, command, desk) {
+                    observedAt: reading.observedAt, canAllowOnce: reading.allowOnceKey != nil,
+                    canDecline: reading.declineKey != nil))
+        case .allowOnce(let session, let command, let observedAt):
+            switch await same(session, command, observedAt, desk) {
             case .failure(let refused): return refused.response
             case .success(let reading):
                 guard let yes = reading.allowOnceKey else {
@@ -221,8 +248,8 @@ public enum RelayActions {
                 await resolveHeld(session, "allow once: \(command)", desk)
                 return ok()
             }
-        case .decline(let session, let command, let reason):
-            switch await same(session, command, desk) {
+        case .decline(let session, let command, let observedAt, let reason):
+            switch await same(session, command, observedAt, desk) {
             case .failure(let refused): return refused.response
             case .success(let reading):
                 guard let no = reading.declineKey else {
@@ -252,14 +279,21 @@ public enum RelayActions {
                 return ok()
             }
         case .reply(let id, let text):
-            guard let row = await desk.row(id) else { return error(404, "no_such_row", "No row \(id).") }
-            return result(await desk.perform(.send(session: row.source, text: text)))
+            switch await forPerson(id, desk) {
+            case .failure(let refused): return refused.response
+            case .success(let row): return result(await desk.perform(.send(session: row.source, text: text)))
+            }
         case .gotIt(let id):
-            guard let row = await desk.row(id) else { return error(404, "no_such_row", "No row \(id).") }
-            return result(await desk.perform(Answer(.acknowledge).close(row, told: false)))
+            switch await forPerson(id, desk) {
+            case .failure(let refused): return refused.response
+            case .success(let row): return result(await desk.perform(Answer(.acknowledge).close(row, told: false)))
+            }
         case .done(let id, let replied):
-            guard let row = await desk.row(id) else { return error(404, "no_such_row", "No row \(id).") }
-            return result(await desk.perform(Answer(.answered, replied: replied).close(row, told: false)))
+            switch await forPerson(id, desk) {
+            case .failure(let refused): return refused.response
+            case .success(let row):
+                return result(await desk.perform(Answer(.answered, replied: replied).close(row, told: false)))
+            }
         case .message(let session, let text):
             return result(await desk.perform(.send(session: session, text: text)))
         case .task(let session, let summary, let body):
@@ -268,17 +302,27 @@ public enum RelayActions {
         }
     }
 
-    /// The prompt the phone showed, re-read now; anything else refuses.
-    private static func same(_ session: String, _ command: String, _ desk: some RelayDesk) async
+    /// The stop the phone showed, re-read now: same command and same time, as `PromptInstance.check(against:)` decides
+    /// on the Mac. The same command asked again is a new prompt. Anything else refuses.
+    private static func same(_ session: String, _ command: String, _ observedAt: String, _ desk: some RelayDesk) async
         -> Result<RelayPromptReading, Refusal>
     {
         guard let reading = await desk.prompt(session: session) else {
             return .failure(Refusal(error(409, "prompt_gone", "Nothing is waiting on this seat any more.")))
         }
-        guard reading.command == command else {
+        guard reading.command == command, reading.observedAt == observedAt else {
             return .failure(Refusal(error(409, "prompt_changed", "Another prompt is up now. Nothing was sent.")))
         }
         return .success(reading)
+    }
+
+    /// A row the Mac's Needs you lists for its person; any other row is refused, whatever its id.
+    private static func forPerson(_ id: String, _ desk: some RelayDesk) async -> Result<QItem, Refusal> {
+        guard let row = await desk.row(id) else { return .failure(Refusal(error(404, "no_such_row", "No row \(id)."))) }
+        guard await desk.isForPerson(row) else {
+            return .failure(Refusal(error(403, "not_for_you", "This row isn't waiting on you.")))
+        }
+        return .success(row)
     }
 
     private static func resolveHeld(_ session: String, _ decision: String, _ desk: some RelayDesk) async {

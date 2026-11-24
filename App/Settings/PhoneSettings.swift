@@ -184,8 +184,9 @@ private struct CodePanel: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Scan this with OpenRig on your iPhone")
                 Text(
-                    "Anyone with this code can answer as you. Leaving this tab hides the code. It still works until "
-                        + "you unpair it."
+                    "Anyone with this code can act as you: answer questions and permission prompts, message seats, "
+                        + "queue tasks and close rows waiting on you. Leaving this tab hides the code. It still works "
+                        + "until you unpair it."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
