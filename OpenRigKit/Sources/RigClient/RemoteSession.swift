@@ -71,6 +71,9 @@ public final class RemoteSession {
         }
     }
 
+    /// Answers saved but not yet confirmed. Unpair drops them, so its confirmation says how many.
+    public var unsentAnswers: Int { (try? outbox.load().count) ?? 0 }
+
     /// `artem@external` shows as `artem`.
     public var answeringAs: String? { pairing.map { String($0.code.actor.prefix { $0 != "@" }) } }
 

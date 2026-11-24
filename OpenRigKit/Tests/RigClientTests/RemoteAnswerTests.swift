@@ -121,8 +121,11 @@ import Testing
         remote.setDraft(AppAnswerDraft(reply: "Private words."), for: ask)
         await remote.send(ask)
         #expect(try outbox.load().count == 1)
+        // What Pair Again's confirmation says it will drop.
+        #expect(remote.unsentAnswers == 1)
         remote.unpair()
         #expect(try outbox.load().isEmpty)
+        #expect(remote.unsentAnswers == 0)
     }
 
     /// An entry saved under another pairing's credential is dropped, never sent to this Mac.

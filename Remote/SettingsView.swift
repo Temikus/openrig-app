@@ -30,11 +30,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .confirmationDialog("Unpair this phone?", isPresented: $confirmingUnpair, titleVisibility: .visible) {
-                Button("Unpair", role: .destructive) { model.unpair() }
-            } message: {
-                Text("To pair again, scan the code on your Mac.")
-            }
+            .unpairConfirmation(isPresented: $confirmingUnpair, title: "Unpair this phone?", confirm: "Unpair")
         }
     }
 }

@@ -61,6 +61,9 @@ enum PairingStep: Hashable {
         /// seat runs on loopback, so nothing listens on the Wi-Fi and macOS never asks about the firewall.
         static var relayHost: String? { environment["OPENRIG_DEBUG_RELAY_HOST"] }
 
+        /// `1` opens Pair Again's confirmation at launch, for a capture.
+        static var confirmPairAgain: Bool { environment["OPENRIG_DEBUG_CONFIRM_PAIR_AGAIN"] == "1" }
+
         /// A draft for the opened ask: `reply:<text>`, or `picks:<question>=<option>,…`.
         static var draft: AppAnswerDraft? {
             guard let raw = environment["OPENRIG_DEBUG_DRAFT"] else { return nil }

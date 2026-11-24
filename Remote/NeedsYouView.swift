@@ -7,6 +7,15 @@ struct NeedsYouView: View {
     @Environment(RemoteSession.self) private var model
     /// Ask ids pushed on the stack.
     @State private var path = AskLink.launchPath
+    @State private var confirmingPairAgain = Self.launchConfirmingPairAgain
+
+    static var launchConfirmingPairAgain: Bool {
+        #if DEBUG
+            DebugHooks.confirmPairAgain
+        #else
+            false
+        #endif
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -38,9 +47,13 @@ struct NeedsYouView: View {
                 ) {
                     retry
                     if viaRelay {
-                        Button("Pair Again…") { model.unpair() }
+                        // "Can't reach" is often a sleeping Mac or the switch off: ask before forgetting the pairing.
+                        Button("Pair Again…") { confirmingPairAgain = true }
                     }
                 }
+                .unpairConfirmation(
+                    isPresented: $confirmingPairAgain, title: "Forget \(model.macName) and pair again?",
+                    confirm: "Forget and Pair Again")
             case .localNetworkDenied:
                 unavailable(
                     "Local Network access is off", systemImage: "network.slash",
