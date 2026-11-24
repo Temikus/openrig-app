@@ -241,6 +241,42 @@ import Testing
         #expect(desk.done == [.send(session: Self.seat, text: "tapped")])
     }
 
+    /// A replaced client is closed: its channel goes, and later calls fail without sending or opening a new one.
+    @Test func aClosedClientSendsNothing() async throws {
+        let desk = ClientDesk()
+        let (relay, port) = try await serve(desk)
+        defer { relay.stop() }
+        let channels = ChannelBox()
+        let client = client(ports: [port], keep: channels)
+        _ = try await client.rigs()
+        await client.close()
+        for _ in 0..<20 where channels.first?.isReady == true { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(channels.first?.isReady == false, "its channel is closed")
+        await #expect(throws: RelayDeskError.unreachable("closed")) {
+            try await client.message(session: Self.seat, text: "x")
+        }
+        await #expect(throws: RelayDeskError.unreachable("closed")) { _ = try await client.rigs() }
+        #expect(desk.done.isEmpty)
+        #expect(channels.count == 1, "no new channel after close")
+    }
+
+    /// Closing beside a call in flight ends that call now, not at its timeout.
+    @Test func closeEndsACallInFlight() async throws {
+        let desk = ClientDesk()
+        desk.hangReads = true
+        let (relay, port) = try await serve(desk)
+        defer { relay.stop() }
+        let channels = ChannelBox()
+        let client = client(ports: [port], keep: channels)
+        let stuck = Task { try await client.rigs() }
+        try await Task.sleep(for: .milliseconds(200))
+        let started = ContinuousClock.now
+        await client.close()
+        await #expect(throws: RelayDeskError.self) { _ = try await stuck.value }
+        #expect(ContinuousClock.now - started < .seconds(2), "ended by close, not by the 15 s timeout")
+        #expect(channels.count == 1, "the read's retry didn't open a new channel")
+    }
+
     /// A channel the system has marked failed or cancelled while idle isn't sent on: the call goes out on a new one,
     /// and isn't a lost reply. (A peer that closes cleanly still reads as ready to Network until the next read; that
     /// case stays `lostReply`.)

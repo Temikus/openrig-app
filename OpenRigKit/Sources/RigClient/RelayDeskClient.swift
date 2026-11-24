@@ -54,6 +54,8 @@ public actor RelayDeskClient {
     private let open: Open
     private let timeout: Duration
     private var channel: RelayChannel?
+    /// Set by `close()`: nothing opens or goes out after it.
+    private var closed = false
     /// One call at a time through the whole open-and-call: the actor alone would let a second call in at every await.
     private let serial = AsyncSerial()
 
@@ -61,6 +63,15 @@ public actor RelayDeskClient {
     public init(timeout: Duration = .seconds(15), open: @escaping Open) {
         self.timeout = timeout
         self.open = open
+    }
+
+    /// Stops this client, e.g. when another pairing or address replaces it. Its channel closes now, so a call in
+    /// flight ends at once (`lostReply` if it had gone out). Every later call fails as `unreachable("closed")` without
+    /// opening a channel or sending. Runs beside the serial gate, not in it, so it never waits on a stuck call.
+    public func close() {
+        closed = true
+        channel?.close()
+        channel = nil
     }
 
     // MARK: Reads
@@ -163,6 +174,7 @@ public actor RelayDeskClient {
     }
 
     private func attempt(_ request: RelayRequest) async -> Result<RelayResponse, RelayDeskError> {
+        guard !closed else { return .failure(.unreachable("closed")) }
         if let idle = channel, !idle.isReady {
             idle.close()
             channel = nil
@@ -175,6 +187,11 @@ public actor RelayDeskClient {
                 channel = try await open()
             } catch {
                 return .failure(.unreachable("\(error)"))
+            }
+            // close() may have run while this one opened: don't keep or use it.
+            guard !closed else {
+                channel.close()
+                return .failure(.unreachable("closed"))
             }
             self.channel = channel
         }

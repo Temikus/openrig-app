@@ -39,13 +39,19 @@ final class RigsStore {
         seats.values.lazy.flatMap { $0 }.first { $0.session == session }
     }
 
+    /// Results are written only while `client` is still the one that asked. A reply from a replaced client (another
+    /// pairing or address) would show the old Mac's rigs until the next poll.
+    private func current(_ asked: RelayDeskClient) -> Bool { client === asked }
+
     func loadRigs(macName: String) async {
         guard let client else { return }
         do {
-            rigs = try await client.rigs()
+            let list = try await client.rigs()
+            guard current(client) else { return }
+            rigs = list
             readError = nil
         } catch {
-            note(error, macName: macName)
+            if current(client) { note(error, macName: macName) }
         }
     }
 
@@ -53,14 +59,17 @@ final class RigsStore {
         guard let client else { return }
         do {
             let list = try await client.seats(rig: rig)
+            guard current(client) else { return }
             seats[rig] = list
             readError = nil
             for seat in list where seat.atPrompt && prompts[seat.session] == nil {
-                prompts[seat.session] = try? await client.prompt(session: seat.session).command
+                let command = try? await client.prompt(session: seat.session).command
+                guard current(client) else { return }
+                prompts[seat.session] = command
             }
             for seat in list where !seat.atPrompt { prompts[seat.session] = nil }
         } catch {
-            note(error, macName: macName)
+            if current(client) { note(error, macName: macName) }
         }
     }
 
@@ -78,10 +87,11 @@ final class RigsStore {
         let send = RemoteSend.message(to: seat.name)
         do {
             try await client.message(session: seat.session, text: text)
+            guard current(client) else { return }
             messageDrafts[seat.session] = nil
             results[seat.session] = SendResult(ok: true, words: send.done)
         } catch {
-            results[seat.session] = SendResult(ok: false, words: send.words(for: error))
+            if current(client) { results[seat.session] = SendResult(ok: false, words: send.words(for: error)) }
         }
     }
 
@@ -90,10 +100,11 @@ final class RigsStore {
         let send = RemoteSend.task(for: seat.name)
         do {
             try await client.task(session: seat.session, summary: summary, body: body)
+            guard current(client) else { return }
             taskDrafts[seat.session] = nil
             results[seat.session] = SendResult(ok: true, words: send.done)
         } catch {
-            results[seat.session] = SendResult(ok: false, words: send.words(for: error))
+            if current(client) { results[seat.session] = SendResult(ok: false, words: send.words(for: error)) }
         }
     }
 }
@@ -307,7 +318,9 @@ struct DotLabelStyle: LabelStyle {
     @ScaledMetric(relativeTo: .body) private var lift = 4.5
 
     func makeBody(configuration: Configuration) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        // A copy: the guide's closure is Sendable and can't capture the property wrapper.
+        let lift = self.lift
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
             configuration.icon.alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + lift }
             configuration.title
         }
