@@ -47,6 +47,11 @@ func item(
         #expect(!workStatus(item("z", .blocked, blockedOn: "qitem-1")).needsYou)
         // A person's session is outside, though it has no "external:" prefix.
         #expect(Blocker(ref: "artem@external") == .outside("artem@external"))
+        // Another agent settles a row held on its seat; the person's own addresses still need them.
+        #expect(Blocker(ref: "dev-qa@openrig-app") == .seat("dev-qa@openrig-app"))
+        #expect(Blocker(ref: "human@kernel") == .outside("human@kernel"), "kernel is also a rig's name")
+        #expect(Blocker(ref: "human-sam@host") == .outside("human-sam@host"))
+        #expect(!workStatus(item("x", .blocked, blockedOn: "dev-qa@openrig-app")).needsYou)
     }
 
     @Test func closedAndUnknown() {

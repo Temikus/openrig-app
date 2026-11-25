@@ -78,6 +78,8 @@ struct QItemInspector: View {
                                 Button(shortQItemID(id)) { selection.select(qitem: id) }
                                     .buttonStyle(.link)
                                     .help(id)
+                            case .seat(let session):
+                                Text(rig.displayName(session: session)).textSelection(.enabled).help(session)
                             case .outside(let ref):
                                 // A person or event, not a row: shortQItemID would turn "artem@external" into "q-rnal".
                                 Text(ref == rig.me || Human.isYou(ref) ? "You" : ref)

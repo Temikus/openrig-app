@@ -131,15 +131,11 @@ public func waiting(_ entries: [NeedsYouEntry], me: String) -> Waiting {
     }
 }
 
-/// Another rig, whose prompts the app doesn't poll: its rows for the person, plus the daemon's `attentionCount`
-/// (seats needing attention, such as a pending permission prompt; a seat that only asks the person a question
-/// isn't in it, so an ask isn't counted twice).
+/// Another rig, whose prompts the app doesn't poll: its rows waiting on the person, as Needs you counts them (rows
+/// to the person, and rows held on them), plus the daemon's `attentionCount` (seats needing attention, such as a
+/// pending permission prompt; a seat that only asks the person a question isn't in it, so an ask isn't counted twice).
 public func waiting(rows: [QItem], me: String, attention: Int) -> Waiting {
-    rows.reduce(into: Waiting(prompts: attention)) { w, item in
-        switch forYou(item, me: me) {
-        case .update?: w.fyis += 1
-        case .decision?: w.asks += 1
-        case nil: break
-        }
+    needsYou(rows, me: me).reduce(into: Waiting(prompts: attention)) { w, item in
+        if forYou(item, me: me) == .update { w.fyis += 1 } else { w.asks += 1 }
     }
 }

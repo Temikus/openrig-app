@@ -560,11 +560,12 @@ final class AppStore {
     }
 
     /// What waits on the person in a rig, for its sidebar row. The selected rig counts its Needs-you list; another rig
-    /// counts rows addressed to the person plus the daemon's count of seats needing attention (prompts, which the
+    /// counts its rows waiting on the person plus the daemon's count of seats needing attention (prompts, which the
     /// app only polls for the selected rig).
     func waiting(in summary: RigSummary) -> Waiting {
         if summary.id == selectedRigID, let rig { return RigDomain.waiting(rig.needsYou, me: me) }
-        let rows = rowsForMe.filter { rigName(ofSession: $0.source) == summary.name }
+        // A row to the person counts in its sender's rig; a held row in its owner's.
+        let rows = rowsForMe.filter { rigName(ofSession: askedBy($0, me: me)) == summary.name }
         return RigDomain.waiting(rows: rows, me: me, attention: summary.attentionCount)
     }
 
