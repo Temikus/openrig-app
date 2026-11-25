@@ -37,6 +37,10 @@ public enum RigAction: Sendable, Equatable {
     /// Brings a stopped rig back, resuming each seat's conversation where its harness allows. `--yes` because the
     /// app has already asked; without a terminal the CLI would otherwise exit without acting.
     case rigUp(rig: String)
+    /// Copies a spec folder into the person's library (`~/.openrig/specs/<folder name>`). Fails if that folder exists.
+    case addSpec(folder: String)
+    /// Launches a new rig from a spec file, every seat working in `cwd`.
+    case launchSpec(path: String, cwd: String)
     /// Stops every seat. The CLI snapshots first anyway; `--snapshot` makes that explicit.
     case rigDown(rig: String)
     /// Launches one seat of a running rig, resuming it. Seats already running are left alone.
@@ -80,6 +84,10 @@ public enum RigAction: Sendable, Equatable {
             return ["daemon", "start"]
         case .rigUp(let rig):
             args = ["up", rig, "--existing", "--yes"]
+        case .addSpec(let folder):
+            args = ["specs", "add", folder]
+        case .launchSpec(let path, let cwd):
+            args = ["up", path, "--cwd", cwd, "--yes"]
         case .rigDown(let rig):
             args = ["down", rig, "--snapshot", "--yes"]
         case .launchSeat(let rig, let logicalId):

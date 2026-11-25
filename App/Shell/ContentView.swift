@@ -104,6 +104,7 @@ struct ContentView: View {
                 if !Task.isCancelled { showsGoTo = true }
             }
         #endif
+        .sheet(item: $store.newRig) { NewRigSheet(model: $0).environment(store.actions) }
         .onChange(of: appearsActive, initial: true) { store.windowInFront = appearsActive }
         .onDisappear { store.windowInFront = false }
     }
@@ -278,8 +279,13 @@ struct RigSidebar: View {
         }
         .overlay {
             if store.rigs.isEmpty, store.isUp {
-                ContentUnavailableView(
-                    "No rigs", systemImage: "square.dashed", description: Text("Start one with rig up."))
+                ContentUnavailableView {
+                    Label("No rigs", systemImage: "square.dashed")
+                } description: {
+                    Text("Build one from a template.")
+                } actions: {
+                    Button("New Rig…") { store.showNewRig() }
+                }
             }
         }
         .safeAreaInset(edge: .bottom) { DaemonStatusFooter() }

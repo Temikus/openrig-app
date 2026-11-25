@@ -111,6 +111,13 @@ import Testing
         #expect(RigAction.rigUp(rig: "kernel").userCommand == "rig up kernel --existing")
     }
 
+    @Test func newRigFromASpec() {
+        #expect(RigAction.addSpec(folder: "/tmp/x/pay").arguments == ["specs", "add", "/tmp/x/pay", "--json"])
+        let up = RigAction.launchSpec(path: "/h/.openrig/specs/pay/rig.yaml", cwd: "/code/my app")
+        #expect(up.arguments == ["up", "/h/.openrig/specs/pay/rig.yaml", "--cwd", "/code/my app", "--yes", "--json"])
+        #expect(up.userCommand == "rig up /h/.openrig/specs/pay/rig.yaml --cwd '/code/my app'")
+    }
+
     @Test func seatRepair() {
         #expect(
             RigAction.launchSeat(rig: "kernel", logicalId: "dev.b2").arguments == [

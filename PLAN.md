@@ -610,3 +610,26 @@ An iPhone app (`Remote/`, `OpenRigRemote`) that pairs with the Mac app from a QR
 - **A closed event stream:** the relay notices that the phone closed one only on its next write.
 - **A clean close while idle:** if the Mac closes a connection cleanly while it's idle, the phone's next call reads as a lost reply. Reads retry; actions aren't resent.
 - Tailscale reach, and notifications.
+
+### New Rig from a template, 2026-11-25
+
+Rig › New Rig… (⇧⌘N, and the empty sidebar's button) opens a sheet with three steps: Start, Seats and Review. Mocks: the person's Rig Builder canvas, boards 1–3.
+- **Templates:** the library's rig specs (`GET /api/specs/library?kind=rig`, then each one's `/review` for its text), built-in first. Managed apps (`hasServices`, such as secrets-manager) and the built-in `kernel` are left out: the first starts services, and the second says it is a preview of the running kernel. Blank rig waits for a later slice.
+- **The spec:** `RigDraft` (RigDomain, tested) parses the template with Yams and changes only `name`, each seat's runtime, model and effort, and the removed seats.
+  - A removed seat takes its pod edges and its rig edges with it; a pod left empty goes too.
+  - Every other key stays, startup files and env included.
+  - A saved spec can't use `..` or absolute paths for `culture_file`, docs or startup files (`rig spec validate`). Only an agent ref may be absolute (`path:`). So `local:` refs become `path:<absolute>`, and Launch copies the template's folder beside the new rig.yaml. A template that is a lone file at the top of `~/.openrig/specs` gets only its rig.yaml, as its folder is the whole library.
+  - Switching a seat to `terminal` writes the schema's terminal triple (`builtin:terminal`, profile `none`) and drops the keys only an agent seat may carry. A template's terminal seat stays a terminal.
+- **Models and effort come from each runtime's CLI:** Codex from `codex debug models` (its local catalogue, no model call), showing its picker's models (`visibility: list`) in its order, each with its own levels. Claude Code from `claude --help`, using the aliases quoted under `--model` and the levels under `--effort`. Other runtimes offer only "Role default" (the model is left out) and "Default". A template's own model stays in the list. A model change drops an effort the new model doesn't accept.
+- **Review** writes the spec folder to a temp directory and runs `rig spec preflight --json` on it, so what Launch adds is what was checked. It also refuses a name an existing rig or `~/.openrig/specs/<name>` already has: `rig specs remove` leaves a folder spec's other files behind, and `rig specs add` then refuses the name. `rig up --plan` and `rig requirements` added nothing preflight didn't show.
+- **Launch** runs `rig specs add <folder>`, then `rig up <saved rig.yaml> --cwd <project> --yes`, both through ActionStore. The sheet shows both commands with full paths, because a quoted `~` doesn't expand when pasted. If `up` fails, a retry skips the add. Once `rig up` returns, the rig list refreshes until the new rig is there, and it is selected.
+- **`OPENRIG_DEBUG_NEWRIG=<folder>`** (DEBUG) opens New Rig with that project folder, since the folder panel can't be scripted.
+- **Seen in a background copy** (AX, starter template, rig `openrig-apptest-newrig`):
+  - the roles (implementer, qa);
+  - Claude Code's models (Fable, Opus, Sonnet) and Codex's catalogue;
+  - the effort reset;
+  - preflight passing with its two warnings;
+  - Launch bringing the rig up with 2 seats (stub and terminal), selected in the sidebar, with the spec in the library;
+  - a second New Rig refusing the name.
+  - The rig and the spec were then deleted.
+- **Not seen:** real clicks and keys, the folder panel, and a launch with claude-code or codex seats (never in a test).

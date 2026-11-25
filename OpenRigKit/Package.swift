@@ -15,11 +15,13 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-collections.git", exact: "1.7.6"),
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.99.2"),
+        // Rig specs are YAML: New Rig edits a template's and keeps every key it doesn't touch.
+        .package(url: "https://github.com/jpsim/Yams.git", exact: "6.2.2"),
     ],
     targets: [
         .target(name: "RigModel"),
         .target(name: "RigClient", dependencies: ["RigModel"]),
-        .target(name: "RigDomain", dependencies: ["RigModel", "RigCanvasLayout"]),
+        .target(name: "RigDomain", dependencies: ["RigModel", "RigCanvasLayout", "Yams"]),
         .target(name: "RigTerminal", dependencies: [.product(name: "SwiftTerm", package: "SwiftTerm")]),
         .testTarget(name: "RigTerminalTests", dependencies: ["RigTerminal"], resources: [.copy("Fixtures")]),
         .target(name: "RigFixtures", path: "Tests/RigFixtures", resources: [.copy("Fixtures")]),
