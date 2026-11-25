@@ -97,8 +97,10 @@ struct TerminalsView: View {
             terminals.release()
             frozen = nil
         }
-        .onChange(of: rig.prompts.map(\.seatID)) { _, seats in
-            if let focused = terminals.focusedSeatID, seats.contains(focused) {
+        .onChange(of: rig.prompts.map(\.seatID)) { old, seats in
+            // Only as the focused seat's prompt appears: another seat's prompt coming or going would otherwise
+            // undo a deliberate ⌘T while this one is still asking.
+            if let focused = terminals.focusedSeatID, seats.contains(focused), !old.contains(focused) {
                 terminals.pauseForPrompt(on: focused, name: rig.seat(focused)?.displayName ?? "The seat")
             }
         }

@@ -85,4 +85,35 @@
             }
         }
     }
+
+    /// OPENRIG_DEBUG_RESPONDER=<file>: twice a second, appends the main window's first responder whenever it changes,
+    /// and Type mode's state, to check where keys go without pressing any.
+    @MainActor
+    enum ResponderLog {
+        static func run(typing: @escaping @MainActor () -> Bool) async {
+            guard let path = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_RESPONDER"] else { return }
+            var last = ""
+            let start = Date.now
+            while true {
+                let window = NSApp.windows.first { $0.isVisible && $0.title.hasPrefix(OpenRigDebug.rigName) }
+                let responder = window?.firstResponder
+                let line =
+                    "\(responder.map { String(describing: type(of: $0)) } ?? "nil")"
+                    + "\(responder === window ? " (the window)" : "") typing=\(typing())"
+                if line != last {
+                    let at = String(format: "%.1f", Date.now.timeIntervalSince(start))
+                    let entry = "\(at)s \(line)\n"
+                    if let handle = FileHandle(forWritingAtPath: path) {
+                        handle.seekToEndOfFile()
+                        handle.write(Data(entry.utf8))
+                        try? handle.close()
+                    } else {
+                        try? entry.write(toFile: path, atomically: true, encoding: .utf8)
+                    }
+                    last = line
+                }
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
+    }
 #endif
