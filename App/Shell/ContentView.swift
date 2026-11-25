@@ -288,8 +288,29 @@ struct RigSidebar: View {
                 }
             }
         }
-        .safeAreaInset(edge: .bottom) { DaemonStatusFooter() }
+        // Right-click in the list's empty space.
+        .contextMenu(forSelectionType: RigSummary.ID.self) { ids in
+            if ids.isEmpty {
+                Button("New Rig…") { store.showNewRig() }.disabled(!canAddRig)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(alignment: .leading, spacing: 6) {
+                Button {
+                    store.showNewRig()
+                } label: {
+                    Label("New Rig", systemImage: "plus")
+                }
+                .buttonStyle(.borderless)
+                .disabled(!canAddRig)
+                .help("Build a rig from a template (⇧⌘N)")
+                .padding(.horizontal, 12)
+                DaemonStatusFooter()
+            }
+        }
     }
+
+    private var canAddRig: Bool { store.isUp && store.newRig == nil }
 }
 
 struct RigRow: View {

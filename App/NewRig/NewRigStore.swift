@@ -234,14 +234,17 @@ final class NewRigStore {
             preflight = result
             return
         }
+        // `rig up --plan` runs the launch's own preflight, in the project folder Launch will pass. `rig spec
+        // preflight` resolves each seat's cwd against the spec's folder instead.
         let spec = plan.checked + "/rig.yaml"
-        if let out = try? await cli.run(arguments: ["spec", "preflight", spec, "--json"]),
+        let args = ["up", spec, "--plan", "--cwd", (folder ?? destination).path, "--json"]
+        if let out = try? await cli.run(arguments: args),
             let report = try? JSONDecoder().decode(PreflightReport.self, from: Data(out.stdout.utf8))
         {
             result.errors += report.errors
             result.warnings += report.warnings
         } else {
-            result.errors.append("rig spec preflight didn't answer.")
+            result.errors.append("rig up --plan didn't answer.")
         }
         preflight = result
     }
@@ -258,6 +261,11 @@ final class NewRigStore {
     func discardStaging() {
         if let staged { try? FileManager.default.removeItem(at: staged.deletingLastPathComponent()) }
         staged = nil
+    }
+
+    /// Preflight's messages, one row per thing, naming the seats each is about.
+    func notes(_ messages: [String]) -> [PreflightNote] {
+        PreflightNote.group(messages, seats: draft?.seats.map(\.id) ?? [])
     }
 
     private struct PreflightReport: Decodable {

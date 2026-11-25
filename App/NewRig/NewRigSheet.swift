@@ -8,24 +8,36 @@ struct NewRigSheet: View {
     @Environment(ActionStore.self) private var actions
     @Environment(\.dismiss) private var dismiss
 
+    /// The parent window's content size: the sheet never grows past it, so the footer stays on screen.
+    @State private var room: CGSize?
+
     var body: some View {
         HStack(spacing: 0) {
             steps
             Divider()
-            Group {
-                switch model.step {
-                case .start: NewRigStart(model: model)
-                case .seats: NewRigSeats(model: model)
-                case .review: NewRigReview(model: model)
+            ScrollView {
+                Group {
+                    switch model.step {
+                    case .start: NewRigStart(model: model)
+                    case .seats: NewRigSeats(model: model)
+                    case .review: NewRigReview(model: model)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(20)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(24)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { footer }
-        .frame(minWidth: 860, idealWidth: 960, minHeight: 560, idealHeight: 640)
+        .frame(width: Self.side(960, room?.width, floor: 600), height: Self.side(640, room?.height, floor: 380))
+        .background(ParentWindowSize(size: $room))
         .task { await model.load() }
         .onDisappear { model.discardStaging() }
+    }
+
+    /// `ideal`, shrunk to fit `room` with a margin, but not below `floor`.
+    static func side(_ ideal: CGFloat, _ room: CGFloat?, floor: CGFloat) -> CGFloat {
+        guard let room else { return ideal }
+        return max(floor, min(ideal, room - 40))
     }
 
     private var steps: some View {
@@ -43,7 +55,7 @@ struct NewRigSheet: View {
             Spacer()
         }
         .padding(12)
-        .frame(width: 160)
+        .frame(width: 130)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Steps")
     }
@@ -53,8 +65,9 @@ struct NewRigSheet: View {
         case .start: model.startProblem
         case .seats: model.seatsProblem
         case .review:
-            model.preflight.map {
-                $0.ready ? nil : "\($0.errors.count) thing\($0.errors.count == 1 ? "" : "s") to fix before launch"
+            model.preflight.map { preflight in
+                let count = model.notes(preflight.errors).count
+                return preflight.ready ? nil : "\(count) thing\(count == 1 ? "" : "s") to fix before launch"
             } ?? nil
         }
     }
@@ -74,7 +87,7 @@ struct NewRigSheet: View {
             } else if model.step == .seats, let draft = model.draft {
                 Text(seatCount(draft.seats.count)).foregroundStyle(.secondary)
             }
-            Spacer()
+            Spacer(minLength: 8)
             Button("Cancel", role: .cancel) { dismiss() }
                 .keyboardShortcut(.cancelAction)
             if model.step != .start {
@@ -97,6 +110,7 @@ struct NewRigSheet: View {
             }
         }
         .font(.callout)
+        .lineLimit(2)
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(.bar)
@@ -164,14 +178,12 @@ struct NewRigStart: View {
             } else if let error = model.loadError {
                 Text(error).foregroundStyle(.secondary)
             } else {
-                ScrollView {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
-                        ForEach(model.templates) { template in
-                            TemplateCard(template: template, picked: template.id == model.pickedID) {
-                                model.pick(template)
-                            }
-                            .disabled(model.isSaved && template.id != model.pickedID)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12)], spacing: 12) {
+                    ForEach(model.templates) { template in
+                        TemplateCard(template: template, picked: template.id == model.pickedID) {
+                            model.pick(template)
                         }
+                        .disabled(model.isSaved && template.id != model.pickedID)
                     }
                 }
             }
@@ -233,20 +245,22 @@ struct NewRigSeats: View {
                 .foregroundStyle(.secondary)
             }
             if let draft = model.draft {
-                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
-                    GridRow {
-                        Text("Seat")
-                        Text("Role")
-                        Text("Runtime")
-                        Text("Model")
-                        Text("Effort")
-                        Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    Divider()
-                    ForEach(draft.seats) { seat in
-                        SeatRow(model: model, seat: seat)
+                ScrollView(.horizontal) {
+                    Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
+                        GridRow {
+                            Text("Seat")
+                            Text("Role")
+                            Text("Runtime")
+                            Text("Model")
+                            Text("Effort")
+                            Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        Divider()
+                        ForEach(draft.seats) { seat in
+                            SeatRow(model: model, seat: seat)
+                        }
                     }
                 }
             }
@@ -257,7 +271,6 @@ struct NewRigSeats: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-            Spacer()
         }
     }
 }
@@ -325,75 +338,108 @@ struct SeatRow: View {
 
 struct NewRigReview: View {
     let model: NewRigStore
+    @State private var showsWarnings = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 24) {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Ready to launch \(model.name)?").font(.title2.bold())
-                    Text(
-                        "\(seatCount(model.draft?.seats.count ?? 0)) in \(model.folder?.path(percentEncoded: false) ?? ""). Each seat starts in its own terminal."
-                    )
-                    .foregroundStyle(.secondary)
-                }
-                checks
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Runs").font(.caption).foregroundStyle(.secondary)
-                    Text(model.commands.joined(separator: "\n"))
-                        .font(.callout.monospaced())
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(8)
-                        .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 6))
-                    Text(
-                        model.isSaved
-                            ? "The spec is already in your library; Launch starts the rig from it, with these edits."
-                            : "The first saves the spec to your library; the second starts the rig from it."
-                    )
-                    .font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
+        // Side by side when there's room, as in the mock; else the spec goes under the checks.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 24) {
+                summary.frame(minWidth: 340, maxWidth: .infinity)
+                spec(height: 420).frame(width: 320)
             }
-            .frame(maxWidth: .infinity)
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("rig.yaml").font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Copy") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(model.yaml, forType: .string)
-                        announce("Copied rig.yaml")
-                    }
-                    .controlSize(.small)
-                    .disabled(model.yaml.isEmpty)
-                }
-                ScrollView([.vertical, .horizontal]) {
-                    Text(model.yaml)
-                        .font(.caption.monospaced())
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
-                }
-                .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 8))
-                .accessibilityLabel("rig.yaml")
+            VStack(alignment: .leading, spacing: 20) {
+                summary
+                spec(height: 260)
             }
-            .frame(width: 340)
         }
     }
 
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Ready to launch \(model.name)?").font(.title2.bold())
+                Text(
+                    "\(seatCount(model.draft?.seats.count ?? 0)) in \(model.folder?.path(percentEncoded: false) ?? ""). "
+                        + "Each seat starts in its own terminal."
+                )
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            checks
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Runs").font(.caption).foregroundStyle(.secondary)
+                Text(model.commands.joined(separator: "\n"))
+                    .font(.callout.monospaced())
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 6))
+                Text(
+                    model.isSaved
+                        ? "The spec is already in your library; Launch starts the rig from it, with these edits."
+                        : "The first saves the spec to your library; the second starts the rig from it."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func spec(height: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("rig.yaml").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("Copy") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(model.yaml, forType: .string)
+                    announce("Copied rig.yaml")
+                }
+                .controlSize(.small)
+                .disabled(model.yaml.isEmpty)
+            }
+            ScrollView([.vertical, .horizontal]) {
+                Text(model.yaml)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+            }
+            .frame(height: height)
+            .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 8))
+            .accessibilityLabel("rig.yaml")
+        }
+    }
+
+    /// Errors stay open, above the warnings; warnings fold behind their count.
     @ViewBuilder private var checks: some View {
         if let preflight = model.preflight {
+            let errors = model.notes(preflight.errors)
+            let warnings = model.notes(preflight.warnings)
             VStack(alignment: .leading, spacing: 8) {
-                if preflight.errors.isEmpty && preflight.warnings.isEmpty {
-                    CheckLine(text: "Preflight found nothing to fix", tone: .ok)
-                } else if preflight.errors.isEmpty {
-                    CheckLine(text: "Preflight passed", tone: .ok)
+                if errors.isEmpty { CheckLine(text: "Preflight passed", tone: .ok) }
+                ForEach(errors) { CheckLine(note: $0, tone: .error) }
+                if !warnings.isEmpty {
+                    DisclosureGroup(isExpanded: $showsWarnings) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(warnings) { CheckLine(note: $0, tone: .warning) }
+                        }
+                        .padding(.top, 4)
+                    } label: {
+                        Label(
+                            warnings.count == 1 ? "1 warning" : "\(warnings.count) warnings",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .symbolRenderingMode(.multicolor)
+                        .font(.callout)
+                    }
                 }
-                ForEach(preflight.errors, id: \.self) { CheckLine(text: $0, tone: .error) }
-                ForEach(preflight.warnings, id: \.self) { CheckLine(text: $0, tone: .warning) }
             }
-            Text("Checks come from rig spec preflight on the spec as it will be saved, before anything starts.")
-                .font(.caption).foregroundStyle(.secondary)
+            Text(
+                "Checks come from rig up --plan on the spec as it will be saved, in the project folder, before anything starts."
+            )
+            .font(.caption).foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
         } else {
             ProgressView("Checking the spec…").controlSize(.small)
         }
@@ -403,11 +449,33 @@ struct NewRigReview: View {
 struct CheckLine: View {
     enum Tone { case ok, warning, error }
     let text: String
+    var seats: [String] = []
+    /// OpenRig's own words, when the line rewords them.
+    var detail: [String] = []
     let tone: Tone
+
+    init(text: String, tone: Tone) {
+        self.text = text
+        self.tone = tone
+    }
+
+    init(note: PreflightNote, tone: Tone) {
+        text = note.text
+        seats = note.seats
+        detail = note.detail.filter { $0 != note.text }
+        self.tone = tone
+    }
 
     var body: some View {
         Label {
-            Text(text).foregroundStyle(tone == .error ? .red : .primary).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(text).foregroundStyle(tone == .error ? .red : .primary)
+                if !seats.isEmpty {
+                    Text(seats.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .help(detail.joined(separator: "\n"))
         } icon: {
             switch tone {
             case .ok: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
@@ -417,5 +485,58 @@ struct CheckLine: View {
         }
         .font(.callout)
         .textSelection(.enabled)
+    }
+}
+
+/// Reports the size of the window a sheet hangs from, and keeps reporting as that window resizes.
+struct ParentWindowSize: NSViewRepresentable {
+    @Binding var size: CGSize?
+
+    func makeNSView(context: Context) -> Reader { Reader(size: $size) }
+    func updateNSView(_ view: Reader, context: Context) {}
+
+    final class Reader: NSView {
+        let size: Binding<CGSize?>
+        private var observer: NSObjectProtocol?
+
+        init(size: Binding<CGSize?>) {
+            self.size = size
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) { nil }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let observer { NotificationCenter.default.removeObserver(observer) }
+            observer = nil
+            attach(tries: 20)
+        }
+
+        /// The sheet window gets its parent only once it is presented, after this view joins it: look again shortly.
+        private func attach(tries: Int) {
+            guard let window else { return }
+            guard let parent = window.sheetParent else {
+                if tries > 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                        self?.attach(tries: tries - 1)
+                    }
+                }
+                return
+            }
+            report(parent)
+            observer = NotificationCenter.default.addObserver(
+                forName: NSWindow.didResizeNotification, object: parent, queue: .main
+            ) { [weak self, weak parent] _ in
+                MainActor.assumeIsolated {
+                    if let parent { self?.report(parent) }
+                }
+            }
+        }
+
+        private func report(_ parent: NSWindow) {
+            let room = parent.contentLayoutRect.size
+            if size.wrappedValue != room { size.wrappedValue = room }
+        }
     }
 }
