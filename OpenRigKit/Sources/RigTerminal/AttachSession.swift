@@ -20,6 +20,8 @@ public final class AttachSession: LocalProcessDelegate, @unchecked Sendable {
     private var subscribers: [Int: @Sendable (ArraySlice<UInt8>) -> Void] = [:]
     private var nextToken = 0
     private static let backlogLimit = 256 * 1024
+    /// Under `lock`, with the backlog.
+    private var queries = TerminalQueryFilter()
 
     /// Delivers the backlog, then every later chunk, on the process's queue, until `unsubscribe`.
     @discardableResult
@@ -81,11 +83,14 @@ public final class AttachSession: LocalProcessDelegate, @unchecked Sendable {
 
     public func dataReceived(slice: ArraySlice<UInt8>) {
         lock.lock()
-        backlog.append(contentsOf: slice)
+        // Before the backlog: a view that subscribes later must not answer the client's queries either.
+        let output = queries.filter(slice)
+        backlog.append(contentsOf: output)
         if backlog.count > Self.backlogLimit { backlog.removeFirst(backlog.count - Self.backlogLimit) }
         let handlers = Array(subscribers.values)
         lock.unlock()
-        for handler in handlers { handler(slice) }
+        guard !output.isEmpty else { return }
+        for handler in handlers { handler(output[...]) }
     }
 
     public func getWindowSize() -> winsize {
