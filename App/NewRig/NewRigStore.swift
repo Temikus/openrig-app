@@ -38,8 +38,13 @@ final class NewRigStore {
     }
 
     var step = Step.start
+    /// The project folder. Until the spec is saved, an untyped name follows it; after, the name is fixed.
     var folder: URL? {
-        didSet { if !nameEdited, let folder { name = Self.suggestedName(folder.lastPathComponent) } }
+        didSet {
+            guard let folder else { return }
+            name = RigName.afterPicking(
+                folder: folder.lastPathComponent, current: name, typed: nameEdited, saved: savedSpec != nil)
+        }
     }
     var name = "" {
         didSet { draft?.name = name }
@@ -135,25 +140,10 @@ final class NewRigStore {
     /// What's missing before Continue, said under the button. Nil when Start is complete.
     var startProblem: String? {
         if folder == nil { return "Choose the project folder." }
-        if let problem = Self.nameProblem(name) { return problem }
+        if let problem = RigName.problem(name) { return problem }
         if existingRigs.contains(name) { return "A rig named \(name) already exists." }
         if picked == nil { return "Pick a template." }
         return nil
-    }
-
-    /// Rig names become session addresses (seat@rig) and the spec's folder name.
-    static func nameProblem(_ name: String) -> String? {
-        if name.isEmpty { return "Name the rig." }
-        if name.wholeMatch(of: /[A-Za-z0-9][A-Za-z0-9_-]*/) == nil {
-            return "Use letters, digits, - and _ in the name, starting with a letter or digit."
-        }
-        return nil
-    }
-
-    /// A folder name as a rig name: "Payments Service" → "payments-service".
-    static func suggestedName(_ folder: String) -> String {
-        let words = folder.lowercased().split { !($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }
-        return words.joined(separator: "-").filter(\.isASCII)
     }
 
     func chooseFolder() {
