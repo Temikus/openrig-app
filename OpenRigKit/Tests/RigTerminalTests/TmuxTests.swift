@@ -296,6 +296,74 @@ final class Received: @unchecked Sendable {
         #expect(tui.panOffset(clientRows: 40) == 80)
     }
 
+    /// The live permission prompt fixture under 30 rows of transcript: the prompt is rows 33…51 of a 54-row pane, and
+    /// option 1, where the cursor sits, is row 45.
+    func prompted(cursorOnOption option: Int = 1) throws -> PaneSnapshot {
+        let url = try #require(
+            Bundle.module.url(forResource: "claude-permission-prompt", withExtension: "txt", subdirectory: "Fixtures"))
+        var lines = Array(repeating: "transcript", count: 30)
+        lines += try String(contentsOf: url, encoding: .utf8).components(separatedBy: "\n").dropLast()
+        // Options 1 to 4 are on rows 45, 46 (with its continuation on 47), 48 and 49.
+        let cursorY = [1: 45, 2: 46, 3: 48, 4: 49][option]!
+        return PaneSnapshot(pane: "%1", cols: 80, rows: lines.count, cursorX: 1, cursorY: cursorY, lines: lines)
+    }
+
+    /// The person saw only option 3 onwards: the old pan put the cursor one row from the top.
+    @Test func aMenuThatFitsShowsWhole() throws {
+        let snap = try prompted()
+        #expect(snap.rows == 54)
+        #expect(snap.menuRows == 33...51)
+        // Its last row at the client's bottom: 27…51 holds the whole prompt.
+        #expect(snap.panOffset(clientRows: 25) == 27)
+        #expect(snap.panOffset(clientRows: 19) == 33)
+    }
+
+    @Test func movingTheSelectionInAMenuThatFitsDoesntPan() throws {
+        #expect(try (1...4).map { try prompted(cursorOnOption: $0).panOffset(clientRows: 25) } == [27, 27, 27, 27])
+    }
+
+    /// Too tall for the client: its top first, panned only as far as keeps the selected option in view.
+    @Test func aMenuTallerThanTheClientShowsItsTopAndTheSelection() throws {
+        #expect(try prompted(cursorOnOption: 1).panOffset(clientRows: 15) == 33)
+        // Option 4 on row 49 needs the client to start at 36 to stay one row above its bottom.
+        #expect(try prompted(cursorOnOption: 4).panOffset(clientRows: 15) == 36)
+        #expect(try prompted(cursorOnOption: 1).panOffset(clientRows: 10) == 37)
+    }
+
+    /// A live AskUserQuestion menu (menu lines only, under filler): rows 20…37 of a 40-row pane, the cursor on
+    /// "❯ 1. Option A" at row 27 and hidden, as Claude Code leaves it.
+    func question(cursorY: Int = 27) throws -> PaneSnapshot {
+        let url = try #require(
+            Bundle.module.url(forResource: "claude-question-menu", withExtension: "ansi", subdirectory: "Fixtures"))
+        let lines = try String(contentsOf: url, encoding: .utf8).components(separatedBy: "\n")
+        var snap = PaneSnapshot(pane: "%1", cols: 65, rows: 40, cursorX: 0, cursorY: cursorY, lines: lines)
+        snap.cursorVisible = false
+        return snap
+    }
+
+    /// The person's case: the old pan put option 1 at the top and hid the question ("29 rows above").
+    @Test func aQuestionMenuShowsWhole() throws {
+        let snap = try question()
+        #expect(snap.menuRows == 20...37)
+        #expect(PromptScreen(lines: snap.lines) == nil, "a question isn't a permission prompt")
+        #expect(snap.panOffset(clientRows: 25) == 13)
+        // Moving down to "3. Option C" (row 31) and "5. Chat about this" (row 35) doesn't pan.
+        #expect(try question(cursorY: 31).panOffset(clientRows: 25) == 13)
+        #expect(try question(cursorY: 35).panOffset(clientRows: 25) == 13)
+    }
+
+    @Test func aQuestionMenuTallerThanTheClientKeepsTheSelectionInView() throws {
+        #expect(try question().panOffset(clientRows: 12) == 20)
+        #expect(try question(cursorY: 35).panOffset(clientRows: 12) == 25)
+    }
+
+    @Test func noMenuKeepsFollowingTheCursor() {
+        let lines = Array(repeating: "transcript", count: 38) + ["────────", "❯ "]
+        let snap = PaneSnapshot(pane: "%1", cols: 80, rows: 40, cursorX: 2, cursorY: 39, lines: lines)
+        #expect(snap.menuRows == nil)
+        #expect(snap.panOffset(clientRows: 25) == 15)
+    }
+
     @Test func parsesTheScreenAndCursorFlags() {
         let output = "@@openrig-pane %7 200 120 199 119 1 1 0\nline\n"
         let snap = PaneCapture.parse(output)["%7"]

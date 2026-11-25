@@ -20,6 +20,8 @@ import Testing
         #expect(screen.options.map(\.number) == [1, 2, 3, 4])
         #expect(screen.options[0].text == "Yes")
         #expect(screen.options[3].text == "No")
+        // The top rule through "Esc to cancel · Tab to amend".
+        #expect(screen.rows == 3...21)
     }
 
     @Test func picksTheOptionByMeaningNotPosition() throws {
