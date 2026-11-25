@@ -11,7 +11,7 @@ packages:
   # The app imports SwiftTerm's view directly; same pin as OpenRigKit/Package.swift.
   SwiftTerm:
     url: https://github.com/migueldeicaza/SwiftTerm.git
-    exactVersion: 1.99.2
+    exactVersion: 1.99.4
 targets:
   OpenRig:
     type: application
