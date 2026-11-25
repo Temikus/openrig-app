@@ -158,8 +158,11 @@ import Testing
         try Data(script.utf8).write(to: sh)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: sh.path)
 
-        #expect(await ShellPath.read(shell: sh.path, timeout: .milliseconds(500)) == nil)
-        let text = try String(contentsOf: pidFile, encoding: .utf8)
+        // The deadline only has to outlast perl starting up and forking; under load that took over 500 ms.
+        #expect(await ShellPath.read(shell: sh.path, timeout: .seconds(2)) == nil)
+        let text = try #require(
+            try? String(contentsOf: pidFile, encoding: .utf8),
+            "setup: the fake shell was killed before it wrote its child's pid, so nothing was checked")
         let child = try #require(pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines)))
         // The killed command is reaped by launchd; until then kill(_, 0) still finds it.
         let deadline = ContinuousClock.now + .seconds(3)
