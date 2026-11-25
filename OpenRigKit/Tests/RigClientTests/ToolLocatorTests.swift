@@ -163,7 +163,9 @@ import Testing
         let text = try #require(
             try? String(contentsOf: pidFile, encoding: .utf8),
             "setup: the fake shell was killed before it wrote its child's pid, so nothing was checked")
-        let child = try #require(pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines)))
+        let child = try #require(
+            pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines)),
+            "setup: the fake shell was killed while writing its child's pid, so nothing was checked")
         // The killed command is reaped by launchd; until then kill(_, 0) still finds it.
         let deadline = ContinuousClock.now + .seconds(3)
         while kill(child, 0) == 0, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
