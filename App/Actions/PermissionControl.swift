@@ -168,7 +168,7 @@ struct PermissionControl: View {
                 .answerPrompt(session: prompt.session, keys: yes, reason: "OpenRig.app: allow once \(command)"),
                 key: key, success: "Allowed once")
             if ok { await resolveHeldRow(decision: "allow once: \(command)") }
-            rig.scheduleRefresh()
+            await rig.refresh()
         }
     }
 
@@ -182,7 +182,7 @@ struct PermissionControl: View {
                     reason: "OpenRig.app: \(option.text) for \(command)"),
                 key: key, success: "Allowed and remembered")
             if ok { await resolveHeldRow(decision: "\(option.text): \(command)") }
-            rig.scheduleRefresh()
+            await rig.refresh()
         }
     }
 
@@ -227,7 +227,7 @@ struct PermissionControl: View {
             reason = ""
             await resolveHeldRow(
                 decision: text.isEmpty ? "declined: \(command)" : "declined: \(command); redirect: \(text)")
-            rig.scheduleRefresh()
+            await rig.refresh()
         }
     }
 

@@ -1,0 +1,173 @@
+import Foundation
+import RigFixtures
+import RigModel
+import Testing
+
+@testable import RigDomain
+
+private func at(_ seconds: TimeInterval) -> Date { Date(timeIntervalSince1970: seconds) }
+
+@Suite struct HeldRowsTests {
+    @Test func openRowsAreReplacedOnEachRead() {
+        var rows = HeldRows()
+        rows.replaceOpen([item("a"), item("b")])
+        rows.replaceOpen([item("b"), item("c")])
+        #expect(rows.all.map(\.id).sorted() == ["b", "c"])
+        #expect(!rows.holds("a"))
+    }
+
+    @Test func allIsNewestCreatedFirstAndEachRowOnce() {
+        var rows = HeldRows()
+        rows.replaceOpen([item("a", created: 10), item("b", created: 30)])
+        rows.replaceClosed([item("c", .done, created: 20)], since: at(0))
+        rows.keep(item("b", created: 30))
+        #expect(rows.all.map(\.id) == ["b", "c", "a"])
+    }
+
+    @Test func theNewerCopyWins() {
+        var rows = HeldRows()
+        rows.replaceOpen([item("a", .inProgress, updated: 10)])
+        rows.keep(item("a", .done, updated: 20))
+        #expect(rows.row("a")?.state == .done)
+        #expect(rows.all.map(\.state) == [.done])
+    }
+
+    @Test func onATieOpenBeatsByIDBeatsClosed() {
+        var rows = HeldRows()
+        rows.replaceClosed([item("a", .done, updated: 10, closureReason: "closed")], since: at(0))
+        rows.keep(item("a", .done, updated: 10, closureReason: "by id"))
+        #expect(rows.row("a")?.closureReason == "by id")
+        rows.replaceOpen([item("a", .inProgress, updated: 10)])
+        #expect(rows.row("a")?.state == .inProgress)
+    }
+
+    @Test func rowsReadByIDOutliveOpenReads() {
+        var rows = HeldRows()
+        rows.keep(item("old", .done))
+        rows.replaceOpen([])
+        rows.dropClosed()
+        #expect(rows.holds("old"))
+    }
+
+    /// Kept by id, then served by the open read, then closed: the old by-id copy must not show it open.
+    @Test func aRowKeptByIDIsNotShownOpenAfterItCloses() {
+        var rows = HeldRows()
+        rows.keep(item("a", .pending, updated: 10))
+        rows.replaceOpen([item("a", .inProgress, updated: 20)])
+        rows.replaceOpen([])
+        #expect(rows.row("a") == nil)
+        #expect(rows.all.isEmpty)
+    }
+
+    /// An open row read by id that the next open read leaves out has closed or moved since.
+    @Test func anOpenRowKeptByIDGoesWhenTheOpenReadLeavesItOut() {
+        var rows = HeldRows()
+        rows.keep(item("a", .blocked, updated: 10))
+        rows.replaceOpen([item("b")])
+        #expect(!rows.holds("a"))
+    }
+
+    /// A closed row read by id stays: no open read serves it.
+    @Test func aClosedRowKeptByIDOutlivesOpenReads() {
+        var rows = HeldRows()
+        rows.keep(item("a", .done, updated: 10))
+        rows.replaceOpen([item("b")])
+        rows.replaceOpen([])
+        #expect(rows.row("a")?.state == .done)
+    }
+
+    /// The open read never serves `denied` or `failed`.
+    @Test func aDeniedOrFailedRowKeptByIDOutlivesOpenReads() {
+        var rows = HeldRows()
+        rows.keep(item("d", QItemState(rawValue: "denied"), updated: 10))
+        rows.keep(item("f", QItemState(rawValue: "failed"), updated: 10))
+        rows.replaceOpen([item("b")])
+        #expect(rows.holds("d"))
+        #expect(rows.holds("f"))
+    }
+
+    @Test func closedRowsAreToppedUpAndDropped() {
+        var rows = HeldRows()
+        #expect(rows.topUpSince == nil)
+        rows.topUpClosed([item("ignored", .done)])
+        #expect(!rows.holds("ignored"))
+
+        rows.replaceClosed([item("a", .done, updated: 110)], since: at(100))
+        #expect(rows.topUpSince == at(110))
+        rows.topUpClosed([item("a", .done, updated: 110, closureReason: "again"), item("b", .done, updated: 150)])
+        #expect(rows.row("a")?.closureReason == "again")
+        #expect(rows.topUpSince == at(150))
+
+        rows.dropClosed()
+        #expect(rows.all.isEmpty)
+        #expect(rows.topUpSince == nil)
+    }
+
+    /// A daemon that ignores `state` or `updatedSince` returns more than asked; only closed rows in the window count.
+    @Test func closedReadsKeepOnlyClosedRowsInTheWindow() {
+        var rows = HeldRows()
+        rows.replaceClosed(
+            [item("old", .done, updated: 50), item("open", .pending, updated: 150), item("a", .done, updated: 150)],
+            since: at(100))
+        #expect(rows.all.map(\.id) == ["a"])
+        rows.topUpClosed([item("older", .canceled, updated: 99), item("b", .handedOff, updated: 160)])
+        #expect(Set(rows.all.map(\.id)) == ["a", "b"])
+    }
+
+    @Test func topUpStartsAtTheWindowWhenNothingClosedYet() {
+        var rows = HeldRows()
+        rows.replaceClosed([], since: at(100))
+        #expect(rows.topUpSince == at(100))
+    }
+
+    @Test func missingAncestorsComeFromTheChainOfRecord() {
+        var rows = HeldRows()
+        rows.replaceOpen([item("c", after: "b", chain: ["a", "b"])])
+        #expect(rows.missingAncestors(of: "c") == ["a", "b"])
+        rows.keep(item("b", .handedOff))
+        #expect(rows.missingAncestors(of: "c") == ["a"])
+        #expect(rows.missingAncestors(of: "unknown") == [])
+    }
+
+    /// Rows created before `chainOfRecord` existed name only their direct predecessor.
+    @Test func aPredecessorOutsideTheChainCounts() {
+        var rows = HeldRows()
+        rows.replaceOpen([item("c", after: "b")])
+        #expect(rows.missingAncestors(of: "c") == ["b"])
+    }
+
+    /// A selected closed row is read once; an open one, on every refresh until a read serves it.
+    @Test func aSelectedRowIsReadUntilAClosedCopyIsKept() {
+        var rows = HeldRows()
+        #expect(rows.needsRead("a"))
+        rows.keep(item("a", .inProgress, from: "x@other"))
+        #expect(rows.needsRead("a"), "an open copy may have moved on")
+        rows.keep(item("a", .done, from: "x@other"))
+        #expect(!rows.needsRead("a"))
+        rows.keep(item("d", .denied))
+        #expect(!rows.needsRead("d"))
+
+        rows.replaceOpen([item("b")])
+        rows.replaceClosed([item("c", .done, updated: 150)], since: at(100))
+        #expect(!rows.needsRead("b"))
+        #expect(!rows.needsRead("c"))
+    }
+
+    @Test func aClosedWindowFromBeforeTodayIsStale() {
+        var rows = HeldRows()
+        #expect(!rows.closedWindowIsStale(startOfToday: at(100)), "no closed rows held")
+        rows.replaceClosed([], since: at(100))
+        #expect(!rows.closedWindowIsStale(startOfToday: at(100)))
+        #expect(rows.closedWindowIsStale(startOfToday: at(100 + 86400)))
+    }
+
+    @Test func recordedRowsSplitIntoOpenAndClosed() throws {
+        let recorded: [QItem] = try RigFixtures.decode("queue-denkeeper")
+        let open = recorded.filter { workStatus($0).isActive }
+        var rows = HeldRows()
+        rows.replaceOpen(open)
+        rows.replaceClosed(recorded.filter { !workStatus($0).isActive }, since: .distantPast)
+        #expect(Set(rows.all.map(\.id)) == Set(recorded.map(\.id)))
+        #expect(rows.all.count == recorded.count)
+    }
+}

@@ -188,6 +188,9 @@ public struct QItemState: OpenString {
     public static let handedOff = QItemState(rawValue: "handed-off")
     /// Terminal, e.g. the open packets of an aborted workflow.
     public static let canceled = QItemState(rawValue: "canceled")
+    /// Terminal: the daemon lists only pending, in-progress and blocked as active.
+    public static let denied = QItemState(rawValue: "denied")
+    public static let failed = QItemState(rawValue: "failed")
 }
 
 /// Any JSON value, for fields whose shape we only need to test for presence.

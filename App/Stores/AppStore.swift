@@ -75,8 +75,11 @@ final class AppStore {
     /// The gateway's people, for Settings › General › Act as.
     private(set) var gateway: GatewayParticipants?
     var people: [String] { gateway?.participants.filter { $0.kind == "person" }.map(\.address) ?? [] }
-    /// Open rows addressed to the person on every rig, refreshed with the rig list.
+    /// Open rows addressed to the person on every rig. Read on the poll, and on events about such a row.
     private var rowsForMe: [QItem] = []
+    private let rowsForMeRefresh = GatedRefresh()
+    /// Read for `rowsForMe`, and matched against event destinations.
+    private var addresses: [String] { Human.addresses(of: me) }
     /// Whether each view shows the inspector, remembered across switches. Terminals starts without it, since
     /// its tiles carry each seat's state.
     var inspectorByMode: [ViewMode: Bool] = [.terminals: false]
@@ -129,6 +132,7 @@ final class AppStore {
         viewMode = settings.launchView
         actions.http = client
         actions.use(cli())
+        rowsForMeRefresh.work = { [weak self] in await self?.refreshRowsForMe() }
     }
 
     /// Starts polling and the event stream for the life of the app, not of a window: banners, the menu bar item and
@@ -324,10 +328,7 @@ final class AppStore {
         while !Task.isCancelled {
             let wasUp = isUp
             await refreshHealth()
-            if isUp && (!wasUp || tick % 3 == 0) {
-                await refreshRigs()
-                await rig?.refresh()
-            }
+            if isUp && (!wasUp || tick % 3 == 0) { await refreshEverything() }
             tick += 1
             await afterPoll()
             try? await Task.sleep(for: .seconds(5))
@@ -446,32 +447,34 @@ final class AppStore {
         }
     }
 
+    /// Reads everything now, skipping the refresh gates: health, the rig list, the person's rows and the selected rig.
     func refreshNow() async {
         await refreshHealth()
         guard isUp else { return }
+        await refreshEverything()
+    }
+
+    /// The poll's reads, and `refreshNow()`'s once the daemon answers. Returns when all have finished.
+    private func refreshEverything() async {
         await refreshRigs()
+        await rowsForMeRefresh.now()
         await rig?.refresh()
     }
 
+    /// Re-reads only what the event can change (`eventReach`).
     private func handle(_ event: DaemonEvent) {
-        if let rigId = event.rigId, rigId != selectedRigID {
-            // Another rig's queue may have a new row for the person.
-            if event.type.hasPrefix("rig.") || event.type.hasPrefix("queue.") { scheduleRigsRefresh() }
-            return
-        }
-        switch event.type.split(separator: ".").first ?? "" {
-        case "snapshot", "watchdog":
-            return
-        case "rig":
-            scheduleRigsRefresh()
-            rig?.scheduleRefresh()
-        default:
-            // seat.*, agent.*, node.* and queue.* change what the graph shows.
-            rig?.scheduleRefresh()
-            // A row answered here may also be listed for the person; refresh so it doesn't come back elsewhere.
-            if event.type.hasPrefix("queue.") { scheduleRigsRefresh() }
-            if event.type == "seat.activity_changed" { rig?.terminals.poke() }
-        }
+        var place = EventPlace(type: event.type, payload: event.data)
+        place.rigId = place.rigId ?? event.rigId
+        let rig = rig
+        let mine = Set(rowsForMe.map(\.id))
+        let context = EventContext(
+            rigID: rig?.rigID, rigName: rig?.rigName, seatIDs: Set(rig?.graph?.seats.map(\.id) ?? []),
+            holdsRow: { rig?.item($0) != nil }, addresses: Set(addresses), holdsRowForMe: mine.contains)
+        let reach = eventReach(place, in: context)
+        if reach.contains(.refreshRig) { rig?.scheduleRefresh() }
+        if reach.contains(.pokeTerminals) { rig?.terminals.poke() }
+        if reach.contains(.refreshRigList) { scheduleRigsRefresh() }
+        if reach.contains(.refreshRowsForMe) { rowsForMeRefresh.event() }
     }
 
     private func scheduleRigsRefresh() {
@@ -505,10 +508,10 @@ final class AppStore {
         }
     }
 
+    /// The rig list and who the person is. Rows for the person are read separately, behind their own gate.
     private func refreshRigs() async {
         guard let rigs = try? await client.rigs() else { return }
         await refreshIdentity()
-        await refreshRowsForMe()
         let old = self.rigs
         self.rigs = rigs.filter { !$0.isArchived }
         noteLifecycleChanges(from: old)
@@ -522,9 +525,9 @@ final class AppStore {
         }
     }
 
+    /// Run only by `rowsForMeRefresh`, so two reads never overlap.
     private func refreshRowsForMe() async {
-        // The registered person, plus the unnamed one that older replies still address.
-        let addresses = ([me] + Human.unnamed).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+        let addresses = addresses
         let client = client
         let found = await withTaskGroup(of: [QItem]?.self) { group in
             for address in addresses { group.addTask { try? await client.openRows(to: address) } }
@@ -638,11 +641,59 @@ final class AppStore {
                         store.terminals.showHistory(seat)
                     }
                 }
-            } else if store.item(parts[2]) != nil {
+            } else if !parts[2].contains("@") {
+                // Selected even when not held (closed, or another rig's): the rig store reads a selected row by id.
                 selection.select(qitem: parts[2])
             }
         }
     #endif
+}
+
+/// Runs `work` one at a time, as a `RefreshGate` allows: events wait for the gate, `now()` skips its gap.
+@MainActor
+private final class GatedRefresh {
+    var work: () async -> Void = {}
+    private var gate = RefreshGate()
+    private var driver: Task<Void, Never>?
+    /// The driver's sleep until the gate opens; cancelled when a new request may move the start earlier.
+    private var wait: Task<Void, Never>?
+    /// Callers of `now()` waiting for a run that starts after their request.
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func event() { ask(.event) }
+
+    /// Returns once a run that started after this call has finished.
+    func now() async {
+        await withCheckedContinuation { waiter in
+            waiters.append(waiter)
+            ask(.now)
+        }
+    }
+
+    private func ask(_ request: RefreshGate.Request) {
+        gate.request(request, at: .now)
+        wait?.cancel()
+        if driver == nil { driver = Task { await drive() } }
+    }
+
+    private func drive() async {
+        while let due = gate.nextStart {
+            if due > .now {
+                let sleep = Task { _ = try? await Task.sleep(until: due, clock: .continuous) }
+                wait = sleep
+                await sleep.value
+                wait = nil
+                continue
+            }
+            guard gate.start(at: .now) else { continue }
+            let served = waiters
+            waiters = []
+            await work()
+            gate.finish()
+            served.forEach { $0.resume() }
+        }
+        driver = nil
+    }
 }
 
 extension DaemonError {

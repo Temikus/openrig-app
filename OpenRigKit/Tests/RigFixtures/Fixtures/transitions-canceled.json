@@ -1,0 +1,58 @@
+[
+  {
+    "transitionId": 430,
+    "qitemId": "qitem-20261118072222-c5da0bdf",
+    "ts": "2026-11-18T07:22:22.667Z",
+    "state": "pending",
+    "transitionNote": "created",
+    "actorSession": "operator-human@kernel",
+    "closureReason": null,
+    "closureTarget": null,
+    "identityProvenance": null,
+    "identityPrincipal": null,
+    "ownerNotificationKind": null,
+    "ownerNotificationLevel": "RECORD"
+  },
+  {
+    "transitionId": 442,
+    "qitemId": "qitem-20261118072222-c5da0bdf",
+    "ts": "2026-11-18T07:30:41.089Z",
+    "state": "pending",
+    "transitionNote": "Placeholder note.",
+    "actorSession": "watchdog@system",
+    "closureReason": null,
+    "closureTarget": null,
+    "identityProvenance": null,
+    "identityPrincipal": null,
+    "ownerNotificationKind": null,
+    "ownerNotificationLevel": "RECORD"
+  },
+  {
+    "transitionId": 443,
+    "qitemId": "qitem-20261118072222-c5da0bdf",
+    "ts": "2026-11-18T07:32:41.877Z",
+    "state": "pending",
+    "transitionNote": "Placeholder note.",
+    "actorSession": "watchdog@system",
+    "closureReason": null,
+    "closureTarget": null,
+    "identityProvenance": null,
+    "identityPrincipal": null,
+    "ownerNotificationKind": null,
+    "ownerNotificationLevel": "RECORD"
+  },
+  {
+    "transitionId": 444,
+    "qitemId": "qitem-20261118072222-c5da0bdf",
+    "ts": "2026-11-18T07:33:59.615Z",
+    "state": "canceled",
+    "transitionNote": "Placeholder note.",
+    "actorSession": "operator-human@kernel",
+    "closureReason": null,
+    "closureTarget": null,
+    "identityProvenance": "transport:v1",
+    "identityPrincipal": null,
+    "ownerNotificationKind": null,
+    "ownerNotificationLevel": "RECORD"
+  }
+]

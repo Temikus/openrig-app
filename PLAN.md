@@ -61,7 +61,7 @@ One local SwiftPM package, `OpenRigKit`, plus a thin app target.
 - **Reads go direct to HTTP** with `URLSession` and `JSONDecoder`.
   - Spawning the Node CLI per read is too slow for a live UI.
   - The CLI's own `--json` output is these same routes.
-- **Push comes from `/api/events`.** Events are invalidation signals, not state: on `queue.*` refetch the queue list, on `seat.activity_changed` or `agent.activity` refetch the graph. Debounce at 150 ms.
+- **Push comes from `/api/events`.** Events are invalidation signals, not state: on `queue.*` refetch the queue list, on `seat.activity_changed` or `agent.activity` refetch the graph. A refresh starts 250 ms after the first event and at most once every 2 s (see "Refresh load").
 - **A 15-second safety poll** runs alongside, plus `/healthz` every 5 seconds.
 - **All mutations shell out to `rig … --json`.**
   - The CLI is the documented contract.
@@ -511,3 +511,13 @@ Plan: `.claude/plans/row-images/plan.md`. A row's images are thumbnails in the i
   - q-f0af through a seat's launch folder. That folder is in iCloud Drive, and a privacy prompt for a new bundle id would take the person's focus. The unit test covers its real `evidenceRef` and body.
   - Whether macOS asks for access to iCloud Drive, Desktop, Documents or Downloads the first time.
   - A real click, Space and the arrow keys, and Tab with Full Keyboard Access.
+
+### Refresh load, 2026-11-24
+
+Plan: `.claude/plans/refresh-load/plan.md`. The app asked the daemon for far more than it showed: every refresh read the rig's newest 500 rows, closed ones included, and every `queue.*` event re-read the rig list, identity and rows for the person.
+- **Events without `rigId` are placed by what they name** (`EventReach`): the sessions (`<seat>@<rig>`), then seat ids, then row ids the store holds. `queue.updated` names only its row and actor. An event that names nothing refreshes the selected rig, as before. The daemon needs no change.
+- **The gate** (`RefreshGate`): a refresh starts 250 ms after the first event, then no sooner than 2 s after the last one started, and never two at once. The person's own actions (answering, Refresh, Retry, switching rig) and the 15 s poll skip it.
+- **Open rows on refresh, closed rows on demand.** Today's closed rows are read while the board's Today scope or ⌘K shows, and topped up on each refresh while held. A selected closed row and its chain are read by id. ⌘K lists open rows plus today's closed ones.
+- **`OPENRIG_DEBUG_REQUESTS=<file>`** (DEBUG) writes one line per daemon request: time, method, path and query, status, bytes, ms. **`OPENRIG_DEBUG_GOTO=1`** opens ⌘K after launch.
+- **Measured**, before (`2483d23`) and after side by side, same view, 2.6 min, daemon near idle (1 event): requests equal at about 72 a minute (both just poll); bytes 18.5 MB → 0.9 MB; the rig's `queue/list` 17.8 MB → 198 KB.
+- **Not measured:** the drop in requests under event load. The only evidence is task 4's 126 s log on a busy rig: the rig list and participants read only by the 15 s poll, and rows for the person by the poll plus 2 event reads.

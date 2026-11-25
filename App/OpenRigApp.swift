@@ -1,3 +1,4 @@
+import RigClient
 import SwiftUI
 
 @main
@@ -10,6 +11,7 @@ struct OpenRigApp: App {
     @State private var store: AppStore
 
     init() {
+        RequestLog.installAtLaunch()
         let store = AppStore()
         store.start()
         _store = State(initialValue: store)

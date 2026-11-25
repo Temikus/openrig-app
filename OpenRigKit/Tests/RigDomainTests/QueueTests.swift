@@ -54,6 +54,29 @@ func item(
         #expect(workStatus(item("y", QItemState(rawValue: "parked"))) == .unknown("parked"))
         #expect(workStatus(item("y", QItemState(rawValue: "parked"))).isActive, "unknown states stay visible")
     }
+
+    /// The daemon's own active set is pending, in-progress and blocked; `denied` and `failed` are terminal.
+    @Test func deniedAndFailedAreClosed() {
+        #expect(workStatus(item("d", .denied)) == .closed(reason: "denied"))
+        #expect(workStatus(item("f", .failed, closureReason: "no-follow-on")) == .closed(reason: "no-follow-on"))
+        var asked = item("d", .denied, updated: 10)
+        asked.asksHuman = true
+        let rows = [
+            asked,
+            item("f", .failed, from: "a@r", to: "b@r", updated: 10),
+            item("live", .pending, from: "a@r", to: "b@r", updated: 10),
+        ]
+        #expect(needsYou(rows).isEmpty)
+        #expect(seatQueue(for: "b@r", in: rows).owned.map(\.id) == ["live"])
+        #expect(!isOverdue(item("f", .failed, closeBy: .distantPast), now: .now))
+
+        let now = Date(timeIntervalSince1970: 10)
+        let active = board(rows, filter: BoardFilter(scope: .active), now: now)
+        #expect(active.all.map(\.id) == ["live"])
+        let today = board(rows, filter: BoardFilter(scope: .today), now: now)
+        #expect(Set(today.closed.map(\.id)) == ["d", "f"])
+        #expect(today.inProgress.isEmpty)
+    }
 }
 
 @Suite struct ChainTests {

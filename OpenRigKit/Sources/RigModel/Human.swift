@@ -13,6 +13,12 @@ public enum Human {
     /// The unnamed person's addresses: the daemon accepts `human@kernel` for `human@host`, and older rows use either.
     public static let unnamed = [session, "human@kernel"]
 
+    /// Where rows for the person arrive: who the app acts as, then the unnamed person's addresses. The daemon keeps a
+    /// destination as the sender wrote it, so each is read separately.
+    public static func addresses(of me: String) -> [String] {
+        [me] + unnamed.filter { $0 != me }
+    }
+
     public static func isYou(_ session: String) -> Bool {
         unnamed.contains(session)
     }
