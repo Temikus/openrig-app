@@ -340,17 +340,30 @@ struct NewRigReview: View {
     let model: NewRigStore
     @State private var showsWarnings = false
 
+    /// The width Review has. The layout follows it, not the text's own width: a staged path is one long word, and
+    /// ViewThatFits measured it unwrapped, so the spec never went beside the checks.
+    @State private var width: CGFloat = 0
+    static let sideBySide: CGFloat = 340 + 24 + 320
+
     var body: some View {
-        // Side by side when there's room, as in the mock; else the spec goes under the checks.
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 24) {
-                summary.frame(minWidth: 340, maxWidth: .infinity)
-                spec(height: 420).frame(width: 320)
+        Group {
+            if width >= Self.sideBySide {
+                HStack(alignment: .top, spacing: 24) {
+                    summary.frame(maxWidth: .infinity, alignment: .leading)
+                    spec(height: 420).frame(width: 320)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 20) {
+                    summary
+                    spec(height: 260)
+                }
             }
-            VStack(alignment: .leading, spacing: 20) {
-                summary
-                spec(height: 260)
-            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width.rounded()
+        } action: {
+            width = $0
         }
     }
 
@@ -363,7 +376,9 @@ struct NewRigReview: View {
                         + "Each seat starts in its own terminal."
                 )
                 .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(3)
+                .truncationMode(.middle)
+                .help(model.folder?.path(percentEncoded: false) ?? "")
             }
             checks
             VStack(alignment: .leading, spacing: 6) {
