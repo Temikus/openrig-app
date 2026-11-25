@@ -13,7 +13,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-collections.git", exact: "1.7.6"),
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.99.2"),
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.99.4"),
     ],
     targets: [
         .target(name: "RigModel"),
