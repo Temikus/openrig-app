@@ -219,13 +219,18 @@ final class NewRigStore {
 
     // MARK: Review
 
-    /// Writes the spec folder and runs preflight on it: what Launch would add is what was checked.
+    /// Writes the spec and runs preflight on it: what Launch runs is what was checked. Before the first save that is
+    /// a staged folder; after one, the saved folder itself (`SpecLaunch`).
     func review() async {
         guard let draft, let template = picked else { return }
         preflight = nil
         do {
             yaml = try draft.yaml()
-            staged = try stage(yaml, from: template)
+            if let savedSpec {
+                try yaml.write(to: savedSpec.appending(path: "rig.yaml"), atomically: true, encoding: .utf8)
+            } else {
+                staged = try stage(yaml, from: template)
+            }
         } catch {
             preflight = Preflight(errors: ["Couldn't write the spec: \(error.localizedDescription)"])
             return
@@ -234,12 +239,12 @@ final class NewRigStore {
         if savedSpec == nil, FileManager.default.fileExists(atPath: destination.path) {
             result.errors.append("\(destination.path) already exists. Pick another rig name, or remove that spec.")
         }
-        guard let cli = actions.cli, let staged else {
+        guard let cli = actions.cli, let plan = launchPlan else {
             result.errors.append("rig not found. Pick it in Settings › Connection.")
             preflight = result
             return
         }
-        let spec = staged.appending(path: "rig.yaml").path
+        let spec = plan.checked + "/rig.yaml"
         if let out = try? await cli.run(arguments: ["spec", "preflight", spec, "--json"]),
             let report = try? JSONDecoder().decode(PreflightReport.self, from: Data(out.stdout.utf8))
         {
@@ -249,6 +254,20 @@ final class NewRigStore {
             result.errors.append("rig spec preflight didn't answer.")
         }
         preflight = result
+    }
+
+    private var launchPlan: SpecLaunch? {
+        guard let staged = staged ?? savedSpec else { return nil }
+        return SpecLaunch(staged: staged.path, saved: savedSpec?.path, library: destination.path)
+    }
+
+    /// After a save, the spec's name and folder are fixed: Start can't change the name or the template.
+    var isSaved: Bool { savedSpec != nil }
+
+    /// Removes the staged folder, for Cancel or once the rig is launched.
+    func discardStaging() {
+        if let staged { try? FileManager.default.removeItem(at: staged.deletingLastPathComponent()) }
+        staged = nil
     }
 
     private struct PreflightReport: Decodable {
@@ -279,31 +298,33 @@ final class NewRigStore {
         return folder
     }
 
-    /// The two commands Launch runs, with full paths: a quoted "~" wouldn't expand if pasted into a shell.
-    var addCommand: String { RigAction.addSpec(folder: (staged ?? destination).path).userCommand }
-    var upCommand: String {
-        RigAction.launchSpec(path: destination.appending(path: "rig.yaml").path, cwd: (folder ?? destination).path)
-            .userCommand
+    /// The commands Launch runs, with full paths: a quoted "~" wouldn't expand if pasted into a shell.
+    var commands: [String] {
+        let plan = launchPlan ?? SpecLaunch(staged: destination.path, library: destination.path)
+        return plan.steps(cwd: (folder ?? destination).path).map(\.userCommand)
     }
 
     var isLaunching: Bool { actions.isRunning(Self.actionKey) }
 
-    /// `rig specs add`, then `rig up` on the saved spec. True once the rig is starting.
+    /// `rig specs add` (first time only), then `rig up` on the saved spec. True once the rig is starting.
     func launch() async -> Bool {
-        guard let staged, let folder, preflight?.ready == true else { return false }
-        if savedSpec == nil {
+        guard let folder, preflight?.ready == true, var plan = launchPlan else { return false }
+        if plan.saved == nil {
             guard
                 let added = await actions.result(
-                    of: .addSpec(folder: staged.path), key: Self.actionKey, success: "Saved \(name) to your library")
+                    of: .addSpec(folder: plan.staged), key: Self.actionKey, success: "Saved \(name) to your library")
             else { return false }
             struct Added: Decodable { var path: String? }
             let path = (try? JSONDecoder().decode(Added.self, from: Data(added.stdout.utf8)))?.path
             savedSpec = path.map { URL(filePath: $0) } ?? destination
+            discardStaging()
+            plan.saved = savedSpec?.path
         }
-        guard let savedSpec else { return false }
-        let up = RigAction.launchSpec(path: savedSpec.appending(path: "rig.yaml").path, cwd: folder.path)
-        guard await actions.perform(up, key: Self.actionKey, success: "Starting \(name)'s seats") else { return false }
-        try? FileManager.default.removeItem(at: staged.deletingLastPathComponent())
+        for step in plan.steps(cwd: folder.path) {
+            guard await actions.perform(step, key: Self.actionKey, success: "Starting \(name)'s seats") else {
+                return false
+            }
+        }
         await launched(name)
         return true
     }

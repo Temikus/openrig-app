@@ -25,6 +25,7 @@ struct NewRigSheet: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { footer }
         .frame(minWidth: 860, idealWidth: 960, minHeight: 560, idealHeight: 640)
         .task { await model.load() }
+        .onDisappear { model.discardStaging() }
     }
 
     private var steps: some View {
@@ -146,8 +147,15 @@ struct NewRigStart: View {
                     .labelsHidden()
                     .textFieldStyle(.roundedBorder)
                     .accessibilityLabel("Rig name")
+                    .disabled(model.isSaved)
                 }
                 .frame(width: 220)
+            }
+            if model.isSaved {
+                Text(
+                    "\(model.name) is saved to your library, so its name and template are fixed. Seats can still change."
+                )
+                .font(.caption).foregroundStyle(.secondary)
             }
             Text("Templates are the rig specs OpenRig ships, plus ones you saved.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -162,6 +170,7 @@ struct NewRigStart: View {
                             TemplateCard(template: template, picked: template.id == model.pickedID) {
                                 model.pick(template)
                             }
+                            .disabled(model.isSaved && template.id != model.pickedID)
                         }
                     }
                 }
@@ -330,14 +339,18 @@ struct NewRigReview: View {
                 checks
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Runs").font(.caption).foregroundStyle(.secondary)
-                    Text(model.addCommand + "\n" + model.upCommand)
+                    Text(model.commands.joined(separator: "\n"))
                         .font(.callout.monospaced())
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(8)
                         .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 6))
-                    Text("The first saves the spec to your library; the second starts the rig from it.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(
+                        model.isSaved
+                            ? "The spec is already in your library; Launch starts the rig from it, with these edits."
+                            : "The first saves the spec to your library; the second starts the rig from it."
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
             }

@@ -237,3 +237,28 @@ func shellQuote(_ s: String) -> String {
         }
     }
 #endif
+
+/// Where New Rig writes the spec it preflights, and the commands that launch it. Before the first save that is a
+/// staged folder, which `rig specs add` copies into the library unchanged. After a save (when `rig up` then failed)
+/// it is the saved folder itself, so a retry launches the edits that were just checked, not the earlier ones.
+public struct SpecLaunch: Sendable, Equatable {
+    public var staged: String
+    /// The library folder `rig specs add` made, once it has.
+    public var saved: String?
+    /// Where `rig specs add` will put it: `~/.openrig/specs/<name>`.
+    public var library: String
+
+    public init(staged: String, saved: String? = nil, library: String) {
+        self.staged = staged
+        self.saved = saved
+        self.library = library
+    }
+
+    /// The folder whose rig.yaml preflight checks and Launch runs.
+    public var checked: String { saved ?? staged }
+
+    public func steps(cwd: String) -> [RigAction] {
+        let up = RigAction.launchSpec(path: (saved ?? library) + "/rig.yaml", cwd: cwd)
+        return saved == nil ? [.addSpec(folder: staged), up] : [up]
+    }
+}

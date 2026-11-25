@@ -111,6 +111,19 @@ import Testing
         #expect(RigAction.rigUp(rig: "kernel").userCommand == "rig up kernel --existing")
     }
 
+    /// A retry after the save launches the folder preflight just checked (review of 049607d).
+    @Test func aRetryAfterTheSaveLaunchesWhatWasChecked() {
+        var launch = SpecLaunch(staged: "/tmp/x/pay", library: "/h/.openrig/specs/pay")
+        #expect(launch.checked == "/tmp/x/pay")
+        #expect(
+            launch.steps(cwd: "/code") == [
+                .addSpec(folder: "/tmp/x/pay"), .launchSpec(path: "/h/.openrig/specs/pay/rig.yaml", cwd: "/code"),
+            ])
+        launch.saved = "/h/.openrig/specs/pay"
+        #expect(launch.checked == "/h/.openrig/specs/pay")
+        #expect(launch.steps(cwd: "/code") == [.launchSpec(path: "/h/.openrig/specs/pay/rig.yaml", cwd: "/code")])
+    }
+
     @Test func newRigFromASpec() {
         #expect(RigAction.addSpec(folder: "/tmp/x/pay").arguments == ["specs", "add", "/tmp/x/pay", "--json"])
         let up = RigAction.launchSpec(path: "/h/.openrig/specs/pay/rig.yaml", cwd: "/code/my app")
