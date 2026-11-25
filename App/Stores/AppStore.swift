@@ -533,7 +533,7 @@ final class AppStore {
             #if DEBUG
                 await openDebugTarget()
                 Task { await AccessibilityDump.run() }
-                Task { await ResponderLog.run { [weak self] in self?.rig?.terminals.typing ?? false } }
+                Task { await ResponderLog.run { self.rig?.terminals.typing ?? false } }
             #endif
         }
     }
