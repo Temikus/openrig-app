@@ -563,7 +563,7 @@ final class AppStore {
     /// counts its rows waiting on the person plus the daemon's count of seats needing attention (prompts, which the
     /// app only polls for the selected rig).
     func waiting(in summary: RigSummary) -> Waiting {
-        if summary.id == selectedRigID, let rig { return RigDomain.waiting(rig.needsYou, me: me) }
+        if summary.id == selectedRigID, let rig { return RigDomain.waiting(rig.needsYou, me: me, rig: summary.name) }
         // A row to the person counts in its sender's rig; a held row in its owner's.
         let rows = rowsForMe.filter { rigName(ofSession: askedBy($0, me: me)) == summary.name }
         return RigDomain.waiting(rows: rows, me: me, attention: summary.attentionCount)

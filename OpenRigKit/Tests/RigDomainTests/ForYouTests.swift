@@ -59,6 +59,11 @@ import Testing
         let held = item("held", .blocked, from: "lead@kernel", to: "dev@kernel", blockedOn: "external:pr")
         let onASeat = item("on-a-seat", .blocked, to: "dev@kernel", blockedOn: "dev-qa@kernel")
         #expect(waiting(rows: [held, onASeat, ask], me: me, attention: 0) == Waiting(asks: 2))
+        // Sent from denkeeper, held on kernel's seat: denkeeper's queue lists it too, but only kernel counts it.
+        let sentHere = item("sent-here", .blocked, from: "lead@denkeeper", to: "dev@kernel", blockedOn: "external:pr")
+        let mine = item("mine", .pending, from: "lead@denkeeper", to: me)
+        #expect(waiting([.qitem(sentHere), .qitem(mine)], me: me, rig: "denkeeper") == Waiting(asks: 1))
+        #expect(waiting([.qitem(sentHere), .qitem(mine)], me: me) == Waiting(asks: 2), "without a rig, every row")
         #expect(waiting([.qitem(ask), .qitem(fyi)], me: me) == Waiting(asks: 1, fyis: 1))
         #expect(Waiting().isEmpty && Waiting().summary.isEmpty)
     }
