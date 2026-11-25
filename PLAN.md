@@ -521,3 +521,92 @@ Plan: `.claude/plans/refresh-load/plan.md`. The app asked the daemon for far mor
 - **`OPENRIG_DEBUG_REQUESTS=<file>`** (DEBUG) writes one line per daemon request: time, method, path and query, status, bytes, ms. **`OPENRIG_DEBUG_GOTO=1`** opens ⌘K after launch.
 - **Measured**, before (`2483d23`) and after side by side, same view, 2.6 min, daemon near idle (1 event): requests equal at about 72 a minute (both just poll); bytes 18.5 MB → 0.9 MB; the rig's `queue/list` 17.8 MB → 198 KB.
 - **Not measured:** the drop in requests under event load. The only evidence is task 4's 126 s log on a busy rig: the rig list and participants read only by the 15 s poll, and rows for the person by the poll plus 2 event reads.
+
+### iPhone remote, 2026-11-24
+
+An iPhone app (`Remote/`, `OpenRigRemote`) that pairs with the Mac app from a QR code. At home on the same Wi-Fi it shows what waits on the person and lets them act on it. How to install and pair it is in the README. The boards are in `design/ui/11-ios-remote/`.
+
+**A daemon on Wi-Fi is open to the whole network.** This is from rig 0.7.21's shipped source and docs. No route was called from another device.
+- `rig daemon start --host <Wi-Fi address>` refuses to start without `OPENRIG_AUTH_BEARER_TOKEN`. That operator token, and the terminal token, guard only:
+  - Mission Control's writes;
+  - hosts and rig-mode writes;
+  - issuing and revoking app credentials, `/api/apps/v1/credentials` (operator token);
+  - starting seats, `/api/startup` (terminal token);
+  - on a Wi-Fi bind, `/api/transport`, `/api/compaction` and `/api/terminal`.
+- Every other route has no token check:
+  - `/api/queue`, `/api/transcripts`, `/api/ps`, `/api/rigs`;
+  - `/api/up`, `/api/down`, `/api/seat`, `/api/files`, `/api/config`.
+- So anyone on the Wi-Fi could read every seat's transcript, and queue a task to a seat that runs with automatic permissions.
+- `X-OpenRig-Session` names the caller but isn't authentication. The traffic is plain HTTP.
+- A `--host` bind serves only that address, so loopback goes. With the token set, every seat's `rig send` needs it too.
+- **So the phone goes through a relay in the Mac app.** This was the person's answer A (2026-11-24 01:37Z).
+  - The daemon stays on loopback and isn't restarted.
+  - No operator token exists to leak, and other devices on the Wi-Fi reach nothing.
+  - The cost: the Mac app must be running, and a sleeping Mac answers nothing.
+
+**The relay.** `RelayServer` is in RigClient; `RelayStore` starts it in the Mac app.
+- **The link:** Network framework TLS 1.2 with `TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256` (0xCCAC). The pre-shared key authenticates; an ephemeral ECDH key gives forward secrecy. TLS 1.3 with an external PSK fails in Network framework (-9858 on macOS 27).
+- **The keys:** one PSK per paired phone, under its credential id. The key is HMAC-SHA256(pairing secret, "openrig relay psk v1"). The 256-bit secret travels only in the QR code or link, never over the network.
+- **Frames:** a 4-byte big-endian length, then a JSON `RelayRequest` or `RelayResponse`. `more` marks a streamed frame. A frame over 8 MiB is refused.
+- **An allowlist,** checked on decoded path segments:
+  - The seven app-contract routes go to the daemon, on a path rebuilt from the checked segments.
+  - The Mac-side calls under `/relay/v1/` go to `MacRelayDesk`, which acts through `ActionStore` as the Mac's person. They are: Needs you, a prompt, allow once, decline, reply, got it, done, message, task, rigs, and a rig's seats.
+  - Anything else gets 403.
+- **Acting calls refuse:**
+  - while any phone paired on this daemon answers as someone other than the Mac's person (`actor_mismatch`). The relay can't tell which phone is calling.
+  - a row that isn't waiting on the person (`not_for_you`).
+  - a prompt whose command or `observedAt` changed (`prompt_changed`, `prompt_gone`).
+- **When it listens:** port 7434, or a free port if that one is taken; the code carries the port. It listens only while "Let paired phones connect" is on and a phone is paired or a code is showing.
+- **Where it binds:** a Debug build binds 127.0.0.1 unless `OPENRIG_RELAY_WIFI=1`, because seats run debug copies, and a Wi-Fi listener can put a firewall prompt on the person's screen. Release binds all interfaces.
+- **Unpair** revokes the phone's credential and drops its key. The relay then restarts, which cuts the phone's connections.
+- **On the phone:**
+  - The app contract goes through `RelayTransport`, one channel per request.
+  - The Mac-side calls go through `RelayDeskClient`: one call at a time on one channel, 15 s per call.
+  - A call that never went out is tried once more. A read whose reply was lost is asked again. An acting call whose reply was lost isn't. The exception is Allow once and Decline, which are resent once, because the Mac's `observedAt` check stops a second answer.
+
+**The person's picks**
+- **Reach:** the same Wi-Fi now. The pairing code lists reaches by kind (`loopback`, `lan`, `tailnet`), so Tailscale is a kind to add, not a redesign.
+- **Scope C:** asks, permission prompts, messages and tasks. FYIs, asks without options and held rows come along, so an empty list never hides something waiting.
+- **Notifications:** not in the first version.
+- **Boards:**
+  - 1B, a tab bar.
+  - 2, every question on one page with one Send. Steps wait until the phone can show images.
+  - 3B, an explainer before the scanner, with Paste.
+  - 4A, a Phone tab in the Mac's Settings.
+  - 5A, a prompt on its own screen. Allow once is off until the end of a long command has been shown; Decline takes an optional reason; the buttons go if the prompt changes.
+  - 6B, a Rigs tab: rigs first, then a rig's seats.
+- "Always allow" stays on the Mac.
+
+**DEBUG launch hooks**
+- **Phone** (pass them to `simctl launch` with the `SIMCTL_CHILD_` prefix):
+  - `OPENRIG_DEBUG_PAIR_LINK=<link>` pairs at launch.
+  - `OPENRIG_DEBUG_OPEN_LINK=<link>` handles a link as opening it does, and waits for the confirmation.
+  - `OPENRIG_DEBUG_RELAY_HOST=<host>` sends every `lan` reach to that host, still through the relay. Use `127.0.0.1` to reach a Debug Mac copy.
+  - `OPENRIG_DEBUG_STATE=unreachable|local-network-denied|unpaired|unsupported` replaces the status after each check.
+  - `OPENRIG_DEBUG_SCREEN=scanner|settings|rigs`.
+  - `OPENRIG_DEBUG_OPEN_ASK=<id>` and `OPENRIG_DEBUG_DRAFT=reply:<text>` or `picks:<question>=<option>,…`.
+  - `OPENRIG_DEBUG_RIG=<rig>`, `OPENRIG_DEBUG_SEAT=<session>`, `OPENRIG_DEBUG_COMPOSE=message|task` and `OPENRIG_DEBUG_TEXT=<text>` open the Rigs tab on a seat, a sheet and its text. `OPENRIG_DEBUG_SEAT_PROMPT=1` opens that seat's prompt screen.
+  - `OPENRIG_DEBUG_OPEN_PROMPT=<session>` and `OPENRIG_DEBUG_OPEN_ROW=<row id>` open a prompt or a row from Needs you.
+  - On the opened prompt: `OPENRIG_DEBUG_PROMPT_ACTION=allow|decline|decline:<text>`, `OPENRIG_DEBUG_DECLINE_TEXT=<text>`, `OPENRIG_DEBUG_PROMPT_SCROLL=end`, and `OPENRIG_DEBUG_PROMPT_OUTCOME=lostReply|probablyAnswered|answeredThenNewPrompt|unreachable|cannotAllowOnce`, which shows that outcome without sending. `OPENRIG_DEBUG_ROW_ACTION=reply` opens the opened row's Reply sheet.
+  - `OPENRIG_DEBUG_SEND=1` sends the opened ask's draft or the opened sheet. Use it against a fake daemon or relay only.
+  - `OPENRIG_DEBUG_CONFIRM_PAIR_AGAIN=1` and `OPENRIG_DEBUG_UNSENT=<n>` (made-up unconfirmed answers) open the pairing confirmations.
+- **Mac:**
+  - `OPENRIG_DEBUG_PHONE=pairing|paired` opens Settings › Phone in a made-up state. It uses a fake token, and nothing is issued, revoked or saved.
+  - `OPENRIG_RELAY_WIFI=1` binds a Debug build's relay to the Wi-Fi. Launch with `open --env`, since `just run` doesn't pass it through.
+
+**Checked, and not**
+- **Checked by seats:**
+  - Every screen in a headless simulator, against loopback relays with made-up desks or a fake daemon.
+  - The link, its refusals and the client's retries, in kit tests against real `RelayServer`s on 127.0.0.1.
+- **Not checked by a seat:**
+  - A real phone: signing, install, the camera, the Local Network prompt, real Wi-Fi.
+  - A Mac that sleeps or changes address.
+  - A message, task or answer reaching a real seat.
+  - Whether the link holds against someone listening. The tests show the secret is required; they aren't a security review.
+
+**Later**
+- **Time in state** ("4m"), a seat's model, and its current row's id and age. The relay's seat list doesn't carry them.
+- **Per-rig counts** (working, asks) on the phone's rig list. A rig row shows its seat count and a badge of what Needs you lists for it; the badges add up to Needs you's.
+- **A closed event stream:** the relay notices that the phone closed one only on its next write.
+- **A clean close while idle:** if the Mac closes a connection cleanly while it's idle, the phone's next call reads as a lost reply. Reads retry; actions aren't resent.
+- Tailscale reach, and notifications.

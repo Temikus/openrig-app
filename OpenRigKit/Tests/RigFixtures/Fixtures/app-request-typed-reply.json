@@ -1,0 +1,48 @@
+{
+  "requestId": "qitem-20261123104500-b3c8",
+  "asker": "orch-lead@example",
+  "askedPerson": "human-example@external",
+  "actor": { "address": "human-example@external", "assurance": "app-attributed", "appId": "openrig-remote" },
+  "state": "pending",
+  "decisionRevision": "dr1-5f60718293a4b5c6d7e8f90a",
+  "episodeKey": null,
+  "body": "Body text.",
+  "humanDetail": null,
+  "questions": [
+    {
+      "id": "reach",
+      "question": "Question one?",
+      "options": [
+        { "id": "tailscale", "label": "Option A" },
+        { "id": "wifi", "label": "Option B" }
+      ]
+    },
+    {
+      "id": "notify",
+      "question": "Question two?",
+      "options": [
+        { "id": "later", "label": "Option A" },
+        { "id": "push", "label": "Option B" }
+      ]
+    },
+    {
+      "id": "simulator",
+      "question": "Question three?",
+      "options": [
+        { "id": "yes", "label": "Option A" },
+        { "id": "no", "label": "Option B" }
+      ]
+    }
+  ],
+  "humanAnswers": {
+    "reach": "tailscale",
+    "notify": { "kind": "typed-reply", "text": "Reply text.", "placement": "first-unanswered", "unansweredCount": 1 }
+  },
+  "answer": { "job": "human-answer", "forms": ["option", "typed-reply"] },
+  "links": {
+    "self": "/api/apps/v1/requests/qitem-20261123104500-b3c8?actor=human-example%40external",
+    "result": "/api/apps/v1/requests/qitem-20261123104500-b3c8/result?actor=human-example%40external"
+  },
+  "readAt": "2026-11-23T10:46:00.000Z",
+  "cursor": "ZXBvY2g6MTMx"
+}

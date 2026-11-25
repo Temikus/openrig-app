@@ -26,3 +26,5 @@ jobs:
       # SwiftTerm's build-info plugin needs approval; a runner can't click "Trust & Enable" in Xcode.
       # Locally it is trusted once in Xcode instead.
       - run: just build -skipPackagePluginValidation
+      # Compile only: CI does not run the iOS app. Same plugin flag, as the project includes SwiftTerm.
+      - run: just build-ios -skipPackagePluginValidation

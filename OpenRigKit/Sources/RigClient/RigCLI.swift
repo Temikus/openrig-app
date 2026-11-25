@@ -116,110 +116,116 @@ func shellQuote(_ s: String) -> String {
     return "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
 }
 
-public struct CLIResult: Sendable, Equatable {
-    public var status: Int32
-    public var stdout: String
-    public var stderr: String
-    public var succeeded: Bool { status == 0 }
-}
-
-/// Runs the `rig` CLI as the app's seat.
-public struct RigCLI: Sendable {
-    public var executable: URL
-    /// Session stamped as the actor on every write, via `OPENRIG_SESSION_NAME`.
-    public var actor: String
-    /// The daemon the app reads from, so the CLI writes to the same one. Nil lets the CLI find its own.
-    public var daemonURL: URL?
-    /// Operator bearer for gated writes; the CLI reads it from `OPENRIG_AUTH_BEARER_TOKEN`.
-    public var bearer: String?
-    /// Prepended to PATH: the folder of a node the person picked (nvm, asdf, mise).
-    public var extraPath: String?
-    /// The person's shell PATH (`ShellPath`), after `extraPath`, so `rig` finds the node their terminal uses.
-    public var shellPath: [String]
-
-    public init(
-        executable: URL, actor: String, daemonURL: URL? = nil, bearer: String? = nil, extraPath: String? = nil,
-        shellPath: [String] = []
-    ) {
-        self.executable = executable
-        self.actor = actor
-        self.daemonURL = daemonURL
-        self.bearer = bearer
-        self.extraPath = extraPath
-        self.shellPath = shellPath
+// Running the CLI needs Process, which iOS lacks. The actions above stay: Answer builds them on every platform.
+#if os(macOS)
+    public struct CLIResult: Sendable, Equatable {
+        public var status: Int32
+        public var stdout: String
+        public var stderr: String
+        public var succeeded: Bool { status == 0 }
     }
 
-    /// The usual install places, searched after the shell's PATH.
-    public static let searchPaths = ["/opt/homebrew/bin/rig", "/usr/local/bin/rig"]
+    /// Runs the `rig` CLI as the app's seat.
+    public struct RigCLI: Sendable {
+        public var executable: URL
+        /// Session stamped as the actor on every write, via `OPENRIG_SESSION_NAME`.
+        public var actor: String
+        /// The daemon the app reads from, so the CLI writes to the same one. Nil lets the CLI find its own.
+        public var daemonURL: URL?
+        /// Operator bearer for gated writes; the CLI reads it from `OPENRIG_AUTH_BEARER_TOKEN`.
+        public var bearer: String?
+        /// Prepended to PATH: the folder of a node the person picked (nvm, asdf, mise).
+        public var extraPath: String?
+        /// The person's shell PATH (`ShellPath`), after `extraPath`, so `rig` finds the node their terminal uses.
+        public var shellPath: [String]
 
-    /// The first `rig` in `searchPaths`.
-    public static func locate(searchPaths: [String] = searchPaths, actor: String = Human.session) -> RigCLI? {
-        ToolLocator.resolve(override: nil, searchPaths: searchPaths).map { RigCLI(executable: $0.url, actor: actor) }
-    }
+        public init(
+            executable: URL, actor: String, daemonURL: URL? = nil, bearer: String? = nil, extraPath: String? = nil,
+            shellPath: [String] = []
+        ) {
+            self.executable = executable
+            self.actor = actor
+            self.daemonURL = daemonURL
+            self.bearer = bearer
+            self.extraPath = extraPath
+            self.shellPath = shellPath
+        }
 
-    /// The `rig` the person's shell finds, else one in the usual install places, run with the shell's PATH.
-    public static func find(actor: String = Human.session) async -> RigCLI? {
-        let shellPath = await ShellPath.load()
-        let paths = ToolLocator.searchPaths(for: "rig", shellPath: shellPath, fallback: searchPaths)
-        var cli = locate(searchPaths: paths, actor: actor)
-        cli?.shellPath = shellPath
-        return cli
-    }
+        /// The usual install places, searched after the shell's PATH.
+        public static let searchPaths = ["/opt/homebrew/bin/rig", "/usr/local/bin/rig"]
 
-    static func environment(
-        base: [String: String], actor: String, daemonURL: URL? = nil, bearer: String? = nil, extraPath: String? = nil,
-        shellPath: [String] = []
-    ) -> [String: String] {
-        var env = base
-        env["OPENRIG_SESSION_NAME"] = actor
-        if let daemonURL { env["OPENRIG_URL"] = daemonURL.absoluteString }
-        if let bearer, !bearer.isEmpty { env["OPENRIG_AUTH_BEARER_TOKEN"] = bearer }
-        // rig is a Node script: its `#!/usr/bin/env node` needs node on PATH.
-        let prefix = (extraPath.map { [$0] } ?? []) + shellPath + ["/opt/homebrew/bin", "/usr/local/bin"]
-        env["PATH"] = (prefix + [base["PATH"] ?? "/usr/bin:/bin"]).joined(separator: ":")
-        env["NO_COLOR"] = "1"
-        return env
-    }
-
-    public func run(_ action: RigAction) async throws -> CLIResult {
-        try await run(arguments: action.arguments, stdin: action.stdin)
-    }
-
-    public func run(arguments: [String], stdin: String? = nil) async throws -> CLIResult {
-        let process = Process()
-        process.executableURL = executable
-        process.arguments = arguments
-        process.environment = Self.environment(
-            base: ProcessInfo.processInfo.environment, actor: actor, daemonURL: daemonURL, bearer: bearer,
-            extraPath: extraPath, shellPath: shellPath)
-        let input = Pipe()
-        let out = Pipe()
-        let err = Pipe()
-        process.standardInput = input
-        process.standardOutput = out
-        process.standardError = err
-        // Set before launch, so an exit that comes before anyone waits is still seen. `waitUntilExit` from a
-        // detached task has hung after the child had already exited.
-        let exited = AsyncStream<Void> { done in
-            process.terminationHandler = { _ in
-                done.yield()
-                done.finish()
+        /// The first `rig` in `searchPaths`.
+        public static func locate(searchPaths: [String] = searchPaths, actor: String = Human.session) -> RigCLI? {
+            ToolLocator.resolve(override: nil, searchPaths: searchPaths).map {
+                RigCLI(executable: $0.url, actor: actor)
             }
         }
-        try process.run()
 
-        input.fileHandleForWriting.write(Data((stdin ?? "").utf8))
-        try input.fileHandleForWriting.close()
+        /// The `rig` the person's shell finds, else one in the usual install places, run with the shell's PATH.
+        public static func find(actor: String = Human.session) async -> RigCLI? {
+            let shellPath = await ShellPath.load()
+            let paths = ToolLocator.searchPaths(for: "rig", shellPath: shellPath, fallback: searchPaths)
+            var cli = locate(searchPaths: paths, actor: actor)
+            cli?.shellPath = shellPath
+            return cli
+        }
 
-        // Drain both pipes concurrently so neither can fill and stall the child.
-        async let stdoutData = Task.detached { out.fileHandleForReading.readDataToEndOfFile() }.value
-        async let stderrData = Task.detached { err.fileHandleForReading.readDataToEndOfFile() }.value
-        let (o, e) = await (stdoutData, stderrData)
-        // Detached, so cancellation can't end the wait early: reading the status of an unreaped child throws.
-        await Task.detached { for await _ in exited { break } }.value
-        return CLIResult(
-            status: process.terminationStatus,
-            stdout: String(decoding: o, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines),
-            stderr: String(decoding: e, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines))
+        static func environment(
+            base: [String: String], actor: String, daemonURL: URL? = nil, bearer: String? = nil,
+            extraPath: String? = nil,
+            shellPath: [String] = []
+        ) -> [String: String] {
+            var env = base
+            env["OPENRIG_SESSION_NAME"] = actor
+            if let daemonURL { env["OPENRIG_URL"] = daemonURL.absoluteString }
+            if let bearer, !bearer.isEmpty { env["OPENRIG_AUTH_BEARER_TOKEN"] = bearer }
+            // rig is a Node script: its `#!/usr/bin/env node` needs node on PATH.
+            let prefix = (extraPath.map { [$0] } ?? []) + shellPath + ["/opt/homebrew/bin", "/usr/local/bin"]
+            env["PATH"] = (prefix + [base["PATH"] ?? "/usr/bin:/bin"]).joined(separator: ":")
+            env["NO_COLOR"] = "1"
+            return env
+        }
+
+        public func run(_ action: RigAction) async throws -> CLIResult {
+            try await run(arguments: action.arguments, stdin: action.stdin)
+        }
+
+        public func run(arguments: [String], stdin: String? = nil) async throws -> CLIResult {
+            let process = Process()
+            process.executableURL = executable
+            process.arguments = arguments
+            process.environment = Self.environment(
+                base: ProcessInfo.processInfo.environment, actor: actor, daemonURL: daemonURL, bearer: bearer,
+                extraPath: extraPath, shellPath: shellPath)
+            let input = Pipe()
+            let out = Pipe()
+            let err = Pipe()
+            process.standardInput = input
+            process.standardOutput = out
+            process.standardError = err
+            // Set before launch, so an exit that comes before anyone waits is still seen. `waitUntilExit` from a
+            // detached task has hung after the child had already exited.
+            let exited = AsyncStream<Void> { done in
+                process.terminationHandler = { _ in
+                    done.yield()
+                    done.finish()
+                }
+            }
+            try process.run()
+
+            input.fileHandleForWriting.write(Data((stdin ?? "").utf8))
+            try input.fileHandleForWriting.close()
+
+            // Drain both pipes concurrently so neither can fill and stall the child.
+            async let stdoutData = Task.detached { out.fileHandleForReading.readDataToEndOfFile() }.value
+            async let stderrData = Task.detached { err.fileHandleForReading.readDataToEndOfFile() }.value
+            let (o, e) = await (stdoutData, stderrData)
+            // Detached, so cancellation can't end the wait early: reading the status of an unreaped child throws.
+            await Task.detached { for await _ in exited { break } }.value
+            return CLIResult(
+                status: process.terminationStatus,
+                stdout: String(decoding: o, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines),
+                stderr: String(decoding: e, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines))
+        }
     }
-}
+#endif

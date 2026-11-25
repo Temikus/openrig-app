@@ -1,0 +1,11 @@
+{
+  "requestId": "qitem-20261123103000-77d0",
+  "answer": null,
+  "unsupportedReason": "unsupported_request_kind",
+  "links": {
+    "self": "/api/apps/v1/requests/qitem-20261123103000-77d0?actor=human-example%40external",
+    "result": "/api/apps/v1/requests/qitem-20261123103000-77d0/result?actor=human-example%40external"
+  },
+  "readAt": "2026-11-23T10:30:00.000Z",
+  "cursor": "ZXBvY2g6MTIz"
+}

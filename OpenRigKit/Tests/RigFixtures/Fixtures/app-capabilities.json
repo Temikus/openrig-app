@@ -1,0 +1,38 @@
+{
+  "contract": "openrig.core-app",
+  "version": 1,
+  "jobs": [
+    {
+      "id": "human-answer",
+      "requestKinds": [
+        "structured-human-ask"
+      ],
+      "answerForms": [
+        "option",
+        "typed-reply"
+      ],
+      "actorAssurance": [
+        "app-attributed"
+      ],
+      "independentHumanAuthentication": false,
+      "stableSubmissionIds": true,
+      "resultRead": true
+    }
+  ],
+  "app": {
+    "id": "openrig-remote",
+    "actors": [
+      "human-example@external"
+    ]
+  },
+  "refresh": {
+    "snapshot": true,
+    "events": "invalidation-only",
+    "pollAfterMs": 5000,
+    "reconnect": "reread-capabilities-needs-me-and-tracked-results"
+  },
+  "links": {
+    "needsMe": "/api/apps/v1/needs-me",
+    "events": "/api/apps/v1/events"
+  }
+}

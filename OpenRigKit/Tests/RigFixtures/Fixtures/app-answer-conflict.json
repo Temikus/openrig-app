@@ -1,0 +1,16 @@
+{
+  "answerId": "a_Hc4nW8dZ1qYf6uJe",
+  "appId": "openrig-remote",
+  "requestId": "qitem-20261123101500-6a1f",
+  "actor": { "address": "human-example@external", "assurance": "app-attributed" },
+  "submission": { "state": "conflict", "conflictCode": "decision_revision_changed" },
+  "retrySameSubmission": false,
+  "currentRevision": "dr1-4e5f60718293a4b5c6d7e8f9",
+  "links": {
+    "self": "/api/apps/v1/answers/a_Hc4nW8dZ1qYf6uJe?actor=human-example%40external",
+    "request": "/api/apps/v1/requests/qitem-20261123101500-6a1f?actor=human-example%40external",
+    "result": "/api/apps/v1/requests/qitem-20261123101500-6a1f/result?actor=human-example%40external"
+  },
+  "readAt": "2026-11-23T10:36:00.000Z",
+  "cursor": "ZXBvY2g6MTI5"
+}

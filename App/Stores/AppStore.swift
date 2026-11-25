@@ -62,7 +62,15 @@ final class AppStore {
         case unreachable(reason: String, since: Date)
     }
 
-    private(set) var endpoint: DaemonEndpoint
+    /// The relay forwards to this daemon and acts through it, so it follows every change: a daemon on another
+    /// machine turns it off, and it never forwards to an old address.
+    private(set) var endpoint: DaemonEndpoint {
+        didSet {
+            guard endpoint.baseURL != oldValue.baseURL else { return }
+            let url = endpoint.baseURL
+            Task { await relay.refresh(daemon: url) }
+        }
+    }
     private(set) var daemon: DaemonState = .connecting
     private(set) var rigs: [RigSummary] = []
     /// True while the event stream is connected; otherwise the views rely on polling.
@@ -121,6 +129,8 @@ final class AppStore {
     @ObservationIgnored private var banners: Banners?
     /// The main window is open and frontmost; set by ContentView. Banners can wait while it is.
     var windowInFront = false
+    /// Relays paired phones' calls to the daemon; it outlives the Settings window.
+    let relay = RelayStore()
 
     init(settings: AppSettings = AppSettings()) {
         self.settings = settings
@@ -143,6 +153,8 @@ final class AppStore {
         loops = [Task { await runPolling() }, Task { await runEvents() }]
         Task { await loadToken() }
         Task { await loadShellPath() }
+        relay.desk = MacRelayDesk(store: self)
+        Task { await relay.refresh(daemon: endpoint.baseURL) }
         // NSApp exists once the run loop has started.
         Task { NSApp.appearance = settings.appearance.nsAppearance }
         #if DEBUG
@@ -310,7 +322,7 @@ final class AppStore {
             bearer: token, extraPath: settings.nodePath?.deletingLastPathComponent().path, shellPath: shellPath)
     }
 
-    private func tmux() -> Tmux? {
+    func tmux() -> Tmux? {
         Tmux.locate(
             openRigHome: locator.openRigHome, executable: settings.tmuxPath,
             searchPaths: ToolLocator.searchPaths(for: "tmux", shellPath: shellPath, fallback: Tmux.searchPaths))

@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "sources": [{ "source": "queue", "state": "available" }],
+  "requests": [
+    {
+      "requestId": "qitem-20261123101500-6a1f",
+      "asker": "orch-lead@example",
+      "askedPerson": "human-example@external",
+      "actor": { "address": "human-example@external", "assurance": "app-attributed", "appId": "openrig-remote" },
+      "state": "pending",
+      "decisionRevision": "dr1-0a1b2c3d4e5f60718293a4b5",
+      "episodeKey": null,
+      "body": "Body text.",
+      "humanDetail": null,
+      "questions": [
+        {
+          "id": "reach",
+          "question": "Question one?",
+          "options": [
+            { "id": "tailscale", "label": "Option A", "recommended": true },
+            { "id": "wifi", "label": "Option B" }
+          ]
+        },
+        {
+          "id": "notify",
+          "question": "Question two?",
+          "options": [
+            { "id": "later", "label": "Option A" },
+            { "id": "push", "label": "Option B" }
+          ]
+        }
+      ],
+      "humanAnswers": { "reach": "tailscale" },
+      "answer": { "job": "human-answer", "forms": ["option", "typed-reply"] },
+      "links": {
+        "self": "/api/apps/v1/requests/qitem-20261123101500-6a1f?actor=human-example%40external",
+        "result": "/api/apps/v1/requests/qitem-20261123101500-6a1f/result?actor=human-example%40external"
+      }
+    },
+    {
+      "requestId": "qitem-20261123102200-9c2e",
+      "asker": "dev-runner@example",
+      "askedPerson": "human-example@external",
+      "actor": { "address": "human-example@external", "assurance": "app-attributed", "appId": "openrig-remote" },
+      "state": "blocked",
+      "decisionRevision": "dr1-1b2c3d4e5f60718293a4b5c6",
+      "episodeKey": "episode-2",
+      "body": "Body text.",
+      "humanDetail": "Detail text.",
+      "questions": [
+        {
+          "id": "permission",
+          "question": "Question one?",
+          "options": [
+            { "id": "allow", "label": "Option A" },
+            { "id": "deny", "label": "Option B" }
+          ]
+        }
+      ],
+      "humanAnswers": {},
+      "answer": { "job": "human-answer", "forms": ["option", "typed-reply"] },
+      "occupantAuthority": "unknown",
+      "occupantAuthorityDetail": "The asking agent's seat can't be confirmed current right now. The question and answer stay open; no native effect is implied.",
+      "links": {
+        "self": "/api/apps/v1/requests/qitem-20261123102200-9c2e?actor=human-example%40external",
+        "result": "/api/apps/v1/requests/qitem-20261123102200-9c2e/result?actor=human-example%40external"
+      }
+    }
+  ],
+  "readAt": "2026-11-23T10:30:00.000Z",
+  "cursor": "ZXBvY2g6MTIz"
+}

@@ -1,0 +1,25 @@
+{
+  "answerId": "a_Hc4nW8dZ1qYf6uJe",
+  "appId": "openrig-remote",
+  "actor": { "address": "human-example@external", "assurance": "app-attributed" },
+  "requestId": "qitem-20261123101500-6a1f",
+  "questionId": "reach",
+  "episodeKey": null,
+  "expectedRevision": "dr1-9f8e7d6c5b4a39281706f5e4",
+  "answer": { "kind": "option", "optionId": "tailscale" },
+  "replayed": true,
+  "submission": {
+    "state": "committed",
+    "actionId": "mca-01M840P8R2T6W1Y4A7C3E9G5H1",
+    "recordedAt": "2026-11-23T10:28:40.101Z",
+    "outcome": "recorded",
+    "decisionRevisionAfter": "dr1-0a1b2c3d4e5f60718293a4b5",
+    "unanswered": ["Question two?"],
+    "replyQitemId": null
+  },
+  "links": {
+    "self": "/api/apps/v1/answers/a_Hc4nW8dZ1qYf6uJe?actor=human-example%40external",
+    "request": "/api/apps/v1/requests/qitem-20261123101500-6a1f?actor=human-example%40external",
+    "result": "/api/apps/v1/requests/qitem-20261123101500-6a1f/result?actor=human-example%40external"
+  }
+}
