@@ -38,4 +38,16 @@ import Testing
         #expect(notes[0].seats == ["r1", "r2"])
         #expect(notes[1].seats.isEmpty)
     }
+
+    /// QA on 0990fe9: two pods with a "lead" each must stay two seats.
+    @Test func aMemberNameTwoPodsShareKeepsItsPod() {
+        let notes = PreflightNote.group(
+            [
+                "dev.lead: permission_policy absent; launch_posture=floor",
+                "orch.lead: permission_policy absent; launch_posture=floor",
+                "dev.qa: permission_policy absent; launch_posture=floor",
+            ],
+            seats: ["orch.lead", "dev.lead", "dev.qa"])
+        #expect(notes.first?.seats == ["dev.lead", "orch.lead", "qa"])
+    }
 }

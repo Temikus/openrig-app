@@ -16,10 +16,13 @@ public struct PreflightNote: Sendable, Equatable, Identifiable {
     public var id: String { text }
 
     public static func group(_ messages: [String], seats ids: [String]) -> [PreflightNote] {
+        // A member name says enough unless two pods share it ("dev.lead", "orch.lead"): then the full id.
+        let shared = Dictionary(grouping: ids, by: member).filter { $0.value.count > 1 }.keys
+        let name = { (id: String) in shared.contains(member(id)) ? id : member(id) }
         var notes: [PreflightNote] = []
         for message in messages {
             let (seat, body) = split(message, ids: ids)
-            var (text, label) = (body, seat.map(member))
+            var (text, label) = (body, seat.map(name))
             if let match = body.firstMatch(of: /configured model '([^']+)' is unverified/) {
                 text = modelUnchecked
                 label = label.map { "\($0) (\(match.output.1))" }
