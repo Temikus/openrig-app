@@ -7,7 +7,9 @@
 /// answer only while it is waiting for one, passed the late answers to the pane as if they were typed. Nobody
 /// answers these in time anyway, so tmux falls back to its terminfo either way.
 ///
-/// The pane's own programs can't reach the client's terminal with queries: tmux answers those itself.
+/// tmux answers the pane's own queries itself while `allow-passthrough` is off. With it on, a pane program's query
+/// wrapped in `DCS tmux;` reaches the client bare, this filter drops it, and the program waits for a reply that
+/// never comes.
 struct TerminalQueryFilter {
     /// The start of an escape sequence cut off at the end of a chunk, held for the next one.
     private var pending: [UInt8] = []
