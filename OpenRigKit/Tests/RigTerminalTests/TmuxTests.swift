@@ -357,6 +357,18 @@ final class Received: @unchecked Sendable {
         #expect(try question(cursorY: 35).panOffset(clientRows: 12) == 25)
     }
 
+    /// A menu left on screen above a new shell prompt (a seat that printed one): the cursor is on the prompt, below
+    /// the menu, and stays in view.
+    @Test func aMenuTheCursorIsntInIsIgnored() throws {
+        var snap = try question()
+        snap.lines += Array(repeating: "$ ls", count: 10) + ["$ "]
+        snap.rows = 50
+        snap.cursorY = 49
+        snap.cursorVisible = true
+        #expect(snap.menuRows == 20...37)
+        #expect(snap.panOffset(clientRows: 25) == 25)
+    }
+
     @Test func noMenuKeepsFollowingTheCursor() {
         let lines = Array(repeating: "transcript", count: 38) + ["────────", "❯ "]
         let snap = PaneSnapshot(pane: "%1", cols: 80, rows: 40, cursorX: 2, cursorY: 39, lines: lines)
