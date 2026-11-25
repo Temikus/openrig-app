@@ -83,7 +83,8 @@ final class AppStore {
     /// The gateway's people, for Settings › General › Act as.
     private(set) var gateway: GatewayParticipants?
     var people: [String] { gateway?.participants.filter { $0.kind == "person" }.map(\.address) ?? [] }
-    /// Open rows addressed to the person on every rig. Read on the poll, and on events about such a row.
+    /// Open rows addressed to the person on every rig, and every rig's blocked rows (some held on the person). Read
+    /// on the poll, and on events about such a row.
     private var rowsForMe: [QItem] = []
     private let rowsForMeRefresh = GatedRefresh()
     /// Read for `rowsForMe`, and matched against event destinations.
@@ -543,6 +544,7 @@ final class AppStore {
         let client = client
         let found = await withTaskGroup(of: [QItem]?.self) { group in
             for address in addresses { group.addTask { try? await client.openRows(to: address) } }
+            group.addTask { try? await client.blockedRows() }
             var all: [[QItem]?] = []
             for await rows in group { all.append(rows) }
             return all
@@ -572,6 +574,33 @@ final class AppStore {
     /// Other rigs with seats needing the person (their prompts aren't polled), for Needs you's per-rig groups.
     var attentionElsewhere: [(rig: String, count: Int)] {
         rigs.filter { $0.id != selectedRigID && $0.attentionCount > 0 }.map { ($0.name, $0.attentionCount) }
+    }
+
+    /// Every rig's asks of the person, for the Needs You window. Rows from rigs the daemon no longer lists drop out.
+    var humanQueue: [QItem] {
+        let known = Set(rigs.map(\.name))
+        return RigDomain.humanQueue(rowsForMe, me: me).filter {
+            rigName(ofSession: askedBy($0, me: me)).map(known.contains) ?? false
+        }
+    }
+
+    /// The store for the rig an ask came from: the selected rig's own, else a new one the caller refreshes.
+    func rigStore(named name: String) -> RigStore? {
+        if rig?.rigName == name { return rig }
+        return rigs.first { $0.name == name }.map { makeRigStore(id: $0.id, name: $0.name) }
+    }
+
+    /// Open the seat: its rig on Terminals in the main window, with the seat's tile focused.
+    func openSeat(session: String) {
+        guard let name = rigName(ofSession: session) else { return }
+        showMainWindow()
+        open(rigNamed: name)
+        viewMode = .terminals
+        Task {
+            guard let store = rig, store.rigName == name else { return }
+            await store.refresh()
+            if let seat = store.seat(session: session) { reveal(seat: seat, in: store) }
+        }
     }
 
     /// Shows a rig's canvas, where its seats needing attention are marked.

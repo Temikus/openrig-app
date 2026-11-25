@@ -610,3 +610,11 @@ An iPhone app (`Remote/`, `OpenRigRemote`) that pairs with the Mac app from a QR
 - **A closed event stream:** the relay notices that the phone closed one only on its next write.
 - **A clean close while idle:** if the Mac closes a connection cleanly while it's idle, the phone's next call reads as a lost reply. Reads retry; actions aren't resent.
 - Tailscale reach, and notifications.
+
+### Needs You window, 2026-11-25
+- **One list of every rig's asks** (Rig › Needs You Queue, ⇧⌘J, or Open Needs You Queue under the Needs you list). Its own window: a sidebar item would have needed a selection that isn't a rig. The toolbar's list stays, for the selected rig's prompts and down seats, which this window leaves out.
+- **What counts** is what Needs you counts for one rig (`humanQueue`, tested): rows to the person (`me`, `human@host`, `human@kernel`), and rows held on a person or a gate that isn't a row (`external:…`), oldest asked first, then FYIs. The daemon's stuck-sweep notices about asks to `human@host` show as FYIs, as before. The rows come from the per-person fetches plus one fetch of every rig's blocked rows.
+- **Seen live:** nobody is registered with the gateway, so asks reach the person as `human@host`. A row to an unregistered `nobody@external` was never stored.
+- **The opened ask** shows the TL;DR, rig, seat and age, the body as Context, then the For You panel (or Resolve, for a held row) against a store for the asking rig, so Tell and Reply… reach that seat. Open the seat shows its tile on Terminals in the main window.
+- **Checked on two throwaway rigs, the kernel selected:** Send answers and Approve closed their rows and the rows left the list; focus never moved. Not checked: typing (an AX-set value doesn't reach the field's binding, so Resolve stayed disabled), and Open the seat, which brings the app forward.
+- **`OPENRIG_DEBUG_NEEDS_YOU=queue[/<qitem id>]`** opens the window at launch, with that ask open. The scene opens itself (`defaultLaunchBehavior`): an `openWindow` call at launch brought the app to the front.

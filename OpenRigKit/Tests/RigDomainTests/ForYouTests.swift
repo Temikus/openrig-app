@@ -84,6 +84,31 @@ import Testing
         #expect(rigName(ofSession: "nobody") == nil)
     }
 
+    /// Every rig's asks in one list: the oldest asked first, however often a row was touched since; FYIs last.
+    @Test func theQueueListsEveryRigsAsksOldestFirst() {
+        let me = "sam@external"
+        var fyi = item("fyi", .pending, from: "lead@kernel", to: me, created: 1)
+        fyi.humanIntent = "update"
+        let newer = item("newer", .inProgress, from: "orch-lead@denkeeper", to: me, created: 30, updated: 31)
+        // Claimed and nudged since, so it was updated last, but it was asked first.
+        let older = item("older", .pending, from: "dev@apptest", to: "human@host", created: 10, updated: 99)
+        let held = item("held", .blocked, from: "lead@kernel", to: "dev@kernel", created: 20, blockedOn: "external:pr")
+        let waits = item("waits", .blocked, to: "dev@kernel", blockedOn: "qitem-1")
+        let theirs = item("theirs", .pending, from: "dev@kernel", to: "kim@external")
+        let closed = item("closed", .done, from: "dev@kernel", to: me)
+        // The same row can come from two fetches: rows to the person, and rows held on someone.
+        let rows = [fyi, newer, older, held, held, waits, theirs, closed]
+        #expect(humanQueue(rows, me: me).map(\.id) == ["older", "held", "newer", "fyi"])
+    }
+
+    @Test func theAskerOfAHeldRowIsItsOwner() {
+        let me = "sam@external"
+        #expect(askedBy(item("ask", .pending, from: "orch-lead@denkeeper", to: me), me: me) == "orch-lead@denkeeper")
+        #expect(askedBy(item("old", .pending, from: "dev@apptest", to: "human@kernel"), me: me) == "dev@apptest")
+        let held = item("held", .blocked, from: "lead@kernel", to: "dev@kernel", blockedOn: "external:pr")
+        #expect(askedBy(held, me: me) == "dev@kernel")
+    }
+
     @Test func outcomesInPlainWords() {
         func closed(_ reason: String?, _ resolution: String? = nil, state: QItemState = .done, target: String? = nil)
             -> Outcome?

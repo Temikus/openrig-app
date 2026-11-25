@@ -60,6 +60,8 @@ struct OpenRigCommands: Commands {
             Button("Needs You…") { window?.needsYou() }
                 .keyboardShortcut("j")
                 .disabled(window == nil)
+            Button("Needs You Queue") { openWindow(id: NeedsYouWindow.id) }
+                .keyboardShortcut("j", modifiers: [.command, .shift])
             Button("Go to…") { window?.goTo() }
                 .keyboardShortcut("k")
                 .disabled(window == nil)

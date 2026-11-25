@@ -159,6 +159,21 @@ public func forYouElsewhere(_ items: [QItem], me: String, excluding rig: String?
         }, me: me)
 }
 
+/// Every rig's asks of the person, for the Needs You window: decisions and rows held on the person or an outside
+/// gate, oldest asked first, then FYIs. The same rows Needs you lists for one rig; each once.
+public func humanQueue(_ items: [QItem], me: String) -> [QItem] {
+    var seen = Set<QItem.ID>()
+    let open = needsYou(items.filter { seen.insert($0.id).inserted }, me: me)
+    let asked: (QItem) -> Date = { $0.created ?? $0.updated ?? .distantPast }
+    let (fyis, asks) = (open.filter { forYou($0, me: me) == .update }, open.filter { forYou($0, me: me) != .update })
+    return asks.sorted { asked($0) < asked($1) } + fyis.sorted { asked($0) < asked($1) }
+}
+
+/// The seat waiting on the person's answer: the sender of a row to the person, else the owner of a held row.
+public func askedBy(_ item: QItem, me: String) -> String {
+    forYou(item, me: me) != nil ? item.source : item.destination
+}
+
 // MARK: - Chain of record
 
 public struct Chain: Equatable, Sendable {

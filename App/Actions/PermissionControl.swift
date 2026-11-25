@@ -470,8 +470,28 @@ struct NeedsYouList: View {
     var attention: [(rig: String, count: Int)] = []
     /// Called after a row from another rig opens, which changes the selected rig.
     var opened: () -> Void = {}
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
+        VStack(spacing: 0) {
+            list
+            Divider()
+            HStack {
+                Spacer()
+                // Every rig's asks, each answered in place; this list keeps the selected rig's prompts too.
+                Button("Open Needs You Queue") {
+                    openWindow(id: NeedsYouWindow.id)
+                    opened()
+                }
+                .buttonStyle(.link)
+                .help("Every rig's asks in one window (⇧⌘J)")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+    }
+
+    private var list: some View {
         Group {
             if entries.isEmpty && elsewhere.isEmpty && attention.isEmpty {
                 ContentUnavailableView("Nothing needs you", systemImage: "checkmark.circle")
