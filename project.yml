@@ -94,9 +94,11 @@ targets:
         NSCameraUsageDescription: The camera reads the pairing code that OpenRig shows on your Mac.
         # The relay link opens a connection to the Mac's home-network address, which needs Local Network access.
         NSLocalNetworkUsageDescription: OpenRig connects to your Mac on this Wi-Fi to show what your seats ask you.
+        # Only Apple's own crypto (TLS, CryptoKit), which is exempt; skips the per-build export compliance question.
+        ITSAppUsesNonExemptEncryption: false
         # Pairing links: openrig-remote://pair?… (RigModel's PairingCode).
         CFBundleURLTypes:
-          - CFBundleURLName: dev.openrig.Remote.pair
+          - CFBundleURLName: net.temikus.openrig.Remote.pair
             CFBundleURLSchemes: [openrig-remote]
         # The daemon serves plain HTTP. Allowed: MagicDNS names (the phone sends plain HTTP to no tailnet IP,
         # RigClient's plainHTTPClient), and loopback for the simulator, which reaches the Mac's daemon there.
@@ -113,7 +115,7 @@ targets:
               NSExceptionAllowsInsecureHTTPLoads: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.openrig.Remote
+        PRODUCT_BUNDLE_IDENTIFIER: net.temikus.openrig.Remote
         MARKETING_VERSION: 0.1.0
         CURRENT_PROJECT_VERSION: 1
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

@@ -54,6 +54,8 @@ With a free Apple ID, the app stops opening after 7 days. Run it from Xcode agai
 
 `just build-ios` builds for the simulator only, as CI does.
 
+**TestFlight:** `just testflight` archives the app as `net.temikus.openrig.Remote` and uploads it to App Store Connect. It needs your Apple ID in Xcode › Settings › Accounts. The team comes from `OPENRIG_TEAM`, or else from your Developer ID certificate. The build number is the commit count; set `OPENRIG_BUILD_NUMBER` to upload the same commit again.
+
 **Pair it**
 1. **Check which OpenRig is running on the Mac.**
    - OpenRig Canary (from `just install`) or a release listens on the Wi-Fi.

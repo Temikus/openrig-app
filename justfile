@@ -82,6 +82,10 @@ dist-publish:
 release bump="patch" notes="":
     ./scripts/release.sh "$@"
 
+# Archive the iPhone app and upload it to TestFlight (needs your Apple ID in Xcode › Settings › Accounts)
+testflight:
+    OPENRIG_BUILD_ROOT={{ quote(build_root) }} ./scripts/testflight.sh
+
 # List GitHub releases
 releases:
     gh release list
