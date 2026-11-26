@@ -64,6 +64,8 @@ final class NewRoleStore {
     func draftRole() {
         let line = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !line.isEmpty, phase != .drafting else { return }
+        // An ask left open by a timeout is withdrawn first, so the lead never holds two (QA of ffde632).
+        withdraw()
         stopWaiting()
         phase = .drafting
         saveError = nil
@@ -71,23 +73,29 @@ final class NewRoleStore {
     }
 
     func cancel() {
-        let row = rowID
+        withdraw()
         stopWaiting()
         if phase == .drafting { phase = draft == nil ? .idle : .drafted }
-        if let row {
-            Task {
-                await actions.perform(
-                    .close(id: row, reason: .canceled, target: nil, resolution: "The person cancelled the draft."),
-                    key: Self.actionKey, success: "Cancelled the draft")
-            }
-        }
     }
 
-    /// Removes the drafting folder, for when the sheet closes.
+    /// Removes the drafting folder, for when the sheet closes, and withdraws an ask still open: its folder is gone.
     func discard() {
+        withdraw()
         stopWaiting()
         if let folder { try? FileManager.default.removeItem(at: folder) }
         folder = nil
+    }
+
+    /// Closes the open ask as canceled, so it doesn't sit in the kernel lead's queue.
+    private func withdraw() {
+        guard let row = rowID else { return }
+        rowID = nil
+        let actions = actions
+        Task {
+            await actions.perform(
+                .close(id: row, reason: .canceled, target: nil, resolution: "The person withdrew the draft."),
+                key: Self.actionKey, success: "Withdrew the draft")
+        }
     }
 
     private func stopWaiting() {
@@ -146,7 +154,15 @@ final class NewRoleStore {
                 phase = .failed("Couldn't ask the kernel's lead. The command's error is below.")
                 return
             }
-            rowID = created.stdout.firstMatch(of: /qitem-[0-9A-Za-z-]+/).map { String($0.output) }
+            struct Created: Decodable { var qitemId: String }
+            guard let id = try? JSONDecoder().decode(Created.self, from: Data(created.stdout.utf8)).qitemId else {
+                // Without the row's id, Cancel can't withdraw it and a refusal can't show: say so now.
+                phase = .failed(
+                    "The ask was sent, but rig queue create didn't return its id, so this sheet can't follow it. "
+                        + "Check advisor-lead@kernel's queue.")
+                return
+            }
+            rowID = id
         }
         let deadline = ContinuousClock.now + Self.patience
         for await _ in wakes {
@@ -184,9 +200,10 @@ final class NewRoleStore {
             var state: String
             var resolution: String?
         }
-        guard let row = try? JSONDecoder().decode(Row.self, from: Data(out.stdout.utf8)), row.state == "done" else {
-            return nil
-        }
+        // Any closed state counts (done, handed off): only an open row is still being drafted (review of ffde632).
+        guard let row = try? JSONDecoder().decode(Row.self, from: Data(out.stdout.utf8)),
+            !["pending", "in-progress", "blocked"].contains(row.state)
+        else { return nil }
         return "The kernel's lead closed the ask without a draft"
             + (row.resolution.map { ": \($0)" } ?? ".")
     }
