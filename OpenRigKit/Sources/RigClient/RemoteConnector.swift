@@ -39,6 +39,16 @@ public enum RemoteStatus: Sendable, Equatable {
     case noSafeAddress
 }
 
+/// Which code left the phone with `.noSafeAddress`: the way out is the same (pair again), the reason differs.
+public enum NoSafeAddress: Sendable, Equatable {
+    /// Loopback only, from a debug Mac held to loopback: on a phone, loopback is the phone.
+    case onlyThisMac
+    /// A Wi-Fi or tailnet address with no relay secret, from before the encrypted link.
+    case noEncryptedLink
+
+    public init(_ code: PairingCode) { self = code.onlyThisMac ? .onlyThisMac : .noEncryptedLink }
+}
+
 /// Tries each endpoint of a pairing code in order, and says where the phone stands.
 public struct RemoteConnector: Sendable {
     public struct Outcome: Sendable {

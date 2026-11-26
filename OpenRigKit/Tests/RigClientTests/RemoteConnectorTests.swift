@@ -66,6 +66,22 @@ import Testing
         #expect(probe.endpoints.isEmpty)
     }
 
+    /// A real phone finds no safe address in two kinds of code, and the fix differs in what it says: a debug Mac's
+    /// code reaches only that Mac, and an older code names the Wi-Fi with no relay secret.
+    @Test func noSafeAddressSaysWhichCodeItWas() async throws {
+        let connector = RemoteConnector(
+            client: RemoteConnector.standardClient(allowingLoopback: false), localNetworkDenied: { _ in false })
+        let debugMac = try code([Reach(kind: .loopback, addresses: ["127.0.0.1"], port: 7433)])
+        #expect(await connector.connect(debugMac).status == .noSafeAddress)
+        #expect(NoSafeAddress(debugMac) == .onlyThisMac)
+        let older = try code([
+            Reach(kind: .loopback, addresses: ["127.0.0.1"], port: 7433),
+            Reach(kind: .lan, addresses: ["10.255.255.1"], port: 9),
+        ])
+        #expect(await connector.connect(older).status == .noSafeAddress)
+        #expect(NoSafeAddress(older) == .noEncryptedLink)
+    }
+
     /// Once any address was tried, silence is a network fault, not a missing link.
     @Test func aRefusedAddressBesideASilentOneIsUnreachable() async throws {
         let silent = Script([.drop])

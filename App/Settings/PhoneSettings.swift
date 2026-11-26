@@ -129,14 +129,13 @@ struct PhoneSettings: View {
     private var reachCaption: String {
         guard daemonHere else { return PhoneStore.elsewhere(daemon.host() ?? daemon.absoluteString) }
         switch store.relay.state {
-        case .listening(let host, _) where host == "127.0.0.1":
-            return
-                "A debug build holds the relay to this Mac (set OPENRIG_RELAY_WIFI=1 for the Wi-Fi): only the simulator can connect."
+        case .off where !store.relay.enabled: return "Turn on “Let paired phones connect” below."
+        case .failed(let message): return message
+        // Before any code is made, and above it while it shows.
+        case _ where store.relay.heldToLoopback: return PairedPhones.simulatorOnly
         case .listening where !reachable: return PairingRefusal.noWiFiAddress.message
         case .listening: return "Listening on \(store.relay.address ?? "this Mac")."
-        case .off where !store.relay.enabled: return "Turn on “Let paired phones connect” below."
         case .off: return "Pair a phone, and this Mac listens for it on the Wi-Fi."
-        case .failed(let message): return message
         }
     }
 
@@ -184,7 +183,11 @@ private struct CodePanel: View {
                     .accessibilityLabel("Pairing code")
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("Scan this with OpenRig on your iPhone")
+                // The simulator has no camera, and a real phone can't use a loopback-only code.
+                Text(
+                    code.onlyThisMac
+                        ? "Copy the link, then paste it into OpenRig in the simulator"
+                        : "Scan this with OpenRig on your iPhone")
                 Text(
                     "Anyone with this code can act as you: answer questions, allow or decline permission prompts, "
                         + "message seats, queue tasks and close rows waiting on you. Leaving this tab hides the code. "

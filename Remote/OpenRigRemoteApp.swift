@@ -125,7 +125,7 @@ struct StatusLabel: View {
         case .localNetworkDenied: "Local Network off"
         case .unpaired: "Unpaired"
         case .unsupportedDaemon: "Can't talk to it"
-        case .noSafeAddress: "Wi-Fi not ready"
+        case .noSafeAddress: "Needs a new code"
         }
     }
 

@@ -75,11 +75,14 @@ struct NeedsYouView: View {
                         "Something answered at \(model.address ?? "that address"), but not an OpenRig this app can use. Update OpenRig on the Mac, then pair again."
                 ) { retry }
             case .noSafeAddress:
+                let onlyThisMac = model.pairing.map { NoSafeAddress($0.code) } == .onlyThisMac
                 unavailable(
-                    "Wi-Fi pairing isn't ready yet", systemImage: "lock.slash",
-                    description:
-                        "\(model.macName) paired this phone for Wi-Fi. This version of the app can't reach a Mac on Wi-Fi without sending its key unencrypted, so it doesn't try. A later version adds an encrypted link."
-                ) { EmptyView() }
+                    onlyThisMac ? "This pairing only works on the Mac itself" : "This pairing has no encrypted link",
+                    systemImage: "lock.slash",
+                    description: onlyThisMac
+                        ? "\(model.macName) made this code in a build that keeps its relay on the Mac, so a phone on the Wi-Fi can't reach it. Pair again from OpenRig Canary or a release build, then unpair the old phone in that Mac's Settings › Phone."
+                        : "\(model.macName) made this code before OpenRig encrypted the Wi-Fi link, and this phone won't send its key unencrypted. Pair again with a new code from the Mac, then unpair the old phone in its Settings › Phone."
+                ) { Button("Pair again") { model.unpair() }.buttonStyle(.borderedProminent) }
             case .connected:
                 // shownRequests is never nil when connected.
                 EmptyView()

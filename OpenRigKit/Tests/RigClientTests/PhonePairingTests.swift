@@ -159,6 +159,18 @@ import Testing
         #expect(phones.refusesCode(relay: nil, heldToLoopback: true) == nil)
     }
 
+    /// Held to loopback, the Mac still shows the code (the simulator needs it), but says only the simulator can use it.
+    @Test func aLoopbackOnlyCodeIsForTheSimulator() throws {
+        let daemon = URL(string: "http://127.0.0.1:7433")!
+        let held = try PairingCode.forThisMac(credential: credential, actor: "human-example@external", daemon: daemon)
+        #expect(held.onlyThisMac)
+        let relay = RelayReach(addresses: ["192.168.1.5"], port: 7434, secret: RelayLink.newSecret())
+        let wifi = try PairingCode.forThisMac(
+            credential: credential, actor: "human-example@external", daemon: daemon, relay: relay)
+        #expect(!wifi.onlyThisMac)
+        #expect(PairedPhones.simulatorOnly.contains("OPENRIG_RELAY_WIFI=1"), "says how to pair a real phone")
+    }
+
     @Test func aDamagedRecordReadsAsEmpty() {
         #expect(PairedPhones(data: Data("not json".utf8)) == PairedPhones())
         #expect(PairedPhones(data: nil) == PairedPhones())

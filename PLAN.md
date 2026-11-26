@@ -582,7 +582,7 @@ An iPhone app (`Remote/`, `OpenRigRemote`) that pairs with the Mac app from a QR
   - `OPENRIG_DEBUG_PAIR_LINK=<link>` pairs at launch.
   - `OPENRIG_DEBUG_OPEN_LINK=<link>` handles a link as opening it does, and waits for the confirmation.
   - `OPENRIG_DEBUG_RELAY_HOST=<host>` sends every `lan` reach to that host, still through the relay. Use `127.0.0.1` to reach a Debug Mac copy.
-  - `OPENRIG_DEBUG_STATE=unreachable|local-network-denied|unpaired|unsupported` replaces the status after each check.
+  - `OPENRIG_DEBUG_STATE=unreachable|local-network-denied|unpaired|unsupported|no-safe-address` replaces the status after each check. In the simulator, loopback is safe, so `no-safe-address` is the only way to see a loopback-only code's screen.
   - `OPENRIG_DEBUG_SCREEN=scanner|settings|rigs`.
   - `OPENRIG_DEBUG_OPEN_ASK=<id>` and `OPENRIG_DEBUG_DRAFT=reply:<text>` or `picks:<question>=<option>,…`.
   - `OPENRIG_DEBUG_RIG=<rig>`, `OPENRIG_DEBUG_SEAT=<session>`, `OPENRIG_DEBUG_COMPOSE=message|task` and `OPENRIG_DEBUG_TEXT=<text>` open the Rigs tab on a seat, a sheet and its text. `OPENRIG_DEBUG_SEAT_PROMPT=1` opens that seat's prompt screen.
