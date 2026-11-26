@@ -112,7 +112,7 @@ public struct RigDraft: Sendable, Equatable {
 
     private func edited(_ member: Node.Mapping, as seat: Seat) -> Node.Mapping {
         var member = member
-        if let cwd { member.set("cwd", cwd, after: "profile") }
+        if let cwd { member.set("cwd", Self.cwd(member["cwd"]?.string, in: cwd), after: "profile") }
         if seat.runtime == Runtime.terminal {
             // The schema's terminal triple; the keys only an agent seat may carry go.
             member.set("agent_ref", "builtin:terminal", after: "id")
@@ -130,6 +130,14 @@ public struct RigDraft: Sendable, Equatable {
             member.set("agent_ref", absolute, after: "id")
         }
         return member
+    }
+
+    /// A member's cwd in the project: a relative one ("docs") inside it, an absolute or `~` one as written.
+    static func cwd(_ authored: String?, in project: String) -> String {
+        guard let authored, !authored.isEmpty else { return project }
+        if authored.hasPrefix("/") || authored.hasPrefix("~") { return authored }
+        let path = URL(filePath: project).appending(path: authored).standardizedFileURL.path(percentEncoded: false)
+        return path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
     }
 
     /// `local:<relative>` as `path:<absolute>`, resolved against `folder`. Other refs are left alone (nil).
@@ -153,13 +161,16 @@ public struct RigDraft: Sendable, Equatable {
         return agentSpec(seat)?["name"]?.string ?? folder.lastPathComponent
     }
 
-    /// The model a seat gets when the rig spec names none: its profile's `preferences.model`, else the agent spec's
-    /// `defaults.model`, in OpenRig's order (profile-resolver). Nil when the role sets none: the runtime's default.
-    public func roleModel(_ seat: Seat) -> String? {
-        guard let spec = agentSpec(seat) else { return nil }
-        let preferred = spec["profiles"]?[seat.profile ?? "default"]?["preferences"]?["model"]?.string
-        return [preferred, spec["defaults"]?["model"]?.string]
-            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty }
+    /// What a seat's role sets when the rig spec names no model: its profile's `preferences`, else the agent spec's
+    /// `defaults`, in OpenRig's order (profile-resolver).
+    public func roleDefault(_ seat: Seat) -> RoleDefault {
+        guard let spec = agentSpec(seat) else { return RoleDefault() }
+        let preferences = spec["profiles"]?[seat.profile ?? "default"]?["preferences"]
+        func value(_ key: String) -> String? {
+            [preferences?[key]?.string, spec["defaults"]?[key]?.string]
+                .compactMap { $0?.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty }
+        }
+        return RoleDefault(model: value("model"), runtime: value("runtime") ?? "claude-code")
     }
 
     private func agentSpec(_ seat: Seat) -> Node? {
@@ -173,6 +184,21 @@ public struct RigDraft: Sendable, Equatable {
         }
         return nil
     }
+}
+
+/// A role's own model, and the runtime it was chosen for.
+public struct RoleDefault: Sendable, Equatable {
+    public var model: String?
+    public var runtime: String
+
+    public init(model: String? = nil, runtime: String = "claude-code") {
+        self.model = model
+        self.runtime = runtime
+    }
+
+    /// The role's model on a seat running `runtime`: a Codex model means nothing to Claude Code, so a seat moved to
+    /// another runtime shows that runtime's default.
+    public func model(on runtime: String) -> String? { runtime == self.runtime ? model : nil }
 }
 
 /// The runtimes a rig spec seat can name (the daemon's adapters).

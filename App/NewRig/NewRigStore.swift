@@ -60,8 +60,8 @@ final class NewRigStore {
     /// Each runtime's models and effort levels, read from its own CLI.
     private(set) var choices: [String: ModelChoices] = [:]
     private(set) var roles: [RigDraft.Seat.ID: String] = [:]
-    /// Each seat's model when the spec names none, from its role's agent spec (nil: the runtime's default).
-    private(set) var roleModels: [RigDraft.Seat.ID: String] = [:]
+    /// What each seat's role sets when the spec names no model, from its agent spec.
+    private(set) var roleDefaults: [RigDraft.Seat.ID: RoleDefault] = [:]
 
     private(set) var yaml = ""
     private(set) var preflight: Preflight?
@@ -139,7 +139,7 @@ final class NewRigStore {
         draft.cwd = folder?.path
         self.draft = draft
         roles = Dictionary(uniqueKeysWithValues: draft.seats.map { ($0.id, draft.roleName($0)) })
-        roleModels = draft.seats.reduce(into: [:]) { $0[$1.id] = draft.roleModel($1) }
+        roleDefaults = draft.seats.reduce(into: [:]) { $0[$1.id] = draft.roleDefault($1) }
     }
 
     /// What's missing before Continue, said under the button. Nil when Start is complete.

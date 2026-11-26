@@ -315,8 +315,8 @@ struct SeatRow: View {
                         }
                     })
             ) {
-                Text(ModelChoices.roleDefault(model: model.roleModels[seat.id], runtime: seat.runtime))
-                    .tag(String?.none)
+                let role = model.roleDefaults[seat.id]?.model(on: seat.runtime)
+                Text(ModelChoices.roleDefault(model: role, runtime: seat.runtime)).tag(String?.none)
                 ForEach(choices.models(including: seat.model)) { Text($0.label).tag(Optional($0.id)) }
                 Divider()
                 Text("Other…").tag(Optional(Self.other))

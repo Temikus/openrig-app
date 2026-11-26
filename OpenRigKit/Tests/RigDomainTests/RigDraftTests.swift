@@ -183,6 +183,15 @@ import Yams
         #expect(Array(qa.keys.compactMap(\.string)) == ["id", "agent_ref", "runtime", "profile", "cwd"])
     }
 
+    /// A template's own relative cwd stays relative to the project, not lost (review of 8d88412).
+    @Test func aRelativeCwdStaysInsideTheProject() {
+        #expect(RigDraft.cwd(".", in: "/code/app") == "/code/app")
+        #expect(RigDraft.cwd("docs", in: "/code/app") == "/code/app/docs")
+        #expect(RigDraft.cwd(nil, in: "/code/app") == "/code/app")
+        #expect(RigDraft.cwd("/srv/x", in: "/code/app") == "/srv/x")
+        #expect(RigDraft.cwd("~/notes", in: "/code/app") == "~/notes")
+    }
+
     @Test func withoutAProjectTheTemplatesCwdStays() throws {
         let draft = try RigDraft(template: Self.template, folder: Self.folder)
         let root = try parsed(draft)
@@ -191,7 +200,7 @@ import Yams
     }
 
     /// OpenRig's order: the member's model, else its profile's preference, else the agent spec's default.
-    @Test func roleModelComesFromTheProfileThenTheDefaults() throws {
+    @Test func roleDefaultComesFromTheProfileThenTheDefaults() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "rigdraft-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: root) }
         func agent(_ name: String, _ yaml: String) throws {
@@ -204,6 +213,7 @@ import Yams
             """
             name: both
             defaults:
+              runtime: claude-code
               model: opus-4-6
             profiles:
               default:
@@ -233,6 +243,10 @@ import Yams
                     runtime: terminal
             """
         let draft = try RigDraft(template: yaml, folder: root.path)
-        #expect(draft.seats.map(draft.roleModel) == ["sonnet", "opus-4-6", nil, nil])
+        #expect(draft.seats.map { draft.roleDefault($0).model } == ["sonnet", "opus-4-6", nil, nil])
+        // The label follows the seat's runtime (lead, 2026-11-26): a Claude Code role's model isn't Codex's.
+        let role = draft.roleDefault(draft.seats[0])
+        #expect(role.model(on: "claude-code") == "sonnet")
+        #expect(role.model(on: "codex") == nil)
     }
 }
