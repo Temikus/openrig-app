@@ -80,7 +80,11 @@ final class ScriptedProtocol: URLProtocol, @unchecked Sendable {
             if events, let i = scripts[host]?.firstIndex(where: { if case .held = $0 { true } else { false } }) {
                 return scripts[host]!.remove(at: i)
             }
-            return scripts[host]?.isEmpty == false ? scripts[host]!.removeFirst() : .status(500)
+            // Any other request skips a `.held` reply: it's kept for the `/events` request, which may come later.
+            if !events, let i = scripts[host]?.firstIndex(where: { if case .held = $0 { false } else { true } }) {
+                return scripts[host]!.remove(at: i)
+            }
+            return events && scripts[host]?.isEmpty == false ? scripts[host]!.removeFirst() : .status(500)
         }
         switch reply {
         case .drop:
