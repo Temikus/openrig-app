@@ -84,6 +84,8 @@ struct NewRigSheet: View {
             } else if model.step == .start, let picked = model.picked {
                 Text("\(picked.entry.name) · \(seatCount(picked.draft.seats.count)) · you can change any seat next")
                     .foregroundStyle(.secondary)
+            } else if model.step == .start, model.startsBlank {
+                Text("Blank rig · add its seats next").foregroundStyle(.secondary)
             } else if model.step == .seats, let draft = model.draft {
                 Text(seatCount(draft.seats.count)).foregroundStyle(.secondary)
             }
@@ -129,8 +131,11 @@ struct NewRigStart: View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("What will this rig work on?").font(.title2.bold())
-                Text("Pick the project folder, then a template. You can change every seat on the next step.")
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Pick the project folder, then start from a template or a blank rig. You can change every seat on "
+                        + "the next step."
+                )
+                .foregroundStyle(.secondary)
             }
             HStack(alignment: .bottom, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -171,9 +176,36 @@ struct NewRigStart: View {
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
-            Text("Templates are the rig specs OpenRig ships, plus ones you saved.")
+            HStack(spacing: 12) {
+                Picker(
+                    "Start from",
+                    selection: Binding(
+                        get: { model.startsBlank },
+                        set: { blank in
+                            if blank {
+                                model.pickBlank()
+                            } else if let first = model.templates.first {
+                                model.pick(first)
+                            }
+                        })
+                ) {
+                    Text("Template").tag(false)
+                    Text("Blank rig").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .disabled(model.isSaved)
+                Text(
+                    model.startsBlank
+                        ? "No seats yet: add each one, with its role, on the next step."
+                        : "Templates are the rig specs OpenRig ships, plus ones you saved."
+                )
                 .font(.caption).foregroundStyle(.secondary)
-            if model.loading {
+            }
+            if model.startsBlank {
+                EmptyView()
+            } else if model.loading {
                 ProgressView("Reading the spec library…").frame(maxWidth: .infinity)
             } else if let error = model.loadError {
                 Text(error).foregroundStyle(.secondary)
@@ -234,13 +266,23 @@ struct TemplateCard: View {
 
 struct NewRigSeats: View {
     @Bindable var model: NewRigStore
+    @State private var addingSeat = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Seats").font(.title2.bold())
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Seats").font(.title2.bold())
+                    Spacer()
+                    Button("Add Seat…", systemImage: "plus") { addingSeat = true }
+                        .disabled(model.roleLibrary.isEmpty)
+                        .help(model.roleLibrary.isEmpty ? "No roles in the library" : "Add a seat with a role")
+                }
                 Text(
-                    "From \(model.picked?.entry.name ?? "the template"). Change a runtime, model or effort, or remove a seat."
+                    model.startsBlank
+                        ? "A blank rig. Add the seats it needs; each one's edges come from its role."
+                        : "From \(model.picked?.entry.name ?? "the template"). Change a runtime, model or effort, "
+                            + "or add and remove seats."
                 )
                 .foregroundStyle(.secondary)
             }
@@ -271,7 +313,191 @@ struct NewRigSeats: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
+            if let draft = model.draft, !draft.addedEdges.isEmpty {
+                Text(edgesNote(draft))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+        .sheet(isPresented: $addingSeat) { AddSeatSheet(model: model) }
+    }
+
+    /// The added seats' edges, said plainly: the Review spec shows them in full.
+    private func edgesNote(_ draft: RigDraft) -> String {
+        let lines = draft.addedEdges.map { "\($0.from) \($0.kind.replacingOccurrences(of: "_", with: " ")) \($0.to)" }
+        return "Edges come from the roles: " + lines.joined(separator: ", ") + "."
+    }
+}
+
+/// Add a seat: a role from the library, then its name, pod, runtime, model and effort.
+struct AddSeatSheet: View {
+    let model: NewRigStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var search = ""
+    @State private var role: Role?
+    @State private var member = ""
+    @State private var pod = ""
+    @State private var newPod = false
+    @State private var runtime = "claude-code"
+    @State private var modelID: String?
+    @State private var effort: String?
+    @State private var typedModel = ""
+
+    private static let other = "\u{0}other"
+
+    private var shown: [Role] {
+        search.isEmpty
+            ? model.roleLibrary
+            : model.roleLibrary.filter {
+                $0.name.localizedStandardContains(search) || $0.summary.localizedStandardContains(search)
+            }
+    }
+
+    private var problem: String? {
+        guard role != nil else { return "Pick a role." }
+        if modelID == Self.other, ModelChoices.typed(typedModel) == nil { return "Type a model ID." }
+        return model.addSeatProblem(member: member, pod: pod)
+    }
+
+    var body: some View {
+        let choices = model.choices(for: runtime)
+        let agentSeat = runtime != Runtime.terminal && runtime != "stub"
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Add a seat").font(.headline)
+                Spacer()
+                TextField("Search roles", text: $search)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 200)
+                    .accessibilityLabel("Search roles")
+            }
+            List(
+                shown,
+                selection: Binding(get: { role?.id }, set: { id in pick(model.roleLibrary.first { $0.id == id }) })
+            ) { role in
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text(role.name).fontWeight(.semibold).frame(width: 150, alignment: .leading)
+                    Text(role.summary).foregroundStyle(.secondary).lineLimit(2)
+                }
+                .tag(role.id)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(role.name)
+            }
+            .frame(minHeight: 160, maxHeight: 280)
+            .accessibilityLabel("Roles")
+            Divider()
+            HStack(alignment: .bottom, spacing: 10) {
+                field("Seat name") {
+                    TextField("Seat name", text: $member).frame(width: 120).accessibilityLabel("Seat name")
+                }
+                field("Pod") {
+                    if newPod {
+                        TextField("Pod", text: $pod).frame(width: 110).accessibilityLabel("Pod")
+                    } else {
+                        Picker("Pod", selection: Binding(get: { pod }, set: { choosePod($0) })) {
+                            ForEach(pods, id: \.self) { Text($0).tag($0) }
+                            Divider()
+                            Text("New pod…").tag(Self.other)
+                        }
+                        .labelsHidden().frame(width: 110)
+                    }
+                }
+                field("Runtime") {
+                    Picker("Runtime", selection: Binding(get: { runtime }, set: { setRuntime($0) })) {
+                        ForEach(Runtime.all, id: \.self) { Text(Runtime.label($0)).tag($0) }
+                    }
+                    .labelsHidden().frame(width: 120)
+                }
+                field("Model") {
+                    Picker("Model", selection: $modelID) {
+                        Text(ModelChoices.roleDefault(model: roleDefault?.model(on: runtime), runtime: runtime))
+                            .tag(String?.none)
+                        ForEach(choices.models) { Text($0.label).tag(Optional($0.id)) }
+                        Divider()
+                        Text("Other…").tag(Optional(Self.other))
+                    }
+                    .labelsHidden().frame(width: 150).disabled(!agentSeat)
+                }
+                field("Effort") {
+                    Picker("Effort", selection: $effort) {
+                        Text("Default").tag(String?.none)
+                        ForEach(choices.efforts(for: modelID), id: \.self) { Text($0.capitalized).tag(Optional($0)) }
+                    }
+                    .labelsHidden().frame(width: 90).disabled(!agentSeat)
+                }
+            }
+            if modelID == Self.other {
+                TextField("Model ID, such as claude-opus-5-5", text: $typedModel)
+                    .frame(width: 260)
+                    .accessibilityLabel("Model ID")
+            }
+            HStack {
+                Text(problem ?? " ").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Add Seat", action: add).keyboardShortcut(.defaultAction).disabled(problem != nil)
+            }
+        }
+        .padding(16)
+        .frame(width: 640)
+    }
+
+    private var pods: [String] {
+        var pods = model.draft?.pods ?? []
+        if !pod.isEmpty, !pods.contains(pod) { pods.append(pod) }
+        return pods
+    }
+
+    private var roleDefault: RoleDefault? {
+        guard let role, let draft = model.draft else { return nil }
+        return draft.roleDefault(RigDraft.Seat.added(pod: pod, member: member, role: role.folder, runtime: runtime))
+    }
+
+    private func field(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            content()
+        }
+    }
+
+    /// A role fills in the seat's usual name and pod, and its own runtime.
+    private func pick(_ picked: Role?) {
+        role = picked
+        guard let picked else { return }
+        let suggestion = model.suggestion(for: picked)
+        member = suggestion.member
+        pod = suggestion.pod
+        newPod = false
+        if let draft = model.draft {
+            let seat = RigDraft.Seat.added(pod: pod, member: member, role: picked.folder, runtime: runtime)
+            setRuntime(draft.roleDefault(seat).runtime)
+        }
+    }
+
+    private func choosePod(_ choice: String) {
+        if choice == Self.other {
+            newPod = true
+            pod = ""
+        } else {
+            pod = choice
+        }
+    }
+
+    private func setRuntime(_ new: String) {
+        runtime = new
+        let listed = model.choices(for: new)
+        if let id = modelID, id != Self.other, !listed.models.contains(where: { $0.id == id }) { modelID = nil }
+        if let level = effort, !listed.efforts(for: modelID).contains(level) { effort = nil }
+    }
+
+    private func add() {
+        guard let role, problem == nil else { return }
+        let chosen = modelID == Self.other ? ModelChoices.typed(typedModel) : modelID
+        let agentSeat = runtime != Runtime.terminal && runtime != "stub"
+        model.addSeat(
+            role: role, member: member, pod: pod, runtime: runtime, model: agentSeat ? chosen : nil,
+            effort: agentSeat ? effort : nil)
+        dismiss()
     }
 }
 

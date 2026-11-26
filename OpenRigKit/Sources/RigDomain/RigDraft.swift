@@ -23,13 +23,38 @@ public struct RigDraft: Sendable, Equatable {
         /// The agent spec profile the seat uses; OpenRig's default is "default".
         public var profile: String? = nil
 
+        /// Added in New Rig rather than read from the template.
+        public var isAdded = false
+
+        /// A seat added in New Rig, its role an agent spec folder.
+        public static func added(pod: String, member: String, role: String, runtime: String) -> Seat {
+            Seat(
+                pod: pod, member: member, agentRef: "path:" + role, runtime: runtime, model: nil, effort: nil,
+                templateRuntime: "", profile: "default", isAdded: true)
+        }
+
         /// The logical id, as edges and sessions name it: "dev.build".
         public var id: String { "\(pod).\(member)" }
         public var isTerminal: Bool { templateRuntime == Runtime.terminal }
     }
 
+    /// An edge between two seats, by logical id ("orch.lead" → "dev.build").
+    public struct Edge: Sendable, Hashable {
+        public var kind: String
+        public var from: String
+        public var to: String
+
+        public init(kind: String, from: String, to: String) {
+            self.kind = kind
+            self.from = from
+            self.to = to
+        }
+    }
+
     public var name: String
     public var seats: [Seat]
+    /// Edges for added seats. The template's own edges stay in its text.
+    public private(set) var addedEdges: [Edge] = []
     /// The template's own text and folder.
     public let template: String
     public let folder: String
@@ -61,12 +86,53 @@ public struct RigDraft: Sendable, Equatable {
         }
     }
 
+    /// A rig with no seats yet, for "Blank rig". Its spec starts from OpenRig's empty shape.
+    public static func blank() -> RigDraft {
+        try! RigDraft(template: "version: \"0.2\"\nname: blank\npods: []\nedges: []\n", folder: "/")
+    }
+
     /// The template's seats in order; one removed from `seats` is gone from the YAML, with its edges.
     public var templateSeats: [Seat] { (try? RigDraft(template: template, folder: folder).seats) ?? [] }
 
+    /// The template's edges, every one by logical id, the pod's own and the rig's.
+    public var templateEdges: [Edge] {
+        guard let root = (try? Yams.compose(yaml: template))?.mapping else { return [] }
+        func edge(_ node: Node, pod: String?) -> Edge? {
+            guard let kind = node["kind"]?.string, let from = node["from"]?.string, let to = node["to"]?.string
+            else { return nil }
+            let qualified = { (end: String) in pod.map { "\($0).\(end)" } ?? end }
+            return Edge(kind: kind, from: qualified(from), to: qualified(to))
+        }
+        let pods = (root["pods"]?.sequence ?? []).flatMap { pod in
+            (pod["edges"]?.sequence ?? []).compactMap { edge($0, pod: pod["id"]?.string) }
+        }
+        return pods + (root["edges"]?.sequence ?? []).compactMap { edge($0, pod: nil) }
+    }
+
+    /// Every pod the rig has now, in order: the template's that still have a seat, then new ones.
+    public var pods: [String] {
+        var pods: [String] = []
+        for seat in seats where !pods.contains(seat.pod) { pods.append(seat.pod) }
+        return pods
+    }
+
+    /// Adds a seat at the end of its pod (a new pod goes last), with its edges.
+    public mutating func add(_ seat: Seat, edges: [Edge] = []) {
+        var seat = seat
+        seat.isAdded = true
+        let at = seats.lastIndex { $0.pod == seat.pod }.map { $0 + 1 } ?? seats.endIndex
+        seats.insert(seat, at: at)
+        for edge in edges where !addedEdges.contains(edge) { addedEdges.append(edge) }
+    }
+
     public mutating func remove(_ id: Seat.ID) {
         seats.removeAll { $0.id == id }
+        addedEdges.removeAll { $0.from == id || $0.to == id }
     }
+
+    /// Member ids in use, the template's included, so an added seat never takes a removed seat's place in the
+    /// template's text.
+    public var takenMembers: Set<String> { Set((seats + templateSeats).map(\.member)) }
 
     /// The rig.yaml these edits make.
     public func yaml() throws -> String {
@@ -84,16 +150,27 @@ public struct RigDraft: Sendable, Equatable {
                 ids.insert(id)
                 members.append(.mapping(edited(member, as: seat)))
             }
+            members += added(in: podID)
             guard !members.isEmpty else { continue }
             keptPods.insert(podID)
             pod["members"] = Node(members)
-            if let edges = pod["edges"]?.sequence {
-                pod["edges"] = Node(
-                    edges.filter { edge in
-                        [edge["from"]?.string, edge["to"]?.string].allSatisfy { $0.map(ids.contains) ?? true }
-                    })
+            var edges: [Node] = (pod["edges"]?.sequence ?? []).filter { edge in
+                [edge["from"]?.string, edge["to"]?.string].allSatisfy { $0.map(ids.contains) ?? true }
             }
+            edges += addedEdges(in: podID)
+            if pod["edges"] != nil || !edges.isEmpty { pod["edges"] = Node(edges) }
             pods.append(.mapping(pod))
+        }
+        // Pods only added seats are in: OpenRig requires a label.
+        for podID in self.pods where !keptPods.contains(podID) {
+            keptPods.insert(podID)
+            pods.append(
+                .mapping(
+                    Node.Mapping([
+                        (Node("id"), Node(podID)),
+                        (Node("label"), Node(podID.prefix(1).uppercased() + podID.dropFirst())),
+                        (Node("members"), Node(added(in: podID))), (Node("edges"), Node(addedEdges(in: podID))),
+                    ])))
         }
         root["pods"] = Node(pods)
         // Rig-level edges name seats as "pod.member", or a whole pod.
@@ -107,8 +184,36 @@ public struct RigDraft: Sendable, Equatable {
                     }
                 })
         }
+        let across = addedEdges.filter { pod(of: $0.from) != pod(of: $0.to) }
+        if !across.isEmpty { root["edges"] = Node(Array(root["edges"]?.sequence ?? []) + across.map(node)) }
         return try Yams.serialize(node: .mapping(root), width: -1)
     }
+
+    private func added(in pod: String) -> [Node] {
+        seats.filter { $0.isAdded && $0.pod == pod }.map { seat in
+            let base = Node.Mapping([
+                (Node("id"), Node(seat.member)), (Node("agent_ref"), Node(seat.agentRef ?? "")),
+                (Node("profile"), Node(seat.profile ?? "default")),
+            ])
+            return .mapping(edited(base, as: seat))
+        }
+    }
+
+    private func addedEdges(in pod: String) -> [Node] {
+        addedEdges.filter { self.pod(of: $0.from) == pod && self.pod(of: $0.to) == pod }.map { edge in
+            node(Edge(kind: edge.kind, from: member(of: edge.from), to: member(of: edge.to)))
+        }
+    }
+
+    private func node(_ edge: Edge) -> Node {
+        .mapping(
+            Node.Mapping([
+                (Node("kind"), Node(edge.kind)), (Node("from"), Node(edge.from)), (Node("to"), Node(edge.to)),
+            ]))
+    }
+
+    private func pod(of id: String) -> String { String(id.prefix { $0 != "." }) }
+    private func member(of id: String) -> String { String(id.drop { $0 != "." }.dropFirst()) }
 
     private func edited(_ member: Node.Mapping, as seat: Seat) -> Node.Mapping {
         var member = member
