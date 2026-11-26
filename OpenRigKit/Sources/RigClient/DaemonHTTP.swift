@@ -50,6 +50,11 @@ public struct DaemonHTTP: Sendable {
         try await get("/api/specs/library", query: ["kind": "rig"])
     }
 
+    /// The agent specs in the library: the roles a seat can take.
+    public func agentSpecs() async throws(DaemonError) -> [SpecEntry] {
+        try await get("/api/specs/library", query: ["kind": "agent"])
+    }
+
     public func specReview(id: String) async throws(DaemonError) -> SpecReview {
         try await get("/api/specs/library/\(id)/review")
     }

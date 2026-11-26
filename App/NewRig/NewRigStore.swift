@@ -56,6 +56,12 @@ final class NewRigStore {
     private(set) var loadError: String?
     private(set) var loading = true
     private(set) var pickedID: Template.ID?
+    /// "Blank rig": no template, every seat added.
+    private(set) var startsBlank = false
+    /// The roles a seat can take, from the library's agent specs.
+    private(set) var roleLibrary: [Role] = []
+    /// Edges and names for added seats, learned from the templates.
+    private(set) var edgeRules = EdgeRules(learningFrom: [])
     var draft: RigDraft?
     /// Each runtime's models and effort levels, read from its own CLI.
     private(set) var choices: [String: ModelChoices] = [:]
@@ -125,16 +131,36 @@ final class NewRigStore {
             }
             // Built-in first, in the library's order, then the person's own.
             .sorted { $0.entry.isBuiltin && !$1.entry.isBuiltin }
+            edgeRules = EdgeRules(learningFrom: templates.map(\.draft))
             loadError = templates.isEmpty ? "No rig specs in the library." : nil
         } catch {
             loadError = error.userMessage
         }
+        await loadRoles()
         await loadChoices()
+    }
+
+    /// Agent specs with a default profile, built-in first, by name.
+    private func loadRoles() async {
+        guard let entries = try? await client.agentSpecs() else { return }
+        roleLibrary = entries.compactMap { Role.load(agentSpec: URL(filePath: $0.sourcePath), summary: $0.summary) }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     func pick(_ template: Template) {
         pickedID = template.id
-        var draft = template.draft
+        startsBlank = false
+        use(template.draft)
+    }
+
+    func pickBlank() {
+        pickedID = nil
+        startsBlank = true
+        use(RigDraft.blank())
+    }
+
+    private func use(_ template: RigDraft) {
+        var draft = template
         draft.name = name
         #if DEBUG
             // OPENRIG_DEBUG_NEWRIG_RUNTIME=stub puts every agent seat on that runtime, since a pop-up menu can't be
@@ -154,7 +180,7 @@ final class NewRigStore {
         if folder == nil { return "Choose the project folder." }
         if let problem = RigName.problem(name) { return problem }
         if existingRigs.contains(name) { return "A rig named \(name) already exists." }
-        if picked == nil { return "Pick a template." }
+        if picked == nil, !startsBlank { return "Pick a template or a blank rig." }
         return nil
     }
 
@@ -260,6 +286,30 @@ final class NewRigStore {
         draft?.seats[i].addedSkills.removeAll { $0.id == skillID }
     }
 
+    /// A member id and pod for a new seat of `role`.
+    func suggestion(for role: Role) -> (member: String, pod: String) {
+        edgeRules.suggestion(for: role, taken: draft?.takenMembers ?? [])
+    }
+
+    /// What's wrong with a new seat's name or pod, or nil.
+    func addSeatProblem(member: String, pod: String) -> String? {
+        SeatName.problem(member, taken: draft?.takenMembers ?? []) ?? SeatName.podProblem(pod)
+    }
+
+    /// Adds a seat with the edges its role has in the templates.
+    func addSeat(
+        role: Role, member: String, pod: String, runtime: String, model: String?, effort: String?
+    ) {
+        guard var draft else { return }
+        var seat = RigDraft.Seat.added(pod: pod, member: member, role: role.folder, runtime: runtime)
+        seat.model = model
+        seat.effort = effort
+        draft.add(seat, edges: edgeRules.edges(for: seat, in: draft))
+        self.draft = draft
+        roles[seat.id] = role.name
+        roleDefaults[seat.id] = draft.roleDefault(seat)
+    }
+
     var seatsProblem: String? { draft?.seats.isEmpty == false ? nil : "A rig needs at least one seat." }
 
     // MARK: Review
@@ -267,7 +317,8 @@ final class NewRigStore {
     /// Writes the spec and runs preflight on it: what Launch runs is what was checked. Before the first save that is
     /// a staged folder; after one, the saved folder itself (`SpecLaunch`).
     func review() async {
-        guard let draft, let template = picked else { return }
+        guard let draft else { return }
+        let template = picked
         preflight = nil
         do {
             yaml = try draft.yaml()
@@ -332,13 +383,13 @@ final class NewRigStore {
     /// A fresh folder named after the rig, holding the template folder's files (its culture and guidance, which
     /// relative paths name) and the new rig.yaml. A template that is a lone file at the top of the person's library
     /// gets only its rig.yaml: its folder is the whole library.
-    private func stage(_ yaml: String, from template: Template) throws -> URL {
+    private func stage(_ yaml: String, from template: Template?) throws -> URL {
         let fm = FileManager.default
         let parent = fm.temporaryDirectory.appending(path: "OpenRig-NewRig-\(UUID().uuidString)")
         let folder = parent.appending(path: name)
-        let source = template.path.deletingLastPathComponent()
+        let source = template?.path.deletingLastPathComponent()
         try fm.createDirectory(at: parent, withIntermediateDirectories: true)
-        if source.standardizedFileURL != specsRoot.standardizedFileURL {
+        if let source, source.standardizedFileURL != specsRoot.standardizedFileURL {
             try fm.copyItem(at: source, to: folder)
             for file in try fm.contentsOfDirectory(atPath: folder.path)
             where file.hasSuffix(".yaml") || file.hasSuffix(".yml") {
