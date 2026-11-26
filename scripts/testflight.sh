@@ -34,6 +34,8 @@ plutil -insert destination -string upload "$options"
 plutil -insert teamID -string "$team" "$options"
 
 echo "==> Uploading"
-xcodebuild -exportArchive -archivePath "$archive" -exportOptionsPlist "$options" \
+# Export runs /usr/bin/rsync (openrsync), which starts its other end as the first `rsync` on PATH.
+# Homebrew's rsync 3.x rejects openrsync's options, and the export fails with "Copy failed".
+PATH="/usr/bin:$PATH" xcodebuild -exportArchive -archivePath "$archive" -exportOptionsPlist "$options" \
     -exportPath "$out/export" -allowProvisioningUpdates
 echo "Uploaded build $build. It appears in App Store Connect › TestFlight once processing finishes."
