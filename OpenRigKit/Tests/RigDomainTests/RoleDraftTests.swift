@@ -126,6 +126,11 @@ import Yams
         #expect(spec["defaults"]?["runtime"]?.string == "codex")
         #expect(spec["defaults"]?["model"]?.string == "gpt-5.5")
         #expect(spec["imports"]?.sequence?.first?["ref"]?.string == "path:" + pool.shared.path(percentEncoded: false))
+        // A folder URL's path ends in "/": the import is written without it, as the built-in roles' are (seen live).
+        let asFolder = URL(filePath: pool.shared.path(percentEncoded: false), directoryHint: .isDirectory)
+        guard case .text(let folderYAML)? = draft.files(shared: asFolder, available: [])[RoleDraft.Files.agent]
+        else { Issue.record("no agent.yaml"); return }
+        #expect(!folderYAML.contains("shared/\n"), "no trailing slash on the import")
         #expect(spec["profiles"]?["default"]?["uses"]?["plugins"]?.sequence?.first?.string == "shared:openrig-core")
         let startup = try #require(spec["startup"]?["files"]?.sequence?.first)
         #expect(startup["path"]?.string == RoleDraft.Files.guidance)

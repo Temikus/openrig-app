@@ -192,7 +192,10 @@ public struct RoleDraft: Sendable, Equatable {
             (Node("defaults"), .mapping(Node.Mapping(defaults))),
             (
                 Node("imports"),
-                Node([.mapping(Node.Mapping([(Node("ref"), Node("path:" + shared.path(percentEncoded: false)))]))])
+                Node([
+                    .mapping(
+                        Node.Mapping([(Node("ref"), Node("path:" + Role.plain(shared.path(percentEncoded: false))))]))
+                ])
             ),
             (
                 Node("profiles"),
