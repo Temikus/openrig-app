@@ -22,7 +22,7 @@ public struct Role: Sendable, Equatable, Identifiable {
         guard let text = try? String(contentsOf: file, encoding: .utf8),
             let spec = try? Yams.compose(yaml: text), spec["profiles"]?["default"] != nil
         else { return nil }
-        let folder = Self.plain(file.deletingLastPathComponent().standardizedFileURL.path(percentEncoded: false))
+        let folder = Self.plain(file.deletingLastPathComponent().resolvingSymlinksInPath().path(percentEncoded: false))
         let name = spec["name"]?.string ?? URL(filePath: folder).lastPathComponent
         return Role(name: name, summary: summary ?? spec["description"]?.string ?? "", folder: folder)
     }
@@ -138,9 +138,9 @@ public enum SeatName {
 }
 
 extension RigDraft {
-    /// The agent spec folder a seat's role is, standardized so a template's `local:` ref and an added seat's
-    /// `path:` ref to the same role match.
+    /// The agent spec folder a seat's role is, with symlinks resolved (nvm and Homebrew paths often go through one),
+    /// so a template's `local:` ref and the library's path to the same role match.
     public func roleFolder(_ seat: Seat) -> String? {
-        agentFolder(seat).map { Role.plain($0.standardizedFileURL.path(percentEncoded: false)) }
+        agentFolder(seat).map { Role.plain($0.resolvingSymlinksInPath().path(percentEncoded: false)) }
     }
 }

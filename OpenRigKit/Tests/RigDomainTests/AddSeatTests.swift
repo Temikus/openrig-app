@@ -203,6 +203,11 @@ import Yams
             template: "name: t\npods:\n  - id: dev\n    members:\n      - id: check\n        agent_ref: \"local:qa\"\n",
             folder: root.path)
         #expect(draft.roleFolder(draft.seats[0]) == folder)
+        // Reached through a symlink, as an nvm or Homebrew path can be, it is still the same role (review of cf2eff9).
+        let link = root.appending(path: "linked")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: root)
+        let viaLink = try RigDraft(template: draft.template, folder: link.path)
+        #expect(viaLink.roleFolder(viaLink.seats[0]) == folder)
         #expect(Role.load(agentSpec: qa)?.summary == "QA agent")
         #expect(Role.load(agentSpec: qa, summary: "From the library")?.summary == "From the library")
         #expect(Role.load(agentSpec: shared) == nil, "resources only, not a role")
