@@ -36,6 +36,20 @@ public struct ModelChoices: Sendable, Equatable {
         return models + [Model(id: current, label: current)]
     }
 
+    /// A model ID typed under "Other…", written to the spec as it is: Claude Code's help lists only aliases, so this
+    /// is how to pin a version. Nil for blank.
+    public static func typed(_ text: String) -> String? {
+        let id = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return id.isEmpty ? nil : id
+    }
+
+    /// What "Role default" means for a seat: the role's model, else the runtime's own default. A stub or terminal
+    /// seat runs no model, so there's nothing to name.
+    public static func roleDefault(model: String?, runtime: String) -> String {
+        if model == nil, ["stub", Runtime.terminal].contains(runtime) { return "Role default" }
+        return "Role default (\(model ?? "\(Runtime.label(runtime))'s default"))"
+    }
+
     /// `codex debug models`: the models it shows in its own picker (`visibility: list`), in its order.
     public static func codex(catalog data: Data) -> ModelChoices {
         struct Catalog: Decodable {

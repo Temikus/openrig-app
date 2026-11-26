@@ -278,6 +278,10 @@ struct NewRigSeats: View {
 struct SeatRow: View {
     let model: NewRigStore
     let seat: RigDraft.Seat
+    /// "Other…": a full model ID, for a version or line the runtime's list doesn't name.
+    @State private var typing = false
+    @State private var typed = ""
+    private static let other = "\u{0}other"
 
     var body: some View {
         let choices = model.choices(for: seat.runtime)
@@ -300,13 +304,26 @@ struct SeatRow: View {
             .disabled(seat.isTerminal)
             Picker(
                 "Model for \(seat.id)",
-                selection: Binding(get: { seat.model }, set: { model.setModel($0, for: seat.id) })
+                selection: Binding(
+                    get: { seat.model },
+                    set: {
+                        if $0 == Self.other {
+                            typed = seat.model ?? ""
+                            typing = true
+                        } else {
+                            model.setModel($0, for: seat.id)
+                        }
+                    })
             ) {
-                Text("Role default").tag(String?.none)
+                Text(ModelChoices.roleDefault(model: model.roleModels[seat.id], runtime: seat.runtime))
+                    .tag(String?.none)
                 ForEach(choices.models(including: seat.model)) { Text($0.label).tag(Optional($0.id)) }
+                Divider()
+                Text("Other…").tag(Optional(Self.other))
             }
             .labelsHidden()
             .disabled(!agentSeat)
+            .popover(isPresented: $typing, arrowEdge: .bottom) { otherModel }
             Picker(
                 "Effort for \(seat.id)",
                 selection: Binding(get: { seat.effort }, set: { model.setEffort($0, for: seat.id) })
@@ -325,6 +342,33 @@ struct SeatRow: View {
             .help("Remove \(seat.id) and its edges")
             .accessibilityLabel("Remove \(seat.id)")
         }
+    }
+
+    private var otherModel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Model ID for \(seat.member)").font(.headline)
+            TextField("claude-opus-5-5", text: $typed)
+                .frame(width: 240)
+                .onSubmit(useTyped)
+                .accessibilityLabel("Model ID for \(seat.id)")
+            Text("Written to the spec as typed. It isn't checked until the seat starts.")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer()
+                Button("Cancel") { typing = false }
+                Button("Use", action: useTyped)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(ModelChoices.typed(typed) == nil)
+            }
+        }
+        .frame(width: 260)
+        .padding()
+    }
+
+    private func useTyped() {
+        guard let id = ModelChoices.typed(typed) else { return }
+        model.setModel(id, for: seat.id)
+        typing = false
     }
 
     private func levels(_ choices: ModelChoices) -> [String] {
@@ -451,7 +495,7 @@ struct NewRigReview: View {
                 }
             }
             Text(
-                "Checks come from rig up --plan on the spec as it will be saved, in the project folder, before anything starts."
+                "Checks come from rig up --plan on the spec as it will be saved, before anything starts."
             )
             .font(.caption).foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)

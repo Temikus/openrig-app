@@ -42,6 +42,7 @@ final class NewRigStore {
     var folder: URL? {
         didSet {
             guard let folder else { return }
+            draft?.cwd = folder.path
             name = RigName.afterPicking(
                 folder: folder.lastPathComponent, current: name, typed: nameEdited, saved: savedSpec != nil)
         }
@@ -59,6 +60,8 @@ final class NewRigStore {
     /// Each runtime's models and effort levels, read from its own CLI.
     private(set) var choices: [String: ModelChoices] = [:]
     private(set) var roles: [RigDraft.Seat.ID: String] = [:]
+    /// Each seat's model when the spec names none, from its role's agent spec (nil: the runtime's default).
+    private(set) var roleModels: [RigDraft.Seat.ID: String] = [:]
 
     private(set) var yaml = ""
     private(set) var preflight: Preflight?
@@ -133,8 +136,10 @@ final class NewRigStore {
         pickedID = template.id
         var draft = template.draft
         draft.name = name
+        draft.cwd = folder?.path
         self.draft = draft
         roles = Dictionary(uniqueKeysWithValues: draft.seats.map { ($0.id, draft.roleName($0)) })
+        roleModels = draft.seats.reduce(into: [:]) { $0[$1.id] = draft.roleModel($1) }
     }
 
     /// What's missing before Continue, said under the button. Nil when Start is complete.
@@ -234,10 +239,9 @@ final class NewRigStore {
             preflight = result
             return
         }
-        // `rig up --plan` runs the launch's own preflight, in the project folder Launch will pass. `rig spec
-        // preflight` resolves each seat's cwd against the spec's folder instead.
-        let spec = plan.checked + "/rig.yaml"
-        let args = ["up", spec, "--plan", "--cwd", (folder ?? destination).path, "--json"]
+        // `rig up --plan` runs the launch's own preflight. The spec carries the project folder as each seat's cwd,
+        // so no --cwd: what is checked is what a later `rig up <name>` gets.
+        let args = ["up", plan.checked + "/rig.yaml", "--plan", "--json"]
         if let out = try? await cli.run(arguments: args),
             let report = try? JSONDecoder().decode(PreflightReport.self, from: Data(out.stdout.utf8))
         {
@@ -299,14 +303,14 @@ final class NewRigStore {
     /// The commands Launch runs, with full paths: a quoted "~" wouldn't expand if pasted into a shell.
     var commands: [String] {
         let plan = launchPlan ?? SpecLaunch(staged: destination.path, library: destination.path)
-        return plan.steps(cwd: (folder ?? destination).path).map(\.userCommand)
+        return plan.steps().map(\.userCommand)
     }
 
     var isLaunching: Bool { actions.isRunning(Self.actionKey) }
 
     /// `rig specs add` (first time only), then `rig up` on the saved spec. True once the rig is starting.
     func launch() async -> Bool {
-        guard let folder, preflight?.ready == true, var plan = launchPlan else { return false }
+        guard folder != nil, preflight?.ready == true, var plan = launchPlan else { return false }
         if plan.saved == nil {
             guard
                 let added = await actions.result(
@@ -318,7 +322,7 @@ final class NewRigStore {
             discardStaging()
             plan.saved = savedSpec?.path
         }
-        for step in plan.steps(cwd: folder.path) {
+        for step in plan.steps() {
             guard await actions.perform(step, key: Self.actionKey, success: "Starting \(name)'s seats") else {
                 return false
             }

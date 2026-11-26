@@ -168,4 +168,71 @@ import Yams
         #expect(draft.roleName(draft.seats[0]) == "qa-checker")
         #expect(draft.roleName(draft.seats[1]) == "missing")
     }
+
+    /// A relative cwd resolves against the spec's library folder, so the saved spec names the project itself:
+    /// `rig up <name>` later, with no --cwd, starts every seat there (person's second hand test, 2026-11-26).
+    @Test func everySeatWorksInTheProjectFolder() throws {
+        var draft = try RigDraft(template: Self.template, folder: Self.folder)
+        draft.cwd = "/code/my app"
+        draft.seats[1].runtime = Runtime.terminal
+        let root = try parsed(draft)
+        for (pod, id) in [("orch", "lead"), ("dev", "build"), ("dev", "qa"), ("review", "r1")] {
+            #expect(member(root, pod, id)?["cwd"]?.string == "/code/my app", "\(pod).\(id)")
+        }
+        let qa = try #require(member(root, "dev", "qa")?.mapping)
+        #expect(Array(qa.keys.compactMap(\.string)) == ["id", "agent_ref", "runtime", "profile", "cwd"])
+    }
+
+    @Test func withoutAProjectTheTemplatesCwdStays() throws {
+        let draft = try RigDraft(template: Self.template, folder: Self.folder)
+        let root = try parsed(draft)
+        #expect(member(root, "orch", "lead")?["cwd"]?.string == ".")
+        #expect(member(root, "dev", "qa")?["cwd"] == nil)
+    }
+
+    /// OpenRig's order: the member's model, else its profile's preference, else the agent spec's default.
+    @Test func roleModelComesFromTheProfileThenTheDefaults() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "rigdraft-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        func agent(_ name: String, _ yaml: String) throws {
+            let folder = root.appending(path: "agents/\(name)")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try yaml.write(to: folder.appending(path: "agent.yaml"), atomically: true, encoding: .utf8)
+        }
+        try agent(
+            "both",
+            """
+            name: both
+            defaults:
+              model: opus-4-6
+            profiles:
+              default:
+                preferences:
+                  model: sonnet
+              fast:
+                uses: {}
+            """)
+        try agent("plain", "name: plain\ndefaults:\n  runtime: claude-code\n")
+        let yaml = """
+            name: t
+            pods:
+              - id: dev
+                members:
+                  - id: a
+                    agent_ref: "local:agents/both"
+                    runtime: claude-code
+                  - id: b
+                    agent_ref: "local:agents/both"
+                    runtime: claude-code
+                    profile: fast
+                  - id: c
+                    agent_ref: "local:agents/plain"
+                    runtime: codex
+                  - id: d
+                    agent_ref: "builtin:terminal"
+                    runtime: terminal
+            """
+        let draft = try RigDraft(template: yaml, folder: root.path)
+        #expect(draft.seats.map(draft.roleModel) == ["sonnet", "opus-4-6", nil, nil])
+    }
 }

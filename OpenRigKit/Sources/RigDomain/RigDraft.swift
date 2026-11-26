@@ -20,6 +20,8 @@ public struct RigDraft: Sendable, Equatable {
         public var effort: String?
         /// The template's runtime. A terminal seat has no agent behind it, so it stays a terminal.
         public let templateRuntime: String
+        /// The agent spec profile the seat uses; OpenRig's default is "default".
+        public var profile: String? = nil
 
         /// The logical id, as edges and sessions name it: "dev.build".
         public var id: String { "\(pod).\(member)" }
@@ -31,6 +33,10 @@ public struct RigDraft: Sendable, Equatable {
     /// The template's own text and folder.
     public let template: String
     public let folder: String
+    /// The project folder, written as every seat's `cwd`. A relative cwd resolves against the folder the spec is
+    /// saved in (`~/.openrig/specs/<name>`), and `rig up --cwd` lasts one run, so a later `rig up <name>` would
+    /// start the seats there. Nil keeps the template's own cwd.
+    public var cwd: String?
 
     public enum Failure: Error, Equatable {
         case notARigSpec
@@ -49,7 +55,8 @@ public struct RigDraft: Sendable, Equatable {
                 let runtime = member["runtime"]?.string ?? ""
                 return Seat(
                     pod: podID, member: id, agentRef: member["agent_ref"]?.string, runtime: runtime,
-                    model: member["model"]?.string, effort: member["effort"]?.string, templateRuntime: runtime)
+                    model: member["model"]?.string, effort: member["effort"]?.string, templateRuntime: runtime,
+                    profile: member["profile"]?.string)
             }
         }
     }
@@ -105,6 +112,7 @@ public struct RigDraft: Sendable, Equatable {
 
     private func edited(_ member: Node.Mapping, as seat: Seat) -> Node.Mapping {
         var member = member
+        if let cwd { member.set("cwd", cwd, after: "profile") }
         if seat.runtime == Runtime.terminal {
             // The schema's terminal triple; the keys only an agent seat may carry go.
             member.set("agent_ref", "builtin:terminal", after: "id")
@@ -142,14 +150,28 @@ public struct RigDraft: Sendable, Equatable {
     public func roleName(_ seat: Seat) -> String {
         if seat.agentRef == "builtin:terminal" { return Runtime.terminal }
         guard let folder = agentFolder(seat) else { return seat.agentRef ?? "" }
+        return agentSpec(seat)?["name"]?.string ?? folder.lastPathComponent
+    }
+
+    /// The model a seat gets when the rig spec names none: its profile's `preferences.model`, else the agent spec's
+    /// `defaults.model`, in OpenRig's order (profile-resolver). Nil when the role sets none: the runtime's default.
+    public func roleModel(_ seat: Seat) -> String? {
+        guard let spec = agentSpec(seat) else { return nil }
+        let preferred = spec["profiles"]?[seat.profile ?? "default"]?["preferences"]?["model"]?.string
+        return [preferred, spec["defaults"]?["model"]?.string]
+            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty }
+    }
+
+    private func agentSpec(_ seat: Seat) -> Node? {
+        guard let folder = agentFolder(seat) else { return nil }
         for file in ["agent.yaml", "agent.yml"] {
             if let text = try? String(contentsOf: folder.appending(path: file), encoding: .utf8),
-                let name = (try? Yams.compose(yaml: text))??["name"]?.string
+                let spec = try? Yams.compose(yaml: text)
             {
-                return name
+                return spec
             }
         }
-        return folder.lastPathComponent
+        return nil
     }
 }
 

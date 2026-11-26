@@ -116,19 +116,18 @@ import Testing
         var launch = SpecLaunch(staged: "/tmp/x/pay", library: "/h/.openrig/specs/pay")
         #expect(launch.checked == "/tmp/x/pay")
         #expect(
-            launch.steps(cwd: "/code") == [
-                .addSpec(folder: "/tmp/x/pay"), .launchSpec(path: "/h/.openrig/specs/pay/rig.yaml", cwd: "/code"),
-            ])
+            launch.steps() == [.addSpec(folder: "/tmp/x/pay"), .launchSpec(path: "/h/.openrig/specs/pay/rig.yaml")])
         launch.saved = "/h/.openrig/specs/pay"
         #expect(launch.checked == "/h/.openrig/specs/pay")
-        #expect(launch.steps(cwd: "/code") == [.launchSpec(path: "/h/.openrig/specs/pay/rig.yaml", cwd: "/code")])
+        #expect(launch.steps() == [.launchSpec(path: "/h/.openrig/specs/pay/rig.yaml")])
     }
 
     @Test func newRigFromASpec() {
         #expect(RigAction.addSpec(folder: "/tmp/x/pay").arguments == ["specs", "add", "/tmp/x/pay", "--json"])
-        let up = RigAction.launchSpec(path: "/h/.openrig/specs/pay/rig.yaml", cwd: "/code/my app")
-        #expect(up.arguments == ["up", "/h/.openrig/specs/pay/rig.yaml", "--cwd", "/code/my app", "--yes", "--json"])
-        #expect(up.userCommand == "rig up /h/.openrig/specs/pay/rig.yaml --cwd '/code/my app'")
+        // No --cwd: the spec names the project folder, so this and a later `rig up pay` start the same seats.
+        let up = RigAction.launchSpec(path: "/h/.openrig/specs/pay/rig.yaml")
+        #expect(up.arguments == ["up", "/h/.openrig/specs/pay/rig.yaml", "--yes", "--json"])
+        #expect(up.userCommand == "rig up /h/.openrig/specs/pay/rig.yaml")
     }
 
     @Test func seatRepair() {

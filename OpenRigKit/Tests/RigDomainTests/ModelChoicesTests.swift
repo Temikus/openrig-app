@@ -53,4 +53,20 @@ import Testing
         #expect(choices.models(including: "opus").count == 1)
         #expect(choices.models(including: nil).count == 1)
     }
+
+    @Test func otherTakesAFullModelIDAsTyped() {
+        #expect(ModelChoices.typed("  claude-opus-5-5\n") == "claude-opus-5-5")
+        #expect(ModelChoices.typed("   ") == nil)
+        #expect(ModelChoices.typed("") == nil)
+        let listed = ModelChoices.claude(help: Self.claudeHelp)
+        #expect(listed.models(including: "claude-opus-5-5").last?.id == "claude-opus-5-5", "a typed ID stays listed")
+    }
+
+    @Test func roleDefaultSaysWhatItMeans() {
+        #expect(ModelChoices.roleDefault(model: "opus-4-6", runtime: "claude-code") == "Role default (opus-4-6)")
+        #expect(
+            ModelChoices.roleDefault(model: nil, runtime: "claude-code") == "Role default (Claude Code's default)")
+        #expect(ModelChoices.roleDefault(model: nil, runtime: "codex") == "Role default (Codex's default)")
+        #expect(ModelChoices.roleDefault(model: nil, runtime: "stub") == "Role default", "no model to name")
+    }
 }

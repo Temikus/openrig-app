@@ -40,8 +40,8 @@ public struct PreflightNote: Sendable, Equatable, Identifiable {
     }
 
     static let modelUnchecked =
-        "Models aren't checked before launch. OpenRig makes no model call, so a model your account can't use "
-        + "only shows when the seat starts."
+        "Models aren't checked until a seat starts. If your account can't use a model, that seat will say so when "
+        + "it launches. Pick another model and restart it."
     static let noPolicy =
         "No permission policy, so these seats start with the team default's allowances."
 

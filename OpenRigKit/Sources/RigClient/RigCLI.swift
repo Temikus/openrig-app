@@ -39,8 +39,8 @@ public enum RigAction: Sendable, Equatable {
     case rigUp(rig: String)
     /// Copies a spec folder into the person's library (`~/.openrig/specs/<folder name>`). Fails if that folder exists.
     case addSpec(folder: String)
-    /// Launches a new rig from a spec file, every seat working in `cwd`.
-    case launchSpec(path: String, cwd: String)
+    /// Launches a new rig from a spec file. Its seats' cwd is in the spec, so a later `rig up <name>` matches.
+    case launchSpec(path: String)
     /// Stops every seat. The CLI snapshots first anyway; `--snapshot` makes that explicit.
     case rigDown(rig: String)
     /// Launches one seat of a running rig, resuming it. Seats already running are left alone.
@@ -86,8 +86,8 @@ public enum RigAction: Sendable, Equatable {
             args = ["up", rig, "--existing", "--yes"]
         case .addSpec(let folder):
             args = ["specs", "add", folder]
-        case .launchSpec(let path, let cwd):
-            args = ["up", path, "--cwd", cwd, "--yes"]
+        case .launchSpec(let path):
+            args = ["up", path, "--yes"]
         case .rigDown(let rig):
             args = ["down", rig, "--snapshot", "--yes"]
         case .launchSeat(let rig, let logicalId):
@@ -257,8 +257,8 @@ public struct SpecLaunch: Sendable, Equatable {
     /// The folder whose rig.yaml preflight checks and Launch runs.
     public var checked: String { saved ?? staged }
 
-    public func steps(cwd: String) -> [RigAction] {
-        let up = RigAction.launchSpec(path: (saved ?? library) + "/rig.yaml", cwd: cwd)
+    public func steps() -> [RigAction] {
+        let up = RigAction.launchSpec(path: (saved ?? library) + "/rig.yaml")
         return saved == nil ? [.addSpec(folder: staged), up] : [up]
     }
 }
