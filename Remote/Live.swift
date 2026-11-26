@@ -128,13 +128,14 @@ enum PairingStep: Hashable {
         static var send: Bool { environment["OPENRIG_DEBUG_SEND"] == "1" }
 
         /// Replaces the status after each real check, keeping what was read: `unreachable`, `local-network-denied`,
-        /// `unpaired`, `unsupported`.
+        /// `unpaired`, `unsupported`, `no-safe-address`.
         static var state: RemoteStatus? {
             switch environment["OPENRIG_DEBUG_STATE"] {
             case "unreachable": .unreachable(detail: "Could not connect to the server.")
             case "local-network-denied": .localNetworkDenied
             case "unpaired": .unpaired
             case "unsupported": .unsupportedDaemon
+            case "no-safe-address": .noSafeAddress
             default: nil
             }
         }

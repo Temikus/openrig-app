@@ -32,6 +32,9 @@ extension PairingCode {
             reaches: reaches, actor: actor, credentialID: credential.id, token: credential.token,
             pairingSecret: relay.map { RelayLink.encode($0.secret) }, name: name)
     }
+
+    /// Every reach is loopback, as from a debug Mac held to loopback: only the simulator on that Mac can use it.
+    public var onlyThisMac: Bool { reaches.allSatisfy { $0.kind == .loopback } }
 }
 
 extension RelayLink {
@@ -131,6 +134,11 @@ public struct PairedPhones: Sendable, Equatable {
     }
 
     public var refusesIssue: PairingRefusal? { isMadeUp ? .madeUp : nil }
+
+    /// Shown before and beside a code while the relay is held to loopback. Not a refusal: the simulator needs the code.
+    public static let simulatorOnly =
+        "This build keeps its relay on this Mac, so only the simulator can use a code. To pair a real phone, use "
+        + "OpenRig Canary or a release, or quit and start this build with OPENRIG_RELAY_WIFI=1."
 
     /// Before a credential is issued: a code needs the relay on and a Wi-Fi address to name. Held to loopback (the
     /// simulator on this Mac), the loopback reach is enough.
