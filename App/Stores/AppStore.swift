@@ -479,7 +479,8 @@ final class AppStore {
         var place = EventPlace(type: event.type, payload: event.data)
         place.rigId = place.rigId ?? event.rigId
         let rig = rig
-        let mine = Set(rowsForMe.map(\.id))
+        // Only the rows the person sees: rowsForMe also holds every rig's blocked rows, and most are agents' chains.
+        let mine = Set(RigDomain.humanQueue(rowsForMe, me: me).map(\.id))
         let context = EventContext(
             rigID: rig?.rigID, rigName: rig?.rigName, seatIDs: Set(rig?.graph?.seats.map(\.id) ?? []),
             holdsRow: { rig?.item($0) != nil }, addresses: Set(addresses), holdsRowForMe: mine.contains)
