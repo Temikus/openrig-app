@@ -236,6 +236,14 @@ struct NewRigSeats: View {
     @Bindable var model: NewRigStore
 
     var body: some View {
+        if let id = model.detailSeat, let seat = model.seat(id) {
+            SeatDetail(model: model, seat: seat)
+        } else {
+            list
+        }
+    }
+
+    private var list: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Seats").font(.title2.bold())
@@ -288,7 +296,16 @@ struct SeatRow: View {
         let agentSeat = seat.runtime != Runtime.terminal && seat.runtime != "stub"
         GridRow {
             VStack(alignment: .leading, spacing: 0) {
-                Text(seat.member).fontWeight(.semibold)
+                if seat.runtime == Runtime.terminal {
+                    Text(seat.member).fontWeight(.semibold)
+                } else {
+                    // Opens the seat's detail: its guidance, notes and skills.
+                    Button(seat.member) { model.detailSeat = seat.id }
+                        .buttonStyle(.link)
+                        .fontWeight(.semibold)
+                        .help("Show what \(seat.member) reads at startup, and its skills")
+                        .accessibilityLabel("Seat detail for \(seat.id)")
+                }
                 Text(seat.pod).font(.caption).foregroundStyle(.secondary)
             }
             Text(model.roles[seat.id] ?? "").lineLimit(1)

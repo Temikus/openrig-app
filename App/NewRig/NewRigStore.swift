@@ -136,6 +136,13 @@ final class NewRigStore {
         pickedID = template.id
         var draft = template.draft
         draft.name = name
+        #if DEBUG
+            // OPENRIG_DEBUG_NEWRIG_RUNTIME=stub puts every agent seat on that runtime, since a pop-up menu can't be
+            // chosen from in a background copy.
+            if let runtime = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_NEWRIG_RUNTIME"] {
+                for i in draft.seats.indices where !draft.seats[i].isTerminal { draft.seats[i].runtime = runtime }
+            }
+        #endif
         draft.cwd = folder?.path
         self.draft = draft
         roles = Dictionary(uniqueKeysWithValues: draft.seats.map { ($0.id, draft.roleName($0)) })
@@ -208,7 +215,50 @@ final class NewRigStore {
         draft?.seats[i].effort = effort
     }
 
-    func remove(_ id: RigDraft.Seat.ID) { draft?.remove(id) }
+    func remove(_ id: RigDraft.Seat.ID) {
+        draft?.remove(id)
+        if detailSeat == id { detailSeat = nil }
+    }
+
+    // MARK: Seat detail
+
+    /// The seat whose detail is open on the Seats step.
+    var detailSeat: RigDraft.Seat.ID?
+
+    func seat(_ id: RigDraft.Seat.ID) -> RigDraft.Seat? { draft?.seats.first { $0.id == id } }
+
+    /// OpenRig's `daemon/assets`, found beside a built-in template.
+    var assets: URL? { templates.lazy.compactMap { RigDraft.assets(besideShippedSpec: $0.path.path) }.first }
+
+    func guidance(for seat: RigDraft.Seat) -> [GuidanceLayer] {
+        draft?.guidance(for: seat, project: folder, assets: assets) ?? []
+    }
+
+    func roleSkills(for seat: RigDraft.Seat) -> [String] { draft?.roleSkills(seat) ?? [] }
+
+    /// What + Add Skill offers: skills OpenRig can install, less the role's and the ones already added.
+    func skillChoices(for seat: RigDraft.Seat) -> [SkillChoice] {
+        let added = Set(seat.addedSkills.map(\.id))
+        return (draft?.skillChoices(for: seat, project: folder, catalog: openRigHome.appending(path: "skills")) ?? [])
+            .filter { !added.contains($0.id) }
+    }
+
+    func setNotes(_ notes: String, for id: RigDraft.Seat.ID) {
+        guard let i = draft?.seats.firstIndex(where: { $0.id == id }) else { return }
+        draft?.seats[i].notes = notes
+    }
+
+    func addSkill(_ skill: SkillChoice, to id: RigDraft.Seat.ID) {
+        guard let i = draft?.seats.firstIndex(where: { $0.id == id }),
+            draft?.seats[i].addedSkills.contains(where: { $0.id == skill.id }) == false
+        else { return }
+        draft?.seats[i].addedSkills.append(skill)
+    }
+
+    func removeSkill(_ skillID: SkillChoice.ID, from id: RigDraft.Seat.ID) {
+        guard let i = draft?.seats.firstIndex(where: { $0.id == id }) else { return }
+        draft?.seats[i].addedSkills.removeAll { $0.id == skillID }
+    }
 
     var seatsProblem: String? { draft?.seats.isEmpty == false ? nil : "A rig needs at least one seat." }
 
@@ -226,6 +276,8 @@ final class NewRigStore {
             } else {
                 staged = try stage(yaml, from: template)
             }
+            // Seat notes and added skills: member startup files beside rig.yaml.
+            if let spec = savedSpec ?? staged { try draft.writeSeatFiles(into: spec) }
         } catch {
             preflight = Preflight(errors: ["Couldn't write the spec: \(error.localizedDescription)"])
             return

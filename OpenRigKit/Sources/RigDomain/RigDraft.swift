@@ -22,6 +22,10 @@ public struct RigDraft: Sendable, Equatable {
         public let templateRuntime: String
         /// The agent spec profile the seat uses; OpenRig's default is "default".
         public var profile: String? = nil
+        /// Extra startup text for this seat only (New Rig's seat detail).
+        public var notes = ""
+        /// Skills for this seat only, on top of its role's.
+        public var addedSkills: [SkillChoice] = []
 
         /// The logical id, as edges and sessions name it: "dev.build".
         public var id: String { "\(pod).\(member)" }
@@ -128,6 +132,12 @@ public struct RigDraft: Sendable, Equatable {
         member.set("effort", seat.effort, after: seat.model == nil ? "runtime" : "model")
         if let ref = seat.agentRef, let absolute = Self.absolute(ref, in: folder) {
             member.set("agent_ref", absolute, after: "id")
+        }
+        let added = seatStartupFiles(seat)
+        if !added.isEmpty {
+            var startup = member["startup"]?.mapping ?? Node.Mapping([])
+            startup["files"] = Node((startup["files"]?.sequence.map(Array.init) ?? []) + added)
+            member["startup"] = .mapping(startup)
         }
         return member
     }
