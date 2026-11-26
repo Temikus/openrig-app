@@ -268,12 +268,17 @@ struct NewRigSeats: View {
     @Bindable var model: NewRigStore
     @State private var addingSeat = false
 
+    @Environment(ActionStore.self) private var actions
+
     var body: some View {
-        if let id = model.detailSeat, let seat = model.seat(id) {
-            SeatDetail(model: model, seat: seat)
-        } else {
-            list
+        Group {
+            if let id = model.detailSeat, let seat = model.seat(id) {
+                SeatDetail(model: model, seat: seat)
+            } else {
+                list
+            }
         }
+        .sheet(isPresented: $model.makingRole) { NewRoleSheet(rig: model, actions: actions) }
     }
 
     private var list: some View {
@@ -393,6 +398,12 @@ struct AddSeatSheet: View {
             }
             .frame(minHeight: 160, maxHeight: 280)
             .accessibilityLabel("Roles")
+            Button("None of the roles fit? Make a new role…") {
+                dismiss()
+                model.makingRole = true
+            }
+            .buttonStyle(.link)
+            .disabled(model.sharedRoleFolder == nil)
             Divider()
             HStack(alignment: .bottom, spacing: 10) {
                 field("Seat name") {

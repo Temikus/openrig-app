@@ -145,6 +145,46 @@ final class NewRigStore {
         guard let entries = try? await client.agentSpecs() else { return }
         roleLibrary = entries.compactMap { Role.load(agentSpec: URL(filePath: $0.sourcePath), summary: $0.summary) }
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        // OpenRig's shared resources, which the built-in roles import and a new role imports too.
+        sharedRoleFolder =
+            entries.first { $0.isBuiltin && $0.name == "shared" }
+            .map { URL(filePath: $0.sourcePath).deletingLastPathComponent().resolvingSymlinksInPath() }
+    }
+
+    // MARK: New role
+
+    /// Opens New role, from Add Seat or a seat's detail.
+    var makingRole = false
+    /// OpenRig's shared agent spec folder (its skill pool), once the library is read.
+    private(set) var sharedRoleFolder: URL?
+    /// The managed skill catalog `rig skill loadout` reads.
+    var skillCatalog: URL { openRigHome.appending(path: "skills") }
+    /// The folders already in the person's spec library: a new role can't take one's name.
+    var specFolderNames: Set<String> {
+        Set((try? FileManager.default.contentsOfDirectory(atPath: specsRoot.path)) ?? [])
+    }
+    /// The kernel rig, whose lead drafts new roles.
+    var kernelExists: Bool { existingRigs.contains("kernel") }
+
+    /// The role just saved at `saved` (its folder, or its agent.yaml), once the library lists it.
+    func addedRole(at saved: URL) async -> Role? {
+        let folder = saved.pathExtension.isEmpty ? saved : saved.deletingLastPathComponent()
+        let want = Role.plain(folder.resolvingSymlinksInPath().path(percentEncoded: false))
+        for attempt in 0..<5 {
+            await loadRoles()
+            if let role = roleLibrary.first(where: { $0.folder == want }) { return role }
+            if attempt < 4 { try? await Task.sleep(for: .milliseconds(400)) }
+        }
+        return nil
+    }
+
+    /// Adds a seat with `role`, named and placed as Add Seat would suggest, on the role's own runtime.
+    func addSeat(with role: Role) {
+        guard let draft else { return }
+        let (member, pod) = suggestion(for: role)
+        let probe = RigDraft.Seat.added(pod: pod, member: member, role: role.folder, runtime: "claude-code")
+        addSeat(
+            role: role, member: member, pod: pod, runtime: draft.roleDefault(probe).runtime, model: nil, effort: nil)
     }
 
     func pick(_ template: Template) {

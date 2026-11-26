@@ -133,7 +133,15 @@ extension RigDraft {
     public func writeSeatFiles(into folder: URL) throws {
         let fm = FileManager.default
         for dir in ["seat-notes", "seat-skills"] { try? fm.removeItem(at: folder.appending(path: dir)) }
-        for (path, file) in seatFiles {
+        try SeatFile.write(seatFiles, into: folder)
+    }
+}
+
+extension SeatFile {
+    /// Writes files by path relative to `folder`.
+    public static func write(_ files: [String: SeatFile], into folder: URL) throws {
+        let fm = FileManager.default
+        for (path, file) in files {
             let target = folder.appending(path: path)
             try fm.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
             switch file {
@@ -152,7 +160,9 @@ extension RigDraft {
             }
         }
     }
+}
 
+extension RigDraft {
     // MARK: Layers
 
     /// The seat's guidance, top to bottom. `project` is the folder the seat works in; `assets` is OpenRig's

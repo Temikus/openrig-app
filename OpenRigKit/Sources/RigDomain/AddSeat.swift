@@ -28,7 +28,7 @@ public struct Role: Sendable, Equatable, Identifiable {
     }
 
     /// A folder path without its trailing "/", so a role read from its file and one named by a ref compare equal.
-    static func plain(_ path: String) -> String {
+    public static func plain(_ path: String) -> String {
         path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
     }
 }

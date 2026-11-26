@@ -34,6 +34,12 @@ struct SeatDetail: View {
                 Text("Changes apply to this rig only. The \(role) role isn't changed.")
                     .font(.callout).foregroundStyle(.secondary)
                 Spacer()
+                Button("None of the roles fit? Make a new role…") {
+                    model.detailSeat = nil
+                    model.makingRole = true
+                }
+                .buttonStyle(.link)
+                .disabled(model.sharedRoleFolder == nil)
                 Button("Done") { model.detailSeat = nil }
             }
         }
