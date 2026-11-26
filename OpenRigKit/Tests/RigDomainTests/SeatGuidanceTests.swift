@@ -163,7 +163,7 @@ import Yams
         #expect(
             files.map { $0["path"]?.string } == [
                 "guidance/lead-first-move.md", "seat-notes/dev.build.md",
-                "seat-skills/test-driven-development/SKILL.md",
+                "seat-skills/dev.build/test-driven-development/SKILL.md",
             ])
         #expect(files.map { $0["delivery_hint"]?.string } == ["send_text", "send_text", "skill_install"])
         #expect(files[1]["required"]?.bool == true)
@@ -173,7 +173,7 @@ import Yams
         #expect(
             draft.seatFiles == [
                 "seat-notes/dev.build.md": .text("You own the API.\n"),
-                "seat-skills/test-driven-development": .folder(tdd.folder),
+                "seat-skills/dev.build/test-driven-development": .folder(tdd.folder),
             ])
         let out = root(appending: "out")
         try FileManager.default.createDirectory(
@@ -182,7 +182,7 @@ import Yams
         #expect(
             try String(contentsOf: out.appending(path: "seat-notes/dev.build.md"), encoding: .utf8)
                 == "You own the API.\n")
-        let copied = out.appending(path: "seat-skills/test-driven-development")
+        let copied = out.appending(path: "seat-skills/dev.build/test-driven-development")
         #expect(FileManager.default.fileExists(atPath: copied.appending(path: "SKILL.md").path))
         #expect(FileManager.default.fileExists(atPath: copied.appending(path: "references/a.md").path))
         #expect(
@@ -196,6 +196,55 @@ import Yams
         #expect(draft.seatFiles.isEmpty)
         let spec = try #require(try Yams.compose(yaml: draft.yaml()))
         #expect(spec["pods"]?[0]?["members"]?[1]?["startup"] == nil)
+    }
+
+    /// A project's skill is often a relative link into another folder; the spec gets the files, not the link.
+    @Test func aLinkedSkillIsCopiedAsItsTarget() throws {
+        let fm = FileManager.default
+        let real = root.appending(path: "packages/real")
+        try fm.createDirectory(at: real.appending(path: "linked"), withIntermediateDirectories: true)
+        try "---\ndescription: Linked\n---\n".write(
+            to: real.appending(path: "linked/SKILL.md"), atomically: true, encoding: .utf8)
+        try fm.createDirectory(at: real.appending(path: "inner"), withIntermediateDirectories: true)
+        try "inner\n".write(to: real.appending(path: "shared.md"), atomically: true, encoding: .utf8)
+        try fm.createSymbolicLink(
+            atPath: real.appending(path: "inner/SKILL.md").path, withDestinationPath: "../shared.md")
+        let skills = project.appending(path: ".claude/skills")
+        try fm.createSymbolicLink(
+            atPath: skills.appending(path: "linked").path, withDestinationPath: "../../../packages/real/linked")
+        try fm.createSymbolicLink(
+            atPath: skills.appending(path: "inner").path, withDestinationPath: "../../../packages/real/inner")
+
+        var draft = try draft()
+        let choices = draft.skillChoices(for: draft.seats[0], project: project, catalog: nil)
+        draft.seats[0].addedSkills = choices.filter { ["linked", "inner"].contains($0.id) }
+        #expect(draft.seats[0].addedSkills.count == 2)
+        let out = root.appending(path: "linked-out")
+        try draft.writeSeatFiles(into: out)
+        for (id, text) in [("linked", "---\ndescription: Linked\n---\n"), ("inner", "inner\n")] {
+            let file = out.appending(path: "seat-skills/dev.build/\(id)/SKILL.md")
+            #expect((try? fm.destinationOfSymbolicLink(atPath: file.deletingLastPathComponent().path)) == nil)
+            #expect((try? fm.destinationOfSymbolicLink(atPath: file.path)) == nil)
+            #expect(try String(contentsOf: file, encoding: .utf8) == text)
+        }
+    }
+
+    /// Two seats adding different skills that share a name each keep their own.
+    @Test func sameNamedSkillsOnTwoSeatsDontCollide() throws {
+        var draft = try draft()
+        let mine = SkillChoice(
+            id: "house", folder: project.appending(path: ".claude/skills/house-style"), source: .project)
+        let theirs = SkillChoice(
+            id: "house",
+            folder: specs.appending(path: "agents/shared/skills/process/systematic-debugging"), source: .library)
+        draft.seats[0].addedSkills = [mine]
+        draft.seats[1].addedSkills = [theirs]
+        #expect(Set(draft.seatFiles.keys) == ["seat-skills/dev.build/house", "seat-skills/dev.review/house"])
+        let out = root.appending(path: "same-out")
+        try draft.writeSeatFiles(into: out)
+        let a = try String(contentsOf: out.appending(path: "seat-skills/dev.build/house/SKILL.md"), encoding: .utf8)
+        let b = try String(contentsOf: out.appending(path: "seat-skills/dev.review/house/SKILL.md"), encoding: .utf8)
+        #expect(a.contains("House style") && b.contains("systematic-debugging"))
     }
 
     private func root(appending path: String) -> URL { root.appending(path: path) }

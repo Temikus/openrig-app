@@ -93,8 +93,9 @@ public enum SeatFile: Sendable, Equatable {
 extension RigDraft {
     /// Where a seat's notes are written, beside rig.yaml.
     public static func notesPath(_ seat: Seat) -> String { "seat-notes/\(seat.id).md" }
-    /// Where an added skill is copied, beside rig.yaml. OpenRig installs it under the folder's name.
-    public static func skillPath(_ id: String) -> String { "seat-skills/\(id)" }
+    /// Where an added skill is copied, beside rig.yaml: one folder per seat, so two seats' skills with the same name
+    /// (a project's and the catalog's) don't overwrite each other. OpenRig installs it under the folder's name.
+    public static func skillPath(_ id: String, for seat: Seat) -> String { "seat-skills/\(seat.id)/\(id)" }
 
     /// The member startup files a seat's notes and added skills add. Notes are sent, not merged: a merged block
     /// lands in the instruction file every seat in that folder reads, and these are for this seat only.
@@ -104,7 +105,7 @@ extension RigDraft {
             files.append(Self.startupFile(Self.notesPath(seat), hint: "send_text"))
         }
         for skill in seat.addedSkills {
-            files.append(Self.startupFile(Self.skillPath(skill.id) + "/SKILL.md", hint: "skill_install"))
+            files.append(Self.startupFile(Self.skillPath(skill.id, for: seat) + "/SKILL.md", hint: "skill_install"))
         }
         return files
     }
@@ -123,7 +124,7 @@ extension RigDraft {
         for seat in seats where seat.runtime != Runtime.terminal {
             let notes = seat.notes.trimmingCharacters(in: .whitespacesAndNewlines)
             if !notes.isEmpty { files[Self.notesPath(seat)] = .text(notes + "\n") }
-            for skill in seat.addedSkills { files[Self.skillPath(skill.id)] = .folder(skill.folder) }
+            for skill in seat.addedSkills { files[Self.skillPath(skill.id, for: seat)] = .folder(skill.folder) }
         }
         return files
     }
@@ -137,7 +138,17 @@ extension RigDraft {
             try fm.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
             switch file {
             case .text(let text): try text.write(to: target, atomically: true, encoding: .utf8)
-            case .folder(let source): try fm.copyItem(at: source, to: target)
+            case .folder(let source):
+                // A linked skill folder (a project's .claude/skills often links elsewhere) is copied as its target,
+                // and a linked SKILL.md as its text: a relative link would dangle beside rig.yaml.
+                let real = source.resolvingSymlinksInPath()
+                try fm.copyItem(at: real, to: target)
+                let skill = target.appending(path: "SKILL.md")
+                if (try? fm.destinationOfSymbolicLink(atPath: skill.path)) != nil {
+                    let text = try Data(contentsOf: real.appending(path: "SKILL.md").resolvingSymlinksInPath())
+                    try fm.removeItem(at: skill)
+                    try text.write(to: skill)
+                }
             }
         }
     }
