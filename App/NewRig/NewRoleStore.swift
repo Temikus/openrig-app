@@ -27,7 +27,7 @@ final class NewRoleStore {
     var line = ""
     var draft: RoleDraft?
     private(set) var phase = Phase.idle
-    private(set) var rowID: String?
+    private var ask = RoleAsk()
     /// The skills a role can name, found once.
     private(set) var available: [SkillChoice] = []
     /// OpenRig's checks on a saved role, when they fail.
@@ -88,8 +88,7 @@ final class NewRoleStore {
 
     /// Closes the open ask as canceled, so it doesn't sit in the kernel lead's queue.
     private func withdraw() {
-        guard let row = rowID else { return }
-        rowID = nil
+        guard let row = ask.withdraw() else { return }
         let actions = actions
         Task {
             await actions.perform(
@@ -101,7 +100,6 @@ final class NewRoleStore {
     private func stopWaiting() {
         waiting?.cancel()
         waiting = nil
-        rowID = nil
     }
 
     private func run(_ line: String) async {
@@ -154,15 +152,14 @@ final class NewRoleStore {
                 phase = .failed("Couldn't ask the kernel's lead. The command's error is below.")
                 return
             }
-            struct Created: Decodable { var qitemId: String }
-            guard let id = try? JSONDecoder().decode(Created.self, from: Data(created.stdout.utf8)).qitemId else {
+            guard let created = RoleAsk.created(from: created.stdout) else {
                 // Without the row's id, Cancel can't withdraw it and a refusal can't show: say so now.
                 phase = .failed(
                     "The ask was sent, but rig queue create didn't return its id, so this sheet can't follow it. "
                         + "Check advisor-lead@kernel's queue.")
                 return
             }
-            rowID = id
+            ask = created
         }
         let deadline = ContinuousClock.now + Self.patience
         for await _ in wakes {
@@ -174,12 +171,12 @@ final class NewRoleStore {
                 } catch {
                     phase = .failed(error.message)
                 }
-                rowID = nil
+                ask.answered()
                 return
             }
             if let closed = await closedWithout() {
                 phase = .failed(closed)
-                rowID = nil
+                ask.answered()
                 return
             }
             if ContinuousClock.now > deadline {
@@ -193,7 +190,7 @@ final class NewRoleStore {
 
     /// The row's closure, when the lead closed it without writing READY.
     private func closedWithout() async -> String? {
-        guard let rowID, let cli = actions.cli,
+        guard let rowID = ask.row, let cli = actions.cli,
             let out = try? await cli.run(arguments: ["queue", "show", rowID, "--json"])
         else { return nil }
         struct Row: Decodable {
@@ -202,7 +199,7 @@ final class NewRoleStore {
         }
         // Any closed state counts (done, handed off): only an open row is still being drafted (review of ffde632).
         guard let row = try? JSONDecoder().decode(Row.self, from: Data(out.stdout.utf8)),
-            !["pending", "in-progress", "blocked"].contains(row.state)
+            RoleAsk.isClosed(state: row.state)
         else { return nil }
         return "The kernel's lead closed the ask without a draft"
             + (row.resolution.map { ": \($0)" } ?? ".")

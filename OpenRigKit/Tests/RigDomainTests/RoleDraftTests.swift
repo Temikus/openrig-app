@@ -167,3 +167,31 @@ import Yams
         }
     }
 }
+
+/// The ask to the kernel's lead (review and QA of ffde632: an open ask was dropped without being closed).
+@Suite struct RoleAskTests {
+    @Test func anOpenAskIsWithdrawnOnce() {
+        var ask = RoleAsk(row: "qitem-1")
+        #expect(ask.withdraw() == "qitem-1", "Draft Again or the sheet closing closes it")
+        #expect(ask.withdraw() == nil, "a second withdraw closes nothing")
+    }
+
+    @Test func anAnsweredAskHasNothingToWithdraw() {
+        var ask = RoleAsk(row: "qitem-1")
+        ask.answered()
+        #expect(ask.withdraw() == nil)
+        var none = RoleAsk()
+        #expect(none.withdraw() == nil)
+    }
+
+    @Test func theRowComesFromCreatesJSON() {
+        #expect(
+            RoleAsk.created(from: #"{"qitemId":"qitem-20261126-abc","state":"pending"}"#)?.row == "qitem-20261126-abc")
+        #expect(RoleAsk.created(from: "Created qitem-1") == nil, "no JSON id: the sheet says it can't follow the ask")
+    }
+
+    @Test func anyStateButOpenIsClosed() {
+        for open in ["pending", "in-progress", "blocked"] { #expect(!RoleAsk.isClosed(state: open)) }
+        for closed in ["done", "handed-off", "canceled"] { #expect(RoleAsk.isClosed(state: closed)) }
+    }
+}

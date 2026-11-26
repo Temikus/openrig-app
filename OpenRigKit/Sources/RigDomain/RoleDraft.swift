@@ -313,3 +313,30 @@ public struct RoleDraft: Sendable, Equatable {
 extension String {
     fileprivate var nilIfEmpty: String? { isEmpty ? nil : self }
 }
+
+/// The queue row asking the kernel's lead for a draft: which one is open, and when it has been answered.
+public struct RoleAsk: Sendable, Equatable {
+    /// The open ask, if any.
+    public private(set) var row: String?
+
+    public init(row: String? = nil) { self.row = row }
+
+    /// The row `rig queue create --json` made, from its output; nil when it says no id.
+    public static func created(from output: String) -> RoleAsk? {
+        struct Created: Decodable { var qitemId: String }
+        return (try? JSONDecoder().decode(Created.self, from: Data(output.utf8))).map { RoleAsk(row: $0.qitemId) }
+    }
+
+    /// The row to close as canceled, once: Cancel, Draft Again and the sheet going away all withdraw it, and only
+    /// the first of them closes it.
+    public mutating func withdraw() -> String? {
+        defer { row = nil }
+        return row
+    }
+
+    /// The ask is answered (a draft came back, or the lead closed it): nothing is left to withdraw.
+    public mutating func answered() { row = nil }
+
+    /// A row in this state is no longer being worked on: done, handed off, or anything else that isn't open.
+    public static func isClosed(state: String) -> Bool { !["pending", "in-progress", "blocked"].contains(state) }
+}
