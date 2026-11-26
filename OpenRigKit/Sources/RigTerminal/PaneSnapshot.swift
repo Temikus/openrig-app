@@ -32,10 +32,25 @@ public struct PaneSnapshot: Sendable, Equatable {
     /// cursor, and Claude Code hides its own, so a short client would show the pane's top: show the bottom when the
     /// cursor is in it, else put the cursor one row from the top. A full-screen app with a hidden cursor parks it
     /// anywhere (often the bottom corner) and keeps its menus at the top, so it shows the top.
+    ///
+    /// A menu the cursor is in (a permission prompt or a question) shows whole instead, its last row at the client's
+    /// bottom, so moving the selection doesn't pan. Taller than the client, its top shows first (the question and
+    /// the first options), panned only as far as keeps the selected option, where the cursor sits, in view.
     public func panOffset(clientRows: Int) -> Int {
         let hidden = rows - clientRows
         guard hidden > 0, !(alternateScreen && !cursorVisible) else { return 0 }
-        return min(hidden, max(0, cursorY - 1))
+        // Only a menu the cursor is in: menu text left above a new prompt, or quoted, mustn't hide where the person types.
+        guard let menu = menuRows, menu.contains(cursorY) else { return min(hidden, max(0, cursorY - 1)) }
+        let offset =
+            menu.count <= clientRows
+            ? menu.upperBound + 1 - clientRows
+            : max(menu.lowerBound, min(cursorY, menu.upperBound) + 2 - clientRows)
+        return min(hidden, max(0, offset))
+    }
+
+    /// The rows of a menu on the pane, if one is showing.
+    public var menuRows: ClosedRange<Int>? {
+        PromptScreen(lines: lines)?.rows ?? PromptScreen.questionRows(lines: lines)
     }
 
     /// One past the last row with text or the cursor, whichever is lower: where "the tail" of the pane ends,

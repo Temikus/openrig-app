@@ -15,6 +15,8 @@ public struct PromptScreen: Equatable, Sendable {
     /// The command as displayed (terminal-wrapped lines joined with newlines).
     public var command: String
     public var options: [Option]
+    /// Where the prompt sits on the pane: its top rule through its footer, as screen rows.
+    public var rows: ClosedRange<Int>
 
     /// The key for a plain "Yes": the first option whose text is exactly "Yes".
     /// Nil when the menu has no plain yes, so the app never guesses.
@@ -92,18 +94,26 @@ public struct PromptScreen: Equatable, Sendable {
 
         // Options: "❯ 1. Yes", "  2. Yes, allow …" (continuation lines fold into the option above).
         var options: [Option] = []
-        for line in lines[(ask + 1)...] {
+        var end = ask
+        for i in (ask + 1)..<lines.count {
+            let line = lines[i]
             let t = line.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "❯", with: "")
                 .trimmingCharacters(in: .whitespaces)
             if let dot = t.firstIndex(of: "."), let n = Int(t[..<dot]) {
                 options.append(Option(number: n, text: t[t.index(after: dot)...].trimmingCharacters(in: .whitespaces)))
+                end = i
             } else if !t.isEmpty, !options.isEmpty, line.hasPrefix("      ") {
                 options[options.count - 1].text += " " + t
-            } else if t.hasPrefix("Esc") || isRule(line) {
+                end = i
+            } else if t.hasPrefix("Esc") {
+                end = i
+                break
+            } else if isRule(line) {
                 break
             }
         }
         self.options = options
+        rows = headerRule...end
     }
 }
 
@@ -119,5 +129,28 @@ extension Tmux {
     /// The visible screen of one pane, as plain text lines.
     public func screen(pane: String) async throws -> [String] {
         try await run(["capture-pane", "-p", "-t", pane]).components(separatedBy: "\n")
+    }
+}
+
+extension PromptScreen {
+    /// Where a question menu (Claude Code's AskUserQuestion) sits on the pane: its first line through its footer.
+    /// Not a `PromptScreen`: it asks no permission, so it never pauses typing or offers Yes and No.
+    ///
+    /// Seen live (a 65×40 pane): a column-0 rule, "☐ <header>", the question, then "❯ 1. Option A" with its
+    /// description below, "4. Type something.", another column-0 rule, "5. Chat about this", and the footer
+    /// "Enter to select · ↑/↓ to navigate · Esc to cancel". So the menu ends at that footer and starts at the last
+    /// column-0 rule above its first option; the rule between options 4 and 5 is below that option.
+    public static func questionRows(lines raw: [String]) -> ClosedRange<Int>? {
+        let lines = raw.map { strippingEscapes($0).trimmingTrailingWhitespace() }
+        guard
+            let footer = lines.lastIndex(where: { $0.hasPrefix("Enter to select") && $0.contains("to navigate") }),
+            let first = lines[..<footer].lastIndex(where: { line in
+                var t = Substring(line).drop { $0 == " " }
+                if t.hasPrefix("❯") { t = t.dropFirst().drop { $0 == " " } }
+                return t.hasPrefix("1. ")
+            }),
+            let top = lines[..<first].lastIndex(where: { $0.hasPrefix("───") })
+        else { return nil }
+        return top...footer
     }
 }
