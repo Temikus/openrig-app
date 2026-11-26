@@ -132,7 +132,8 @@ public struct RigDraft: Sendable, Equatable {
         return member
     }
 
-    /// A member's cwd in the project: a relative one ("docs") inside it, an absolute or `~` one as written.
+    /// A member's cwd for the project: a relative one ("docs", "../shared") resolved against it, as OpenRig resolves
+    /// it against `--cwd`; an absolute or `~` one as written.
     static func cwd(_ authored: String?, in project: String) -> String {
         guard let authored, !authored.isEmpty else { return project }
         if authored.hasPrefix("/") || authored.hasPrefix("~") { return authored }
