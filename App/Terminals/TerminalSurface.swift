@@ -20,6 +20,9 @@ struct TerminalSurface: NSViewRepresentable {
     let fontSize: CGFloat
     /// Keys and mouse reach tmux only when true (Type mode).
     let interactive: Bool
+    /// Whether Type mode is still on, read when a leaving view hands the keyboard on (a view on its way out keeps
+    /// its last `interactive`).
+    var stillTyping: () -> Bool = { false }
     /// Settings › Terminals › Use Option as Meta.
     var optionAsMeta = true
     /// What VoiceOver reads while typing: the pane as plain text, and whose it is.
@@ -105,10 +108,11 @@ struct TerminalSurface: NSViewRepresentable {
         // No mouse reporting: with tmux's mouse on, a scroll would put the shared pane in copy mode for everyone.
         view.allowMouseReporting = false
         view.optionAsMetaKey = optionAsMeta
-        // Take the keyboard once, as Type mode starts; afterwards a click elsewhere keeps the keyboard there.
+        // Take the keyboard as Type mode starts; afterwards a click elsewhere keeps the keyboard there.
         let startsTyping = interactive && !coordinator.interactive
         coordinator.interactive = interactive
         view.interactive = interactive
+        view.stillTyping = stillTyping
         view.accessibleName = accessibleName
         view.accessibleText = accessibleText
         view.onScrollBack = onScrollBack
@@ -145,9 +149,7 @@ struct TerminalSurface: NSViewRepresentable {
             }
         }
 
-        if startsTyping {
-            DispatchQueue.main.async { view.window?.makeFirstResponder(view) }
-        }
+        if startsTyping { view.takeKeyboard() }
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: TileTerminalView, context: Context) -> CGSize? {
@@ -225,6 +227,67 @@ final class TileTerminalView: TerminalView {
     private var gestureBeganAtEnd = false
 
     override var canBecomeKeyView: Bool { interactive && super.canBecomeKeyView }
+
+    /// Set by the surface: whether Type mode is on now, unlike `interactive`, which a view fading out keeps.
+    var stillTyping: () -> Bool = { false }
+
+    /// Type mode asked for the keyboard before the view was in a window.
+    private var wantsKeyboard = false
+
+    /// Makes this the window's first responder, now or once the view is in a window.
+    func takeKeyboard() {
+        wantsKeyboard = true
+        // Next turn: the view is usually not in a window yet while SwiftUI updates it.
+        DispatchQueue.main.async { [weak self] in self?.claim() }
+    }
+
+    private func claim() {
+        guard wantsKeyboard else { return }
+        guard interactive else {
+            wantsKeyboard = false
+            return
+        }
+        guard let window else { return }
+        wantsKeyboard = false
+        window.makeFirstResponder(self)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        claim()
+    }
+
+    /// Hazard: as Type mode starts, SwiftUI builds a second, short-lived interactive view for the typing tile, kept
+    /// until the crossfade ends. Both take the keyboard; the copy took it last, and when it left, the window kept the
+    /// keyboard and every key beeped. So a view that leaves with the keyboard hands it to the typing view still
+    /// there, unless something else took it meanwhile.
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        if newWindow == nil, let window, window.firstResponder === self {
+            DispatchQueue.main.async { [weak window] in
+                guard let window, window.firstResponder === window,
+                    let next = window.contentView.flatMap(Self.typingView), next.stillTyping()
+                else { return }
+                window.makeFirstResponder(next)
+            }
+        }
+        super.viewWillMove(toWindow: newWindow)
+    }
+
+    /// Type mode ended: any terminal view holding the keyboard gives it to its window.
+    static func releaseKeyboard() {
+        for window in NSApp.windows where window.firstResponder is TileTerminalView {
+            window.makeFirstResponder(nil)
+        }
+    }
+
+    /// The interactive terminal view under `view`, if any.
+    private static func typingView(in view: NSView) -> TileTerminalView? {
+        if let terminal = view as? TileTerminalView, terminal.interactive { return terminal }
+        for sub in view.subviews {
+            if let found = typingView(in: sub) { return found }
+        }
+        return nil
+    }
 
     /// Takes wheel events over this view before SwiftTerm does. SwiftTerm's `scrollWheel` isn't open, so this is
     /// a local monitor; it is removed when SwiftUI dismantles the view.

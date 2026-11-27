@@ -531,6 +531,8 @@ final class AppStore {
             let last = settings.reopenLastRig ? self.rigs.first { $0.name == settings.lastRigName } : nil
             selectedRigID = (last ?? self.rigs.first)?.id
             #if DEBUG
+                // Before the target opens, so the log sees Type mode start.
+                Task { await ResponderLog.run { self.rig?.terminals.typing ?? false } }
                 await openDebugTarget()
                 Task { await AccessibilityDump.run() }
             #endif
@@ -647,6 +649,14 @@ final class AppStore {
                 if viewMode == .terminals {
                     store.terminals.focus(seat)
                     store.terminals.typing = parts.count > 3 && parts[3] == "typing"
+                    // OPENRIG_DEBUG_TYPING_OFF=<ms> ends Type mode that long after it starts, as Esc would, to
+                    // check a quick on/off inside the tile's crossfade.
+                    if store.terminals.typing,
+                        let ms = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_TYPING_OFF"].flatMap(Int.init)
+                    {
+                        try? await Task.sleep(for: .milliseconds(ms))
+                        store.terminals.typing = false
+                    }
                     // A scroll up over the focused tile, as a person would.
                     if parts.last == "history" {
                         try? await Task.sleep(for: .seconds(2))
