@@ -417,6 +417,34 @@ final class AppStore {
         await refreshNow()
     }
 
+    /// The New Rig sheet's state while it is open (Rig › New Rig…).
+    var newRig: NewRigStore?
+
+    /// Opens New Rig. `folder` fills the project folder (the DEBUG hook does, as the folder panel can't be scripted).
+    func showNewRig(folder: URL? = nil) {
+        let store = NewRigStore(
+            client: client, actions: actions, openRigHome: locator.openRigHome,
+            existingRigs: Set(rigs.map(\.name)), shellPath: shellPath
+        ) { [weak self] name in
+            await self?.rigLaunched(name)
+        }
+        store.folder = folder
+        newRig = store
+    }
+
+    /// Selects a rig New Rig just started, once the rig list has it.
+    private func rigLaunched(_ name: String) async {
+        announce("Starting \(name)")
+        for _ in 0..<10 {
+            await refreshNow()
+            if let rig = rigs.first(where: { $0.name == name }) {
+                selectedRigID = rig.id
+                return
+            }
+            try? await Task.sleep(for: .seconds(1))
+        }
+    }
+
     /// Retries the start or stop that failed.
     func retry(_ summary: RigSummary) async {
         switch failedOps[summary.id] {
@@ -634,6 +662,10 @@ final class AppStore {
             }
             if ProcessInfo.processInfo.environment["OPENRIG_DEBUG_SETTINGS"] != nil {
                 NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            }
+            // OPENRIG_DEBUG_NEWRIG=<folder> opens New Rig with that project folder.
+            if let folder = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_NEWRIG"] {
+                showNewRig(folder: URL(filePath: folder))
             }
             guard let spec = ProcessInfo.processInfo.environment["OPENRIG_DEBUG_OPEN"] else { return }
             let parts = spec.split(separator: "/").map(String.init)

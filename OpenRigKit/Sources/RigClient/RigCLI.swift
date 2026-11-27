@@ -37,6 +37,10 @@ public enum RigAction: Sendable, Equatable {
     /// Brings a stopped rig back, resuming each seat's conversation where its harness allows. `--yes` because the
     /// app has already asked; without a terminal the CLI would otherwise exit without acting.
     case rigUp(rig: String)
+    /// Copies a spec folder into the person's library (`~/.openrig/specs/<folder name>`). Fails if that folder exists.
+    case addSpec(folder: String)
+    /// Launches a new rig from a spec file. Its seats' cwd is in the spec, so a later `rig up <name>` matches.
+    case launchSpec(path: String)
     /// Stops every seat. The CLI snapshots first anyway; `--snapshot` makes that explicit.
     case rigDown(rig: String)
     /// Launches one seat of a running rig, resuming it. Seats already running are left alone.
@@ -80,6 +84,10 @@ public enum RigAction: Sendable, Equatable {
             return ["daemon", "start"]
         case .rigUp(let rig):
             args = ["up", rig, "--existing", "--yes"]
+        case .addSpec(let folder):
+            args = ["specs", "add", folder]
+        case .launchSpec(let path):
+            args = ["up", path, "--yes"]
         case .rigDown(let rig):
             args = ["down", rig, "--snapshot", "--yes"]
         case .launchSeat(let rig, let logicalId):
@@ -229,3 +237,28 @@ func shellQuote(_ s: String) -> String {
         }
     }
 #endif
+
+/// Where New Rig writes the spec it preflights, and the commands that launch it. Before the first save that is a
+/// staged folder, which `rig specs add` copies into the library unchanged. After a save (when `rig up` then failed)
+/// it is the saved folder itself, so a retry launches the edits that were just checked, not the earlier ones.
+public struct SpecLaunch: Sendable, Equatable {
+    public var staged: String
+    /// The library folder `rig specs add` made, once it has.
+    public var saved: String?
+    /// Where `rig specs add` will put it: `~/.openrig/specs/<name>`.
+    public var library: String
+
+    public init(staged: String, saved: String? = nil, library: String) {
+        self.staged = staged
+        self.saved = saved
+        self.library = library
+    }
+
+    /// The folder whose rig.yaml preflight checks and Launch runs.
+    public var checked: String { saved ?? staged }
+
+    public func steps() -> [RigAction] {
+        let up = RigAction.launchSpec(path: (saved ?? library) + "/rig.yaml")
+        return saved == nil ? [.addSpec(folder: staged), up] : [up]
+    }
+}
