@@ -20,6 +20,9 @@ struct TerminalSurface: NSViewRepresentable {
     let fontSize: CGFloat
     /// Keys and mouse reach tmux only when true (Type mode).
     let interactive: Bool
+    /// Whether Type mode is still on, read when a leaving view hands the keyboard on (a view on its way out keeps
+    /// its last `interactive`).
+    var stillTyping: () -> Bool = { false }
     /// Settings › Terminals › Use Option as Meta.
     var optionAsMeta = true
     /// What VoiceOver reads while typing: the pane as plain text, and whose it is.
@@ -109,6 +112,7 @@ struct TerminalSurface: NSViewRepresentable {
         let startsTyping = interactive && !coordinator.interactive
         coordinator.interactive = interactive
         view.interactive = interactive
+        view.stillTyping = stillTyping
         view.accessibleName = accessibleName
         view.accessibleText = accessibleText
         view.onScrollBack = onScrollBack
@@ -224,6 +228,9 @@ final class TileTerminalView: TerminalView {
 
     override var canBecomeKeyView: Bool { interactive && super.canBecomeKeyView }
 
+    /// Set by the surface: whether Type mode is on now, unlike `interactive`, which a view fading out keeps.
+    var stillTyping: () -> Bool = { false }
+
     /// Type mode asked for the keyboard before the view was in a window.
     private var wantsKeyboard = false
 
@@ -235,7 +242,12 @@ final class TileTerminalView: TerminalView {
     }
 
     private func claim() {
-        guard wantsKeyboard, interactive, let window else { return }
+        guard wantsKeyboard else { return }
+        guard interactive else {
+            wantsKeyboard = false
+            return
+        }
+        guard let window else { return }
         wantsKeyboard = false
         window.makeFirstResponder(self)
     }
@@ -253,12 +265,19 @@ final class TileTerminalView: TerminalView {
         if newWindow == nil, let window, window.firstResponder === self {
             DispatchQueue.main.async { [weak window] in
                 guard let window, window.firstResponder === window,
-                    let next = window.contentView.flatMap(Self.typingView)
+                    let next = window.contentView.flatMap(Self.typingView), next.stillTyping()
                 else { return }
                 window.makeFirstResponder(next)
             }
         }
         super.viewWillMove(toWindow: newWindow)
+    }
+
+    /// Type mode ended: any terminal view holding the keyboard gives it to its window.
+    static func releaseKeyboard() {
+        for window in NSApp.windows where window.firstResponder is TileTerminalView {
+            window.makeFirstResponder(nil)
+        }
     }
 
     /// The interactive terminal view under `view`, if any.

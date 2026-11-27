@@ -77,6 +77,9 @@ struct TerminalsView: View {
                                 offsetBeforeTyping = gridOffset
                                 scroll.scrollTo(edge: .top)
                             } else {
+                                // The typing view fades out still interactive, and keeps the keyboard until it
+                                // goes: take it back now, so no key reaches tmux once Type mode is off.
+                                TileTerminalView.releaseKeyboard()
                                 let offset = offsetBeforeTyping
                                 Task { @MainActor in scroll.scrollTo(y: offset) }
                             }
@@ -667,7 +670,8 @@ struct TerminalTile: View {
                             // A full-screen app (vim, less) keeps SwiftTerm's arrow keys: it has no tmux history.
                             TerminalSurface(
                                 source: .attached(attach), cols: size.cols, rows: size.rows, fontSize: typeFont,
-                                interactive: true, optionAsMeta: app.settings.optionAsMeta,
+                                interactive: true, stillTyping: { [terminals] in terminals.typing },
+                                optionAsMeta: app.settings.optionAsMeta,
                                 accessibleText: snap.text(), accessibleName: seat.displayName,
                                 onRepaint: { terminals.repaint() },
                                 onScrollBack: snap.alternateScreen ? nil : { terminals.showHistory(seat) }
