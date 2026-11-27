@@ -6,12 +6,21 @@ import RigModel
 public enum Blocker: Equatable, Sendable {
     /// Held until another qitem moves.
     case qitem(String)
+    /// Held on another agent's seat (`dev-qa@openrig-app`): agents settle it, not the person.
+    case seat(String)
     /// Waiting on something outside the rig: a person, a PR decision, CI. The human has to act.
     case outside(String)
 
-    /// The daemon's `blockedOn`: a qitem id, or anything else (a person's session, `external:…`).
+    /// The daemon's `blockedOn`: a qitem id, an agent's session, or anything else (a person's session,
+    /// `external:…`). People and shared channels are `<id>@external`; the unnamed person is `human@host`.
     public init(ref: String) {
-        self = ref.hasPrefix("qitem-") ? .qitem(ref) : .outside(ref)
+        if ref.hasPrefix("qitem-") {
+            self = .qitem(ref)
+        } else if ref.contains("@"), !ref.hasSuffix("@external"), !Human.isAddress(ref) {
+            self = .seat(ref)
+        } else {
+            self = .outside(ref)
+        }
     }
 }
 
@@ -157,6 +166,21 @@ public func forYouElsewhere(_ items: [QItem], me: String, excluding rig: String?
             guard forYou(item, me: me) != nil, let from = rigName(ofSession: item.source) else { return false }
             return from != rig
         }, me: me)
+}
+
+/// Every rig's asks of the person, for the Needs You window: decisions and rows held on the person or an outside
+/// gate, oldest asked first, then FYIs. The same rows Needs you lists for one rig; each once.
+public func humanQueue(_ items: [QItem], me: String) -> [QItem] {
+    var seen = Set<QItem.ID>()
+    let open = needsYou(items.filter { seen.insert($0.id).inserted }, me: me)
+    let asked: (QItem) -> Date = { $0.created ?? $0.updated ?? .distantPast }
+    let (fyis, asks) = (open.filter { forYou($0, me: me) == .update }, open.filter { forYou($0, me: me) != .update })
+    return asks.sorted { asked($0) < asked($1) } + fyis.sorted { asked($0) < asked($1) }
+}
+
+/// The seat waiting on the person's answer: the sender of a row to the person, else the owner of a held row.
+public func askedBy(_ item: QItem, me: String) -> String {
+    forYou(item, me: me) != nil ? item.source : item.destination
 }
 
 // MARK: - Chain of record

@@ -31,6 +31,15 @@ struct OpenRigApp: App {
         .defaultLaunchBehavior(.presented)
         .commands { OpenRigCommands(store: store) }
 
+        Window("Needs You", id: NeedsYouWindow.id) {
+            NeedsYouWindow()
+                .environment(store)
+        }
+        .defaultSize(width: 960, height: 640)
+        // OPENRIG_DEBUG_NEEDS_YOU=queue[/<qitem id>] opens it at launch, behind other windows as the main one does.
+        // An openWindow call at launch brought the app to the front.
+        .defaultLaunchBehavior(NeedsYouWindow.opensAtLaunch ? .presented : .automatic)
+
         Settings {
             SettingsView()
                 .environment(store)

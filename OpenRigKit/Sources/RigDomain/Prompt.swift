@@ -122,24 +122,24 @@ public struct Waiting: Equatable, Sendable {
 }
 
 /// The selected rig, from its Needs-you list: prompts and down seats are prompts, FYI rows are FYIs, the rest asks.
-public func waiting(_ entries: [NeedsYouEntry], me: String) -> Waiting {
+/// Given `rig`, a row whose asker is in another rig (sent from here, held on a seat there) is left to that rig's
+/// count, so the total counts it once.
+public func waiting(_ entries: [NeedsYouEntry], me: String, rig: String? = nil) -> Waiting {
     entries.reduce(into: Waiting()) { w, entry in
         switch entry {
         case .prompt, .seat: w.prompts += 1
-        case .qitem(let item): if forYou(item, me: me) == .update { w.fyis += 1 } else { w.asks += 1 }
+        case .qitem(let item):
+            if let rig, let other = rigName(ofSession: askedBy(item, me: me)), other != rig { return }
+            if forYou(item, me: me) == .update { w.fyis += 1 } else { w.asks += 1 }
         }
     }
 }
 
-/// Another rig, whose prompts the app doesn't poll: its rows for the person, plus the daemon's `attentionCount`
-/// (seats needing attention, such as a pending permission prompt; a seat that only asks the person a question
-/// isn't in it, so an ask isn't counted twice).
+/// Another rig, whose prompts the app doesn't poll: its rows waiting on the person, as Needs you counts them (rows
+/// to the person, and rows held on them), plus the daemon's `attentionCount` (seats needing attention, such as a
+/// pending permission prompt; a seat that only asks the person a question isn't in it, so an ask isn't counted twice).
 public func waiting(rows: [QItem], me: String, attention: Int) -> Waiting {
-    rows.reduce(into: Waiting(prompts: attention)) { w, item in
-        switch forYou(item, me: me) {
-        case .update?: w.fyis += 1
-        case .decision?: w.asks += 1
-        case nil: break
-        }
+    needsYou(rows, me: me).reduce(into: Waiting(prompts: attention)) { w, item in
+        if forYou(item, me: me) == .update { w.fyis += 1 } else { w.asks += 1 }
     }
 }

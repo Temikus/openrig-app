@@ -81,6 +81,11 @@ public struct DaemonHTTP: Sendable {
     /// Every state the daemon (0.7.22, `QUEUE_STATES`) has besides the open ones.
     static let closedStates = "done,handed-off,canceled,denied,failed"
 
+    /// Blocked rows on every rig, some held on the person or an outside gate (`external:…`) rather than on a row.
+    public func blockedRows(limit: Int = 200) async throws(DaemonError) -> [QItem] {
+        try await get("/api/queue/list", query: ["state": "blocked", "limit": String(limit)])
+    }
+
     public func seatStatus(session: String) async throws(DaemonError) -> SeatStatusReport {
         try await get("/api/seat/status/\(session)")
     }

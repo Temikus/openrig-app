@@ -55,6 +55,15 @@ import Testing
         #expect(other == Waiting(asks: 1, prompts: 2, fyis: 1))
         #expect(other.urgent == 3)
         #expect(other.summary == "1 ask · 2 prompts · 1 FYI")
+        // Held rows count as Needs you counts them for the selected rig, so the window's count and the sidebar's agree.
+        let held = item("held", .blocked, from: "lead@kernel", to: "dev@kernel", blockedOn: "external:pr")
+        let onASeat = item("on-a-seat", .blocked, to: "dev@kernel", blockedOn: "dev-qa@kernel")
+        #expect(waiting(rows: [held, onASeat, ask], me: me, attention: 0) == Waiting(asks: 2))
+        // Sent from denkeeper, held on kernel's seat: denkeeper's queue lists it too, but only kernel counts it.
+        let sentHere = item("sent-here", .blocked, from: "lead@denkeeper", to: "dev@kernel", blockedOn: "external:pr")
+        let mine = item("mine", .pending, from: "lead@denkeeper", to: me)
+        #expect(waiting([.qitem(sentHere), .qitem(mine)], me: me, rig: "denkeeper") == Waiting(asks: 1))
+        #expect(waiting([.qitem(sentHere), .qitem(mine)], me: me) == Waiting(asks: 2), "without a rig, every row")
         #expect(waiting([.qitem(ask), .qitem(fyi)], me: me) == Waiting(asks: 1, fyis: 1))
         #expect(Waiting().isEmpty && Waiting().summary.isEmpty)
     }
@@ -82,6 +91,32 @@ import Testing
         #expect(rigName(ofSession: "orch-lead@denkeeper") == "denkeeper")
         #expect(rigName(ofSession: "human@host") == "host")
         #expect(rigName(ofSession: "nobody") == nil)
+    }
+
+    /// Every rig's asks in one list: the oldest asked first, however often a row was touched since; FYIs last.
+    @Test func theQueueListsEveryRigsAsksOldestFirst() {
+        let me = "sam@external"
+        var fyi = item("fyi", .pending, from: "lead@kernel", to: me, created: 1)
+        fyi.humanIntent = "update"
+        let newer = item("newer", .inProgress, from: "orch-lead@denkeeper", to: me, created: 30, updated: 31)
+        // Claimed and nudged since, so it was updated last, but it was asked first.
+        let older = item("older", .pending, from: "dev@apptest", to: "human@host", created: 10, updated: 99)
+        let held = item("held", .blocked, from: "lead@kernel", to: "dev@kernel", created: 20, blockedOn: "external:pr")
+        let waits = item("waits", .blocked, to: "dev@kernel", blockedOn: "qitem-1")
+        let onASeat = item("on-a-seat", .blocked, to: "dev@kernel", created: 5, blockedOn: "dev-qa@openrig-app")
+        let theirs = item("theirs", .pending, from: "dev@kernel", to: "kim@external")
+        let closed = item("closed", .done, from: "dev@kernel", to: me)
+        // The same row can come from two fetches: rows to the person, and rows held on someone.
+        let rows = [fyi, newer, older, held, held, waits, onASeat, theirs, closed]
+        #expect(humanQueue(rows, me: me).map(\.id) == ["older", "held", "newer", "fyi"])
+    }
+
+    @Test func theAskerOfAHeldRowIsItsOwner() {
+        let me = "sam@external"
+        #expect(askedBy(item("ask", .pending, from: "orch-lead@denkeeper", to: me), me: me) == "orch-lead@denkeeper")
+        #expect(askedBy(item("old", .pending, from: "dev@apptest", to: "human@kernel"), me: me) == "dev@apptest")
+        let held = item("held", .blocked, from: "lead@kernel", to: "dev@kernel", blockedOn: "external:pr")
+        #expect(askedBy(held, me: me) == "dev@kernel")
     }
 
     @Test func outcomesInPlainWords() {

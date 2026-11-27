@@ -78,6 +78,8 @@ struct QItemInspector: View {
                                 Button(shortQItemID(id)) { selection.select(qitem: id) }
                                     .buttonStyle(.link)
                                     .help(id)
+                            case .seat(let session):
+                                Text(rig.displayName(session: session)).textSelection(.enabled).help(session)
                             case .outside(let ref):
                                 // A person or event, not a row: shortQItemID would turn "artem@external" into "q-rnal".
                                 Text(ref == rig.me || Human.isYou(ref) ? "You" : ref)
@@ -123,19 +125,7 @@ struct QItemInspector: View {
 
                 ChainOfRecordView(chain: rig.chains.chain(for: item.id))
 
-                if let body = item.body, !body.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Body").font(.headline)
-                        // Prose, not code: reflowed and in the body font, so it doesn't wrap twice into 35-column
-                        // lines. Inline Markdown (`code`, **bold**, links) still renders.
-                        Text(markdown(reflowedProse(body)))
-                            .font(.callout)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(10)
-                            .background(.quaternary.opacity(0.4), in: .rect(cornerRadius: 8))
-                    }
-                }
+                RowBody(item: item)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -206,6 +196,28 @@ struct ChainOfRecordView: View {
                     .disabled(index == chain.focusIndex)
                     .help(link.id)
                 }
+            }
+        }
+    }
+}
+
+/// A row's body under a heading, when it has one.
+struct RowBody: View {
+    let item: QItem
+    var title = "Body"
+
+    var body: some View {
+        if let body = item.body, !body.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.headline)
+                // Prose, not code: reflowed and in the body font, so it doesn't wrap twice into 35-column
+                // lines. Inline Markdown (`code`, **bold**, links) still renders.
+                Text(markdown(reflowedProse(body)))
+                    .font(.callout)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(.quaternary.opacity(0.4), in: .rect(cornerRadius: 8))
             }
         }
     }

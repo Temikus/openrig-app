@@ -395,6 +395,11 @@ struct QItemCard: View {
                 // Nested in the card's own button: a target of at least 24 pt, so a near miss doesn't pick the card.
                 .frame(minHeight: 24)
                 .contentShape(Rectangle())
+        case .blocked(on: .seat(let session)):
+            Label("on \(rig.displayName(session: session))", systemImage: "person.2")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         case .handedOff(let to):
             let next = rig.chains.chain(for: item.id)
             let successor = next.links.indices.contains(next.focusIndex + 1) ? next.links[next.focusIndex + 1].id : nil
@@ -469,7 +474,7 @@ struct StatusTag: View {
         case .inProgress: "In progress"
         case .blocked(on: .outside): "Needs you"
         // One word for the state, as the column and the inspector say.
-        case .blocked(on: .qitem): "Blocked"
+        case .blocked(on: .qitem), .blocked(on: .seat): "Blocked"
         case .closed(let reason): reason.map { "Closed · \($0)" } ?? "Closed"
         case .handedOff: "Handed off"
         case .unknown(let raw): raw

@@ -83,7 +83,8 @@ final class AppStore {
     /// The gateway's people, for Settings › General › Act as.
     private(set) var gateway: GatewayParticipants?
     var people: [String] { gateway?.participants.filter { $0.kind == "person" }.map(\.address) ?? [] }
-    /// Open rows addressed to the person on every rig. Read on the poll, and on events about such a row.
+    /// Open rows addressed to the person on every rig, and every rig's blocked rows (some held on the person). Read
+    /// on the poll, and on events about such a row.
     private var rowsForMe: [QItem] = []
     private let rowsForMeRefresh = GatedRefresh()
     /// Read for `rowsForMe`, and matched against event destinations.
@@ -478,7 +479,8 @@ final class AppStore {
         var place = EventPlace(type: event.type, payload: event.data)
         place.rigId = place.rigId ?? event.rigId
         let rig = rig
-        let mine = Set(rowsForMe.map(\.id))
+        // Only the rows the person sees: rowsForMe also holds every rig's blocked rows, and most are agents' chains.
+        let mine = Set(RigDomain.humanQueue(rowsForMe, me: me).map(\.id))
         let context = EventContext(
             rigID: rig?.rigID, rigName: rig?.rigName, seatIDs: Set(rig?.graph?.seats.map(\.id) ?? []),
             holdsRow: { rig?.item($0) != nil }, addresses: Set(addresses), holdsRowForMe: mine.contains)
@@ -543,6 +545,7 @@ final class AppStore {
         let client = client
         let found = await withTaskGroup(of: [QItem]?.self) { group in
             for address in addresses { group.addTask { try? await client.openRows(to: address) } }
+            group.addTask { try? await client.blockedRows() }
             var all: [[QItem]?] = []
             for await rows in group { all.append(rows) }
             return all
@@ -558,11 +561,12 @@ final class AppStore {
     }
 
     /// What waits on the person in a rig, for its sidebar row. The selected rig counts its Needs-you list; another rig
-    /// counts rows addressed to the person plus the daemon's count of seats needing attention (prompts, which the
+    /// counts its rows waiting on the person plus the daemon's count of seats needing attention (prompts, which the
     /// app only polls for the selected rig).
     func waiting(in summary: RigSummary) -> Waiting {
-        if summary.id == selectedRigID, let rig { return RigDomain.waiting(rig.needsYou, me: me) }
-        let rows = rowsForMe.filter { rigName(ofSession: $0.source) == summary.name }
+        if summary.id == selectedRigID, let rig { return RigDomain.waiting(rig.needsYou, me: me, rig: summary.name) }
+        // A row to the person counts in its sender's rig; a held row in its owner's.
+        let rows = rowsForMe.filter { rigName(ofSession: askedBy($0, me: me)) == summary.name }
         return RigDomain.waiting(rows: rows, me: me, attention: summary.attentionCount)
     }
 
@@ -572,6 +576,33 @@ final class AppStore {
     /// Other rigs with seats needing the person (their prompts aren't polled), for Needs you's per-rig groups.
     var attentionElsewhere: [(rig: String, count: Int)] {
         rigs.filter { $0.id != selectedRigID && $0.attentionCount > 0 }.map { ($0.name, $0.attentionCount) }
+    }
+
+    /// Every rig's asks of the person, for the Needs You window. Rows from rigs the daemon no longer lists drop out.
+    var humanQueue: [QItem] {
+        let known = Set(rigs.map(\.name))
+        return RigDomain.humanQueue(rowsForMe, me: me).filter {
+            rigName(ofSession: askedBy($0, me: me)).map(known.contains) ?? false
+        }
+    }
+
+    /// The store for the rig an ask came from: the selected rig's own, else a new one the caller refreshes.
+    func rigStore(named name: String) -> RigStore? {
+        if rig?.rigName == name { return rig }
+        return rigs.first { $0.name == name }.map { makeRigStore(id: $0.id, name: $0.name) }
+    }
+
+    /// Open the seat: its rig on Terminals in the main window, with the seat's tile focused.
+    func openSeat(session: String) {
+        guard let name = rigName(ofSession: session) else { return }
+        showMainWindow()
+        open(rigNamed: name)
+        viewMode = .terminals
+        Task {
+            guard let store = rig, store.rigName == name else { return }
+            await store.refresh()
+            if let seat = store.seat(session: session) { reveal(seat: seat, in: store) }
+        }
     }
 
     /// Shows a rig's canvas, where its seats needing attention are marked.
