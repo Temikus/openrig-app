@@ -45,6 +45,15 @@ public struct DaemonHTTP: Sendable {
         try await get("/api/ps")
     }
 
+    /// The rig specs in the library, built in and the person's own.
+    public func rigSpecs() async throws(DaemonError) -> [SpecEntry] {
+        try await get("/api/specs/library", query: ["kind": "rig"])
+    }
+
+    public func specReview(id: String) async throws(DaemonError) -> SpecReview {
+        try await get("/api/specs/library/\(id)/review")
+    }
+
     public func graph(rigID: String) async throws(DaemonError) -> RigGraph {
         try await get("/api/rigs/\(rigID)/graph")
     }
