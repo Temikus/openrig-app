@@ -111,6 +111,15 @@ import Testing
         #expect(RigAction.rigUp(rig: "kernel").userCommand == "rig up kernel --existing")
     }
 
+    @Test func rigArchiveAndDelete() {
+        #expect(RigAction.rigArchive(rig: "kernel").arguments == ["archive", "kernel", "--json"])
+        #expect(RigAction.rigArchive(rig: "kernel").displayCommand == "rig archive kernel --json")
+        #expect(RigAction.rigArchive(rig: "kernel").userCommand == "rig archive kernel")
+        #expect(RigAction.rigDelete(rig: "kernel").arguments == ["down", "kernel", "--delete", "--yes", "--json"])
+        #expect(RigAction.rigDelete(rig: "kernel").displayCommand == "rig down kernel --delete --yes --json")
+        #expect(RigAction.rigDelete(rig: "kernel").userCommand == "rig down kernel --delete")
+    }
+
     @Test func seatRepair() {
         #expect(
             RigAction.launchSeat(rig: "kernel", logicalId: "dev.b2").arguments == [

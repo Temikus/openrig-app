@@ -406,6 +406,46 @@ final class AppStore {
         await run(.stopping, on: summary, .rigDown(rig: summary.name), success: "\(summary.name) stopped")
     }
 
+    /// `rig archive <rig>`, after the person confirmed. Only for a stopped rig; it leaves the list on the refresh.
+    func archiveRig(_ summary: RigSummary) async {
+        await remove(summary, .rigArchive(rig: summary.name), verb: "archive", doing: "Archiving", done: "archived")
+    }
+
+    /// `rig down <rig> --delete`, after the person confirmed. Only for a stopped rig.
+    func deleteRig(_ summary: RigSummary) async {
+        await remove(summary, .rigDelete(rig: summary.name), verb: "delete", doing: "Deleting", done: "deleted")
+    }
+
+    /// Whether Archive or Delete can run on a rig now: stopped, nothing in flight, daemon up.
+    func canRemove(_ summary: RigSummary) -> Bool {
+        isUp && isStopped(summary) && rigOps[summary.id] == nil && !actions.isRunning(Self.rigKey(summary.id))
+    }
+
+    private func remove(_ asked: RigSummary, _ action: RigAction, verb: String, doing: String, done: String) async {
+        // The rig as it is now, from a fresh read, not as it was when the menu opened: one started meanwhile
+        // must not be deleted, and `rig down --delete` would stop its seats first. refreshNow() updates isUp and
+        // the sidebar; the check uses its own read, because refreshNow() keeps the old list when its read fails.
+        await refreshNow()
+        guard let fresh = try? await client.rigs() else {
+            announce("Couldn't check \(asked.name) before trying to \(verb) it. Try again.", urgent: true)
+            return
+        }
+        guard let summary = fresh.first(where: { $0.id == asked.id }) else { return }
+        guard canRemove(summary) else {
+            if !isStopped(summary) { announce("\(summary.name) is running; stop it first", urgent: true) }
+            return
+        }
+        announce("\(doing) \(summary.name)")
+        // The row and its status line go once the rig leaves the list, so say the result too.
+        if await actions.perform(action, key: Self.rigKey(summary.id), success: "\(summary.name) \(done)") {
+            announce("\(summary.name) \(done)")
+        } else {
+            announce("Couldn't \(verb) \(summary.name)", urgent: true)
+        }
+        // On success the refresh drops the rig and moves the selection off it if it was selected.
+        await refreshNow()
+    }
+
     private func run(_ op: RigOp, on summary: RigSummary, _ action: RigAction, success: String) async {
         guard rigOps[summary.id] == nil else { return }
         setOp(op, for: summary.id)

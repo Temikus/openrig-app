@@ -45,8 +45,8 @@ extension RigAction {
         case .handoff(let id, _, _, _), .block(let id, _, _, _), .close(let id, _, _, _), .note(let id, _),
             .newDeadline(let id, _), .resolve(let id, _):
             id
-        case .send, .create, .answerPrompt, .clearAttention, .startDaemon, .rigUp, .rigDown, .launchSeat,
-            .freshSeat:
+        case .send, .create, .answerPrompt, .clearAttention, .startDaemon, .rigUp, .rigDown, .rigArchive,
+            .rigDelete, .launchSeat, .freshSeat:
             nil
         }
     }

@@ -44,20 +44,11 @@ struct StopRigConfirmation: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Stop \(summary.name)?").font(.headline)
             VStack(alignment: .leading, spacing: 4) {
-                ForEach(risk.working) { seat in
-                    HStack(spacing: 6) {
-                        StatusDot(phase: .working)
-                        Text(seat.displayName)
-                        Text(workText(seat)).foregroundStyle(.secondary)
-                    }
-                }
-                if risk.working.isEmpty {
-                    Text("No seat is mid-turn.").foregroundStyle(.secondary)
+                if graph == nil {
+                    // The rig was just selected (from its sidebar row) and its seats haven't loaded yet.
+                    Text("Checking who is mid-turn…").foregroundStyle(.secondary)
                 } else {
-                    Text("A seat mid-turn stops mid-task.").foregroundStyle(.secondary)
-                }
-                if risk.idle > 0 {
-                    Text("\(risk.idle) \(risk.idle == 1 ? "seat" : "seats") idle.").foregroundStyle(.secondary)
+                    seatLines
                 }
             }
             .font(.callout)
@@ -82,6 +73,24 @@ struct StopRigConfirmation: View {
         }
         .padding(16)
         .frame(width: 320)
+    }
+
+    @ViewBuilder private var seatLines: some View {
+        ForEach(risk.working) { seat in
+            HStack(spacing: 6) {
+                StatusDot(phase: .working)
+                Text(seat.displayName)
+                Text(workText(seat)).foregroundStyle(.secondary)
+            }
+        }
+        if risk.working.isEmpty {
+            Text("No seat is mid-turn.").foregroundStyle(.secondary)
+        } else {
+            Text("A seat mid-turn stops mid-task.").foregroundStyle(.secondary)
+        }
+        if risk.idle > 0 {
+            Text("\(risk.idle) \(risk.idle == 1 ? "seat" : "seats") idle.").foregroundStyle(.secondary)
+        }
     }
 
     private var stopTitle: String {
