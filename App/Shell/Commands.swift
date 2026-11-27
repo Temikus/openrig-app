@@ -64,6 +64,9 @@ struct OpenRigCommands: Commands {
                 .keyboardShortcut("k")
                 .disabled(window == nil)
             Divider()
+            Button("New Rig…") { store.showNewRig() }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+                .disabled(!store.isUp || store.newRig != nil)
             Button("Start Rig") {
                 if let rig = store.selectedRig { Task { await store.startRig(rig) } }
             }

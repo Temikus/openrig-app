@@ -41,11 +41,23 @@ import Foundation
         public static func version(
             of executable: URL, flag: String = "--version", path: [String] = [], timeout: Duration = .seconds(2)
         ) async -> String? {
+            guard let output = await output(of: executable, arguments: [flag], path: path, timeout: timeout) else {
+                return nil
+            }
+            let words = String(decoding: output, as: UTF8.self).split(whereSeparator: \.isWhitespace)
+            return words.first { $0.wholeMatch(of: /v?\d[\w.\-]*/) != nil }.map(String.init)
+        }
+
+        /// What the tool prints to stdout for `arguments`. Nil when it doesn't run, fails, or doesn't finish in
+        /// `timeout`.
+        public static func output(
+            of executable: URL, arguments: [String], path: [String] = [], timeout: Duration = .seconds(2)
+        ) async -> Data? {
             let process = Process()
             process.executableURL = executable
-            process.arguments = [flag]
+            process.arguments = arguments
             let searched = path + ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
-            process.environment = ["PATH": searched.joined(separator: ":"), "NO_COLOR": "1"]
+            process.environment = ["PATH": searched.joined(separator: ":"), "NO_COLOR": "1", "HOME": NSHomeDirectory()]
             let out = Pipe()
             process.standardOutput = out
             process.standardError = FileHandle.nullDevice
@@ -60,9 +72,7 @@ import Foundation
             watchdog.cancel()
             // Output closed, so the child is exiting; poll rather than block a cooperative thread on waitUntilExit.
             while process.isRunning { try? await Task.sleep(for: .milliseconds(10)) }
-            guard process.terminationStatus == 0 else { return nil }
-            let words = String(decoding: data, as: UTF8.self).split(whereSeparator: \.isWhitespace)
-            return words.first { $0.wholeMatch(of: /v?\d[\w.\-]*/) != nil }.map(String.init)
+            return process.terminationStatus == 0 ? data : nil
         }
     }
 #endif

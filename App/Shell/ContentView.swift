@@ -104,6 +104,7 @@ struct ContentView: View {
                 if !Task.isCancelled { showsGoTo = true }
             }
         #endif
+        .sheet(item: $store.newRig) { NewRigSheet(model: $0).environment(store.actions) }
         .onChange(of: appearsActive, initial: true) { store.windowInFront = appearsActive }
         .onDisappear { store.windowInFront = false }
     }
@@ -278,12 +279,38 @@ struct RigSidebar: View {
         }
         .overlay {
             if store.rigs.isEmpty, store.isUp {
-                ContentUnavailableView(
-                    "No rigs", systemImage: "square.dashed", description: Text("Start one with rig up."))
+                ContentUnavailableView {
+                    Label("No rigs", systemImage: "square.dashed")
+                } description: {
+                    Text("Build one from a template.")
+                } actions: {
+                    Button("New Rig…") { store.showNewRig() }
+                }
             }
         }
-        .safeAreaInset(edge: .bottom) { DaemonStatusFooter() }
+        // Right-click in the list's empty space.
+        .contextMenu(forSelectionType: RigSummary.ID.self) { ids in
+            if ids.isEmpty {
+                Button("New Rig…") { store.showNewRig() }.disabled(!canAddRig)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(alignment: .leading, spacing: 6) {
+                Button {
+                    store.showNewRig()
+                } label: {
+                    Label("New Rig", systemImage: "plus")
+                }
+                .buttonStyle(.borderless)
+                .disabled(!canAddRig)
+                .help("Build a rig from a template (⇧⌘N)")
+                .padding(.horizontal, 12)
+                DaemonStatusFooter()
+            }
+        }
     }
+
+    private var canAddRig: Bool { store.isUp && store.newRig == nil }
 }
 
 struct RigRow: View {

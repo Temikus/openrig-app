@@ -94,18 +94,25 @@ final class ActionStore {
     /// Runs `action`, recording the outcome under `key` (one key per control). Returns true on success.
     @discardableResult
     func perform(_ action: RigAction, key: String, success: String = "Done", allowOffline: Bool = false) async -> Bool {
+        await result(of: action, key: key, success: success, allowOffline: allowOffline) != nil
+    }
+
+    /// `perform`, returning what the CLI printed when it succeeded: nil when it failed or was refused.
+    func result(
+        of action: RigAction, key: String, success: String = "Done", allowOffline: Bool = false
+    ) async -> CLIResult? {
         // Its source is often a real seat: a Tell or a reply would type into that seat's terminal.
         if MadeUpRows.launch.refuses(action, key: key) {
             status[key] = .failed(Self.madeUp)
-            return false
+            return nil
         }
         if offline && !allowOffline {
             status[key] = .failed("The daemon isn't running. Start it from the sidebar, then try again.")
-            return false
+            return nil
         }
         guard let cli else {
             status[key] = .failed("rig not found. Pick it in Settings › Connection.")
-            return false
+            return nil
         }
         status = status.filter { if case .succeeded = $0.value { false } else { true } }
         status[key] = .running
@@ -113,7 +120,7 @@ final class ActionStore {
             let result = try await cli.run(action)
             if result.succeeded {
                 status[key] = .succeeded(success)
-                return true
+                return result
             }
             // `rig send` exits 1 when it can't confirm delivery: the keys may still have landed.
             // A refusal also exits 1, so trust only the JSON's own "sent" flag.
@@ -121,7 +128,7 @@ final class ActionStore {
             case .send, .answerPrompt:
                 if result.status == 1, Self.reportsSent(result) {
                     status[key] = .succeeded("\(success), not confirmed")
-                    return true
+                    return result
                 }
             default: break
             }
@@ -129,7 +136,7 @@ final class ActionStore {
         } catch {
             status[key] = .failed(error.localizedDescription)
         }
-        return false
+        return nil
     }
 
     func clear(_ key: String) { status[key] = nil }
