@@ -452,7 +452,11 @@ struct RigDetail: View {
                 // Offline, the last data stays on screen, dimmed, with when it was current. A stopped rig isn't
                 // dimmed: dimming took its text below 3:1; its banner and stopped seats say it isn't live.
                 .opacity(store.isUp ? 1 : 0.55)
-                .safeAreaInset(edge: .top, spacing: 0) { StatusBanners(rig: rig, summary: summary) }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    // A wrapping banner's minimum width varies with its height. Left in, it feeds the split view's
+                    // minimum size and the stopped rig's canvas re-lays out until AppKit aborts.
+                    StatusBanners(rig: rig, summary: summary).frame(minWidth: 0)
+                }
                 .navigationTitle(summary.name)
                 .navigationSubtitle(subtitle(rig, summary))
                 .toolbar(removing: showsTitle ? nil : .title)
